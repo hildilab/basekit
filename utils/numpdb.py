@@ -167,8 +167,9 @@ class NumPdb:
             p=self._parsers.get( name )
             if p:
                 self.__dict__[ "_"+name ] = p.get()
+        self.length = len( self._coords )
     def _sele( self, chain=None, resno=None, atomname=None ):
-        sele = np.ones( len( self._coords ), bool )
+        sele = np.ones( self.length, bool )
         if chain:
             sele &= self._chain==chain
         if resno!=None:
@@ -211,34 +212,48 @@ class NumPdb:
     def iter_chain( self, **sele ):
         for chain in np.unique( self._chain[ self._sele( **sele ) ] ):
             yield chain
-    def _phi_psi( self, mode, **sele ):
-        sele["atomname"] = "CA"
+    def iter_resno( self, **sele ):
         for chain in self.iter_chain( **sele ):
             sele["chain"] = chain
-            for idx_ca in self._idx( **sele ):
-                resno = self._resno[ idx_ca ]
+            sele["resno"] = "CA"
+            for resno, chain in np.unique( self._resno[ self._sele( **sele ) ] ):
+                print resno
+                yield resno, chain
+    def __calc_phi_psi( self ):
+        self._phi = np.ones( self.length, float )
+        self._psi = np.ones( self.length, float )
+        for resno, chain in self.iter_resno():
+            try:
+                idx_ca = self._idx_first( chain=chain, resno=resno, atomname="CA" )
+                idx_n = self._idx_first( chain=chain, resno=resno, atomname="N" )
+                idx_c = self._idx_first( chain=chain, resno=resno, atomname="C" )
                 try:
-                    idx_n = self._idx_first( chain=chain, resno=resno, atomname="N" )
-                    idx_c = self._idx_first( chain=chain, resno=resno, atomname="C" )
-                    if mode=="phi":
-                        idx_c1 = self._idx_first( chain=chain, resno=resno-1, atomname="C" )
-                        angle = vec_dihedral(
-                            self._coords[ idx_c1 ], self._coords[ idx_n ],
-                            self._coords[ idx_ca ], self._coords[ idx_c ]
-                        )
-                    else:
-                        idx_n1 = self._idx_first( chain=chain, resno=resno+1, atomname="N" )
-                        angle = vec_dihedral(
-                            self._coords[ idx_n ], self._coords[ idx_ca ],
-                            self._coords[ idx_c ], self._coords[ idx_n1 ]
-                        )
+                    idx_c1 = self._idx_first( chain=chain, resno=resno-1, atomname="C" )
+                    phi = vec_dihedral(
+                        self._coords[ idx_c1 ], self._coords[ idx_n ],
+                        self._coords[ idx_ca ], self._coords[ idx_c ]
+                    )
                 except:
-                    angle = np.nan
-                print angle
+                    phi = np.nan
+                try:
+                    idx_n1 = self._idx_first( chain=chain, resno=resno+1, atomname="N" )
+                    angle = vec_dihedral(
+                        self._coords[ idx_n ], self._coords[ idx_ca ],
+                        self._coords[ idx_c ], self._coords[ idx_n1 ]
+                    )
+                except:
+                    psi = np.nan
+            except:
+                phi = np.nan
+                psi = np.nan
+            self._phi[ self._sele( chain=chain, resno=resno ) ] = phi
+            self._psi[ self._sele( chain=chain, resno=resno ) ] = psi
     def phi( self, **sele ):
-        return self._phi_psi( "phi", **sele )
+        if not hasattr( self, "_phi" ): self.__calc_phi_psi()
+        return self._phi[ self._sele( **sele ) ]
     def psi( self, **sele ):
-        return self._phi_psi( "psi", **sele )
+        if not hasattr( self, "_psi" ): self.__calc_phi_psi()
+        return self._psi[ self._sele( **sele ) ]
     def dist( self, sele1, sele2 ):
         c1 = self.coords( **sele1 )
         c2 = self.coords( **sele2 )
