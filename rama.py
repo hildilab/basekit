@@ -44,9 +44,13 @@ def main():
 
 
     if args.pdb:
-        npdb = numpdb.NumPdb( args.pdb )
-        print npdb.dist( { "chain": "A" }, { "chain": "B" } )
-        print npdb.phi( chain="B" )
+        with Timer("read/parse pdb"):
+            npdb = numpdb.NumPdb( args.pdb )
+        #print npdb.dist( { "chain": "A" }, { "chain": "B" } )
+        with Timer("calc phi/psi"):
+            npdb.phi( chain="B" )
+        with Timer("access phi/psi"):
+            print np.nansum( npdb.phi( chain="B" ) )
 
 
 if __name__ == "__main__":

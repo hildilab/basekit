@@ -9,6 +9,11 @@ from utils import try_int, get_index
 from math import vec_dihedral, vec_mag
 
 
+
+# https://pypi.python.org/pypi/Bottleneck
+# http://stutzbachenterprises.com/blist/
+
+
 # http://deposit.rcsb.org/adit/docs/pdb_atom_format.html#ATOM
 # http://www.cgl.ucsf.edu/chimera/docs/UsersGuide/tutorials/pdbintro.html
 
@@ -52,6 +57,8 @@ class SimpleParser():
     def _parse_line( self, line ):
         return line
     def get( self ):
+        if hasattr( self, "type" ):
+            return np.array( self._list, dtype=self.type )
         return np.array( self._list )
 
 class SimpleAtomParser( SimpleParser ):
@@ -59,30 +66,46 @@ class SimpleAtomParser( SimpleParser ):
         return line.startswith( "ATOM" ) and line[16] in [" ", "A"]
 
 class CoordsParser( SimpleAtomParser ):
+    type = np.float
+    def __call__( self, line ):
+        if self._test_line( line ):
+            self._list += self._parse_line( line )
     def _parse_line( self, line ):
-        return map( float, [ line[30:38], line[38:46], line[46:54] ] )
+        return float(line[30:38]), float(line[38:46]), float(line[46:54])
+    def get( self ):
+        return np.array( self._list, dtype=self.type ).reshape(-1,3)
 
 class ChainParser( SimpleAtomParser ):
+    type = '|S1'
     def _parse_line( self, line ):
         return line[21]
 
 class ResnoParser( SimpleAtomParser ):
+    type = np.uint16
     def _parse_line( self, line ):
         return int( line[22:26] )
 
 class ResnameParser( SimpleAtomParser ):
+    type = '|S3'
     def _parse_line( self, line ):
         return line[17:20]
 
 class AtomnameParser( SimpleAtomParser ):
+    type = '|S4'
     def _parse_line( self, line ):
         return line[12:16]
 
 class AltlocParser( SimpleAtomParser ):
+    type = '|S1'
     def _parse_line( self, line ):
         return line[16]
 
 class SstrucParser( SimpleParser ):
+    def __init__( self ):
+        self._list = []
+    def __call__( self, line ):
+        if self._test_line( line ):
+            self._list.append( self._parse_line( line ) )
     def _test_line( self, line ):
         return line.startswith("HELIX") or line.startswith("SHEET")
     def _parse_line( self, line ):
@@ -153,10 +176,10 @@ class NumPdb:
             "coords": CoordsParser(),
             "chain": ChainParser(),
             "resno": ResnoParser(),
-            "resname": ResnameParser(),
+            #"resname": ResnameParser(),
             "atomname": AtomnameParser(),
-            "altloc": AltlocParser(),
-            "sstruc": SstrucParser()
+            #"altloc": AltlocParser(),
+            #"sstruc": SstrucParser()
         }
     def _parse( self ):
         with open( self.pdb_path, "r" ) as fp:
@@ -164,20 +187,25 @@ class NumPdb:
                 for p in self._parsers.values():
                     p( line )
         for name in self._parsers.keys():
-            p=self._parsers.get( name )
-            if p:
-                self.__dict__[ "_"+name ] = p.get()
-        self.length = len( self._coords )
-    def _sele( self, chain=None, resno=None, atomname=None ):
-        sele = np.ones( self.length, bool )
-        if chain:
+            self.__dict__[ "_"+name ] = self._parsers[ name ].get()
+        self.length = len( self.__dict__[ "_"+self._parsers.keys()[0] ] )
+        self.__tmp_sele = np.ones( self.length, bool )
+    def _sele( self, chain=None, resno=None, atomname=None, pre_sele=None, copy=False ):
+        if copy:
+            sele = np.ones( self.length, bool )
+        else:
+            self.__tmp_sele.fill( True )
+            sele = self.__tmp_sele
+        if pre_sele!=None:
+            sele &= pre_sele
+        if chain!=None:
             sele &= self._chain==chain
         if resno!=None:
             if isinstance( resno, (list, tuple) ):
                 sele &= (self._resno>=resno[0]) & (self._resno<=resno[1])
             else:
                 sele &= self._resno==resno
-        if atomname:
+        if atomname!=None:
             atomname = self.atomname_dict.get( atomname, atomname )
             if isinstance( atomname, (list, tuple) ):
                 sele &= reduce( 
@@ -187,7 +215,7 @@ class NumPdb:
                 )
             else:
                 sele &= self._atomname==atomname
-        return sele
+        return sele # needs possible to be copied
     def coords( self, **sele ):
         return self._coords[ self._sele( **sele ) ]
     @property
@@ -211,24 +239,26 @@ class NumPdb:
         return self._idx( **sele )[0]
     def iter_chain( self, **sele ):
         for chain in np.unique( self._chain[ self._sele( **sele ) ] ):
-            yield chain
+            yield chain, self._chain==chain
     def iter_resno( self, **sele ):
-        for chain in self.iter_chain( **sele ):
-            sele["chain"] = chain
-            sele["resno"] = "CA"
-            for resno, chain in np.unique( self._resno[ self._sele( **sele ) ] ):
-                print resno
-                yield resno, chain
+        for chain, chain_sele in self.iter_chain( **sele ):
+            sele["pre_sele"] = chain_sele
+            for resno in np.unique( self._resno[ self._sele( **sele ) ] ):
+                yield resno, self._resno==resno, chain, chain_sele
     def __calc_phi_psi( self ):
-        self._phi = np.ones( self.length, float )
-        self._psi = np.ones( self.length, float )
-        for resno, chain in self.iter_resno():
+        self._phi = np.empty( self.length, float )
+        self._psi = np.empty( self.length, float )
+        ca_sele = self._sele( atomname="CA", copy=True )
+        n_sele = self._sele( atomname="N", copy=True )
+        c_sele = self._sele( atomname="C", copy=True )
+        for resno, resno_sele, chain, chain_sele in self.iter_resno():
+            pre_sele = resno_sele & chain_sele
             try:
-                idx_ca = self._idx_first( chain=chain, resno=resno, atomname="CA" )
-                idx_n = self._idx_first( chain=chain, resno=resno, atomname="N" )
-                idx_c = self._idx_first( chain=chain, resno=resno, atomname="C" )
+                idx_ca = self._idx_first( pre_sele=pre_sele&ca_sele )
+                idx_n = self._idx_first( pre_sele=pre_sele&n_sele )
+                idx_c = self._idx_first( pre_sele=pre_sele&c_sele )
                 try:
-                    idx_c1 = self._idx_first( chain=chain, resno=resno-1, atomname="C" )
+                    idx_c1 = self._idx_first( resno=resno-1, pre_sele=chain_sele&c_sele )
                     phi = vec_dihedral(
                         self._coords[ idx_c1 ], self._coords[ idx_n ],
                         self._coords[ idx_ca ], self._coords[ idx_c ]
@@ -236,8 +266,8 @@ class NumPdb:
                 except:
                     phi = np.nan
                 try:
-                    idx_n1 = self._idx_first( chain=chain, resno=resno+1, atomname="N" )
-                    angle = vec_dihedral(
+                    idx_n1 = self._idx_first( resno=resno+1, pre_sele=chain_sele&n_sele )
+                    psi = vec_dihedral(
                         self._coords[ idx_n ], self._coords[ idx_ca ],
                         self._coords[ idx_c ], self._coords[ idx_n1 ]
                     )
@@ -246,8 +276,8 @@ class NumPdb:
             except:
                 phi = np.nan
                 psi = np.nan
-            self._phi[ self._sele( chain=chain, resno=resno ) ] = phi
-            self._psi[ self._sele( chain=chain, resno=resno ) ] = psi
+            self._phi[ self._sele( pre_sele=pre_sele ) ] = phi
+            self._psi[ self._sele( pre_sele=pre_sele ) ] = psi
     def phi( self, **sele ):
         if not hasattr( self, "_phi" ): self.__calc_phi_psi()
         return self._phi[ self._sele( **sele ) ]
