@@ -3,6 +3,7 @@ from __future__ import division
 import os
 import operator
 import functools
+from collections import defaultdict
 import numpy as np
 
 from utils import try_int, get_index
@@ -12,6 +13,16 @@ from math import vec_dihedral, vec_mag
 
 # https://pypi.python.org/pypi/Bottleneck
 # http://stutzbachenterprises.com/blist/
+
+
+# http://sourceforge.net/p/pymmlib/code/HEAD/tree/trunk/pymmlib/mmLib/Superposition.py
+
+
+# http://docs.scipy.org/doc/numpy/user/basics.io.genfromtxt.html
+# http://docs.scipy.org/doc/numpy/reference/generated/numpy.genfromtxt.html
+# TODO: using genfromtxt would require some preprocessing i.e. all non atom lines
+#   need to be removed to parse the atom records; parsing a different
+#   record then reqires another call to genfromtxt
 
 
 # http://deposit.rcsb.org/adit/docs/pdb_atom_format.html#ATOM
@@ -46,12 +57,12 @@ AA1 = {
 AA3 = dict((v,k) for k, v in AA1.iteritems())
 
 
+
 class SimpleParser():
     def __init__( self ):
         self._list = []
     def __call__( self, line ):
-        if self._test_line( line ):
-            self._list.append( self._parse_line( line ) )
+        self._list.append( self._parse_line( line ) )
     def _test_line( self, line ):
         return len( line ) > 0
     def _parse_line( self, line ):
@@ -61,15 +72,18 @@ class SimpleParser():
             return np.array( self._list, dtype=self.type )
         return np.array( self._list )
 
+
+def test_atom_line( line ):
+    return line.startswith( "ATOM" ) and line[16] in [" ", "A"]
+
+
 class SimpleAtomParser( SimpleParser ):
-    def _test_line( self, line ):
-        return line.startswith( "ATOM" ) and line[16] in [" ", "A"]
+    _test_line = "test_atom_line"
 
 class CoordsParser( SimpleAtomParser ):
     type = np.float
     def __call__( self, line ):
-        if self._test_line( line ):
-            self._list += self._parse_line( line )
+        self._list += self._parse_line( line )
     def _parse_line( self, line ):
         return float(line[30:38]), float(line[38:46]), float(line[46:54])
     def get( self ):
@@ -82,6 +96,7 @@ class ChainParser( SimpleAtomParser ):
 
 class ResnoParser( SimpleAtomParser ):
     type = np.uint16
+    _test_line = SimpleAtomParser._test_line
     def _parse_line( self, line ):
         return int( line[22:26] )
 
@@ -92,6 +107,7 @@ class ResnameParser( SimpleAtomParser ):
 
 class AtomnameParser( SimpleAtomParser ):
     type = '|S4'
+    _test_line = SimpleAtomParser._test_line
     def _parse_line( self, line ):
         return line[12:16]
 
@@ -104,8 +120,7 @@ class SstrucParser( SimpleParser ):
     def __init__( self ):
         self._list = []
     def __call__( self, line ):
-        if self._test_line( line ):
-            self._list.append( self._parse_line( line ) )
+        self._list.append( self._parse_line( line ) )
     def _test_line( self, line ):
         return line.startswith("HELIX") or line.startswith("SHEET")
     def _parse_line( self, line ):
@@ -182,13 +197,22 @@ class NumPdb:
             #"sstruc": SstrucParser()
         }
     def _parse( self ):
+        tests = defaultdict( list )
+        for name, p in self._parsers.items():
+            if isinstance( p._test_line, str ):
+                tests[ eval(p._test_line) ].append( name )
+            else:
+                tests[ p._test_line ].append( name )
         with open( self.pdb_path, "r" ) as fp:
-            for line in fp:
-                for p in self._parsers.values():
-                    p( line )
+            d = fp.readlines()
+            for line in d:
+                for test_func, names in tests.items():
+                    if test_func( line ):
+                        for name in names:
+                            self._parsers[ name ]( line )
         for name in self._parsers.keys():
             self.__dict__[ "_"+name ] = self._parsers[ name ].get()
-        self.length = len( self.__dict__[ "_"+self._parsers.keys()[0] ] )
+        self.length = len( self.__dict__[ "_"+[ x for x in self._parsers.keys() if x!="sstruc" ][0] ] )
         self.__tmp_sele = np.ones( self.length, bool )
     def _sele( self, chain=None, resno=None, atomname=None, pre_sele=None, copy=False ):
         if copy:
@@ -215,7 +239,7 @@ class NumPdb:
                 )
             else:
                 sele &= self._atomname==atomname
-        return sele # needs possible to be copied
+        return sele
     def coords( self, **sele ):
         return self._coords[ self._sele( **sele ) ]
     @property
@@ -246,6 +270,10 @@ class NumPdb:
             for resno in np.unique( self._resno[ self._sele( **sele ) ] ):
                 yield resno, self._resno==resno, chain, chain_sele
     def __calc_phi_psi( self ):
+        # IDEA: create several matrices with coords of continuous residues
+        #   and then use only one call to vec_dihedral for each matrix.
+        #   Also, precompute the "matrices with coords of continuous residues"
+        #   as they are of use elsewhere
         self._phi = np.empty( self.length, float )
         self._psi = np.empty( self.length, float )
         ca_sele = self._sele( atomname="CA", copy=True )

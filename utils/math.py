@@ -3,6 +3,9 @@ from __future__ import division
 import numpy as np
 
 
+# https://github.com/pycogent/pycogent/blob/master/cogent/struct/dihedral.py
+
+
 
 def vec_norm( v ):
     if v.shape == (3,):
