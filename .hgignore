@@ -1,0 +1,15 @@
+syntax: glob
+
+*.DS_Store
+*.kpf
+*.komodoproject
+.komodotools
+*.sync.db
+*.sync.db-journal
+Icon*
+.~lock*
+*.sublime-project
+*.sublime-workspace
+
+*.pyc
+
