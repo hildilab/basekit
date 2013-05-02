@@ -23,8 +23,10 @@ from math import vec_dihedral, vec_mag
 # TODO: using genfromtxt would require some preprocessing i.e. all non atom lines
 #   need to be removed to parse the atom records; parsing a different
 #   record then reqires another call to genfromtxt
+# IDEA: option to read only backbone/ mainchain atoms
 
 
+# PDB FORMAT SPECIFICATIONS
 # http://deposit.rcsb.org/adit/docs/pdb_atom_format.html#ATOM
 # http://www.cgl.ucsf.edu/chimera/docs/UsersGuide/tutorials/pdbintro.html
 
@@ -191,7 +193,7 @@ class NumPdb:
             "coords": CoordsParser(),
             "chain": ChainParser(),
             "resno": ResnoParser(),
-            #"resname": ResnameParser(),
+            "resname": ResnameParser(),
             "atomname": AtomnameParser(),
             #"altloc": AltlocParser(),
             #"sstruc": SstrucParser()
@@ -223,7 +225,14 @@ class NumPdb:
         if pre_sele!=None:
             sele &= pre_sele
         if chain!=None:
-            sele &= self._chain==chain
+            if isinstance( chain, (list, tuple) ):
+                sele &= reduce( 
+                    lambda x, y: x | (self._chain==y), 
+                    chain[1:],
+                    self._chain==chain[0]
+                )
+            else:
+                sele &= self._chain==chain
         if resno!=None:
             if isinstance( resno, (list, tuple) ):
                 sele &= (self._resno>=resno[0]) & (self._resno<=resno[1])
