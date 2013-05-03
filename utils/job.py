@@ -26,7 +26,9 @@ def working_directory(directory):
         os.chdir(original_directory) 
 
 
+# TODO: remove shell dependency
 def run_command( program, log=None, stdout=None, close_fds=True ):
+    # this function allow a stream-like access to stdout/stderr 
     command="(%s) 2>&1" % program
     p = subprocess.Popen( command, shell=True, stdout=subprocess.PIPE, close_fds=close_fds )
     if log: fp = open( log, 'w' )
@@ -48,6 +50,24 @@ def run_command( program, log=None, stdout=None, close_fds=True ):
     return
 
 
+def run_command2( cmd, cwd=".", log=None ):
+    kwargs = {
+        "args": cmd,
+        "cwd": cwd,
+        "stdout": os.devnull,
+        "stderr": subprocess.STDOUT,
+        "env": os.environ,
+        "preexec_fn": os.setpgrp
+    }
+    if log:
+        with open( log, "w" ) as fp:
+            kwargs.update(stdout=fp)
+            ret = subprocess.call( **kwargs )
+    else:
+        ret = subprocess.call( **kwargs )
+    return ret
+
+
 def _prep_func(fn):
     def wrapped( fpath ):
         try:
@@ -58,28 +78,19 @@ def _prep_func(fn):
     return functools.update_wrapper( wrapped, fn )
 
 
-def init_worker():
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-
 def do_parallel( func, files, nworkers=None ):
+
+    # !important - allows one to abort via CTRL-C
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
     multiprocessing.log_to_stderr( logging.ERROR )
+    
     if not nworkers:
         nworkers = multiprocessing.cpu_count()
-    p = multiprocessing.Pool( nworkers, init_worker )
-    # def signal_handler(signal, frame):
-    #     print 'You pressed Ctrl+C!'
-    #     p.terminate()
-    #     sys.exit(0)
-    # signal.signal(signal.SIGINT, signal_handler)
-
-    try:
-        data = p.map( func, files )
-        p.close()
-        p.join()
-    except KeyboardInterrupt:
-        print "Caught KeyboardInterrupt, terminating workers"
-        p.terminate()
-        p.join()
-        data = []
+    
+    p = multiprocessing.Pool( nworkers )
+    data = p.map( func, files )
+    p.close()
+    p.join()
 
     return data

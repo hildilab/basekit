@@ -15,7 +15,7 @@ from string import Template
 
 from utils import try_int, get_index, boolean
 from utils.timer import Timer
-from utils.job import run_command, working_directory, do_parallel, _prep_func
+from utils.job import run_command2, working_directory, do_parallel, _prep_func
 from utils.db import get_pdb_files
 from utils.jmol import run_jmol_script
 
@@ -24,6 +24,8 @@ MSMS_CMD = "msms"
 BABEL_CMD = "babel"
 TIMEOUT_CMD = "timeout"
 PDB_TO_XYZR_CMD = "pdb_to_xyzr"
+
+
 
 
 def pdb_select( input_pdb, output_pdb ):
@@ -46,34 +48,26 @@ def pdb_to_xyzr( input_pdb, output_dir ):
     fdir, fname, pdb_id = pdb_path_split( input_pdb )
     xyzr = "%s.xyzr" % pdb_id
     pdb2 = "prep.pdb"
-    cmd = "%s 10 %s -i pdb %s -o msms %s" % (
-        TIMEOUT_CMD, BABEL_CMD, pdb2, xyzr
-    )
+    cmd = [ TIMEOUT_CMD, "10", BABEL_CMD, '-i', 'pdb', pdb2, '-o', 'msms', xyzr ]
     with working_directory( output_dir ):
         pdb_select( input_pdb, pdb2 )
-        run_command( cmd, close_fds=True, stdout=False, log="babel_cmd.log" )
+        run_command2( cmd, log="babel_cmd.log" )
     return xyzr
 
 
-def pdb_to_xyzr2( input_pdb, output_dir ):
-    fdir, fname, pdb_id = pdb_path_split( input_pdb )
-    out = "%s.xyzrn" % pdb_id
+# def pdb_to_xyzr2( input_pdb, output_dir ):
+#     fdir, fname, pdb_id = pdb_path_split( input_pdb )
+#     out = "%s.xyzrn" % pdb_id
 
-    with open( "data/jmol/pdb2xyzrn.jspt", "r" ) as fp:
-        tpl_str = fp.read()
-    values_dict = {
-        "pdb_file": input_pdb,
-        "out_file": out
-    }
-    with working_directory( output_dir ):
-        run_jmol_script( Template( tpl_str ).substitute( **values_dict ) )
-
-    # cmd = "%s %s > %s" % (
-    #     PDB_TO_XYZR_CMD, input_pdb, out
-    # )
-    # with working_directory( output_dir ):
-    #     run_command( cmd, close_fds=True, stdout="pdb_to_xyzr_cmd.log" )
-    return out
+#     with open( "data/jmol/pdb2xyzrn.jspt", "r" ) as fp:
+#         tpl_str = fp.read()
+#     values_dict = {
+#         "pdb_file": input_pdb,
+#         "out_file": out
+#     }
+#     with working_directory( output_dir ):
+#         run_jmol_script( Template( tpl_str ).substitute( **values_dict ) )
+#     return out
 
 
 def msms( input_pdb, output_dir ):
@@ -81,8 +75,9 @@ def msms( input_pdb, output_dir ):
     cmd = "%s -if %s -af area -of tri_surface" % (
         MSMS_CMD, xyzr
     )
+    cmd2 = [ MSMS_CMD, "-if", xyzr, "-af", "area", "-of", "tri_surface" ]
     with working_directory( output_dir ):
-        run_command( cmd, close_fds=True, stdout=False, log="msms_cmd.log" )
+        run_command2( cmd2, log="msms_cmd.log" )
 
 
 @_prep_func
@@ -107,11 +102,6 @@ def check_files( fpath ):
     area = os.path.exists( os.path.join( fdir, pdb_id, "msms", "area.area" ) )
     return ( msms, xyzr, area )
 
-
-
-# TODO
-# write pdb select: first model and not hetero
-# use babel to convert pdb to xyzr
 
 
 
@@ -155,6 +145,7 @@ def main():
             pdb_files = pdb_filtered
     if args.test_sample:
         pdb_files = pdb_files[0:args.test_sample]
+        if args.test_sample<=10: print pdb_files
     if pdb_files:
         print "%s pdb files" % len( pdb_files )
 
