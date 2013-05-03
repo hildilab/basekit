@@ -26,3 +26,4 @@ def run_jmol_script( script, log="jmol.log" ):
 	run_command( cmd, close_fds=True, stdout=False, log=log )
 
 
+# run_jmol_script( Template( tpl_str ).substitute( **values_dict ) )

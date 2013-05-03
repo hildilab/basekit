@@ -52,7 +52,7 @@ def run_command( program, log=None, stdout=None, close_fds=True ):
 
 def run_command2( cmd, cwd=".", log=None ):
     kwargs = {
-        "args": cmd,
+        "args": map( str, cmd ),
         "cwd": cwd,
         "stdout": os.devnull,
         "stderr": subprocess.STDOUT,
@@ -68,17 +68,8 @@ def run_command2( cmd, cwd=".", log=None ):
     return ret
 
 
-def _prep_func(fn):
-    def wrapped( fpath ):
-        try:
-            return ( fpath, fn( fpath ) )
-        except Exception, e:
-            print e
-            return ( fpath, None )
-    return functools.update_wrapper( wrapped, fn )
 
-
-def do_parallel( func, files, nworkers=None ):
+def do_parallel( func, files, nworkers=None, run=True ):
 
     # !important - allows one to abort via CTRL-C
     signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -89,7 +80,8 @@ def do_parallel( func, files, nworkers=None ):
         nworkers = multiprocessing.cpu_count()
     
     p = multiprocessing.Pool( nworkers )
-    data = p.map( func, files )
+
+    data = p.map( functools.partial(func, run=run), files )
     p.close()
     p.join()
 

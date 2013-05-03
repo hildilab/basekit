@@ -17,6 +17,7 @@ from math import vec_dihedral, vec_mag
 
 # http://sourceforge.net/p/pymmlib/code/HEAD/tree/trunk/pymmlib/mmLib/Superposition.py
 # http://cmhill.googlecode.com/svn/trunk/BaCon/biopython-1.51/Bio/PDB/Vector.py
+# https://github.com/bryan-lunt/pdb_tools
 
 
 # http://docs.scipy.org/doc/numpy/user/basics.io.genfromtxt.html

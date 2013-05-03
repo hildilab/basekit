@@ -11,18 +11,20 @@ import shutil
 import argparse
 import sqlite3
 import functools
+from itertools import izip
+from operator import itemgetter, methodcaller
 from string import Template
 
 from utils import try_int, get_index, boolean
 from utils.timer import Timer
-from utils.job import run_command2, working_directory, do_parallel, _prep_func
+from utils.job import run_command2, working_directory, do_parallel
 from utils.db import get_pdb_files
 from utils.jmol import run_jmol_script
+from utils.tool import CmdTool
 
 
 MSMS_CMD = "msms"
 BABEL_CMD = "babel"
-TIMEOUT_CMD = "timeout"
 PDB_TO_XYZR_CMD = "pdb_to_xyzr"
 
 
@@ -44,63 +46,49 @@ def pdb_path_split( fpdb ):
     return ( fdir, fname, pdb_id )
 
 
-def pdb_to_xyzr( input_pdb, output_dir ):
-    fdir, fname, pdb_id = pdb_path_split( input_pdb )
-    xyzr = "%s.xyzr" % pdb_id
-    pdb2 = "prep.pdb"
-    cmd = [ TIMEOUT_CMD, "10", BABEL_CMD, '-i', 'pdb', pdb2, '-o', 'msms', xyzr ]
-    with working_directory( output_dir ):
-        pdb_select( input_pdb, pdb2 )
-        run_command2( cmd, log="babel_cmd.log" )
-    return xyzr
+class Msms( CmdTool ):
+    def __init__( self, pdb_file, **kw ):
+        self.pdb2xyzr = Pdb2xyzr( 
+            pdb_file, output_dir=kw.get("output_dir"), 
+            timeout=kw.get("timeout"), run=False
+        )
+        self.cmd = [ 
+            MSMS_CMD, "-if", self.pdb2xyzr.xyzr_file, 
+            "-af", "area", "-of", "tri_surface"
+        ]
+        self.output_files = self.pdb2xyzr.output_files + \
+            [ "area.area", "tri_surface.face", "tri_surface.vert" ]
+        super(Msms, self).__init__( **kw )
+    def _pre_exec( self ):
+        self.pdb2xyzr()
 
 
-# def pdb_to_xyzr2( input_pdb, output_dir ):
-#     fdir, fname, pdb_id = pdb_path_split( input_pdb )
-#     out = "%s.xyzrn" % pdb_id
 
-#     with open( "data/jmol/pdb2xyzrn.jspt", "r" ) as fp:
-#         tpl_str = fp.read()
-#     values_dict = {
-#         "pdb_file": input_pdb,
-#         "out_file": out
-#     }
-#     with working_directory( output_dir ):
-#         run_jmol_script( Template( tpl_str ).substitute( **values_dict ) )
-#     return out
-
-
-def msms( input_pdb, output_dir ):
-    xyzr = pdb_to_xyzr( input_pdb, output_dir )
-    cmd = "%s -if %s -af area -of tri_surface" % (
-        MSMS_CMD, xyzr
-    )
-    cmd2 = [ MSMS_CMD, "-if", xyzr, "-af", "area", "-of", "tri_surface" ]
-    with working_directory( output_dir ):
-        run_command2( cmd2, log="msms_cmd.log" )
+class Pdb2xyzr( CmdTool ):
+    def __init__( self, pdb_file, **kw ):
+        self.pdb_file = os.path.abspath( pdb_file )
+        self.pdb_prep_file = "prep.pdb"
+        self.xyzr_file = "%s.xyzr" % os.path.splitext( self.pdb_file )[0]
+        self.cmd = [ 
+            BABEL_CMD, '-i', 'pdb', self.pdb_prep_file,
+            '-o', 'msms', self.xyzr_file 
+        ]
+        self.output_files = [ self.pdb_prep_file, self.xyzr_file ]
+        super(Pdb2xyzr, self).__init__( **kw )
+    def _pre_exec( self ):
+        with working_directory( self.output_dir ):
+            pdb_select( self.pdb_file, self.pdb_prep_file )
 
 
-@_prep_func
-def _msms_pdb( fpath ):
+
+def _msms_pdb( fpath, run=True ):
     fdir, fname, pdb_id = pdb_path_split( fpath )
     output_dir = os.path.join( fdir, pdb_id, "msms" )
-    if not os.path.exists( output_dir ):
-        os.makedirs( output_dir )
-    msms( os.path.abspath( fpath ), output_dir )
-    return True
-
-def msms_pdb( pdb_files, nworkers=None ):
-    return do_parallel( _msms_pdb, pdb_files, nworkers )
+    return Msms( fpath, output_dir=output_dir, run=run, timeout=10 )
 
 
-
-def check_files( fpath ):
-    fdir, fname, pdb_id = pdb_path_split( fpath )
-    msms = os.path.exists( os.path.join( fdir, pdb_id, "msms" ) )
-    xyzr = os.path.join( fdir, pdb_id, "msms", "%s.xyzr" % pdb_id )
-    xyzr = os.path.exists( xyzr ) and os.path.getsize( xyzr )
-    area = os.path.exists( os.path.join( fdir, pdb_id, "msms", "area.area" ) )
-    return ( msms, xyzr, area )
+def msms_pdb( pdb_files, nworkers=None, run=True ):
+    return do_parallel( _msms_pdb, pdb_files, nworkers, run=run )
 
 
 
@@ -138,10 +126,8 @@ def main():
         pdb_files = get_pdb_files( args.pdb_path, pattern=".pdb" )
         if args.filter:
             pdb_filtered = []
-            for fpath in pdb_files:
-                msms, xyzr, area = check_files( fpath )
-                if not msms or not area or not xyzr:
-                    pdb_filtered.append( fpath )
+            for fpath, d in zip( pdb_files, msms_pdb( pdb_files, run=False ) ):
+                if not d.check(): pdb_filtered.append( fpath )
             pdb_files = pdb_filtered
     if args.test_sample:
         pdb_files = pdb_files[0:args.test_sample]
@@ -161,33 +147,39 @@ def main():
     if args.calculate and args.pdb_path:
         with Timer("calculate msms"):
             msms_ret = msms_pdb( pdb_files )
-            if args.status_out:
-                with open( os.path.join( args.status_out, "calculate_msms.txt" ), "w" ) as fp:
-                    fp.write( "\n".join([ "\t".join(map(str, x + check_files(x[0]))) for x in msms_ret ]) )
 
 
     if args.status and args.pdb_path:
-        print "status"
-        xyzr_fail = []
-        msms_fail = []
-        count_good = 0
-        for fpath in pdb_files:
-            msms, xyzr, area = check_files( fpath )
-            if msms and area and xyzr:
-                count_good += 1
-            if msms and not xyzr:
-                xyzr_fail.append( fpath )
-            if msms and not area:
-                msms_fail.append( fpath )
+        print "[ status ]"
 
-        print "calculated: %s, failed xyzr: %s, failed msms: %s" % ( 
-            count_good, len( xyzr_fail ), len( msms_fail )
-        )
+        data_list = msms_pdb( pdb_files, run=False )        
+        of = data_list[0].output_files
+        check_counter = [0]*( len(of)+1 )
         if args.status_out:
-            with open( os.path.join( args.status_out, "failed_xyzr.txt" ), "w" ) as fp:
-                fp.write( "\n".join( xyzr_fail ) )
-            with open( os.path.join( args.status_out, "failed_msms.txt" ), "w" ) as fp:
-                fp.write( "\n".join( msms_fail ) )
+            check_list = []
+        for d in data_list:
+            check = d.check( full=True )
+            for i, f in enumerate(of):
+                if not check[i]: check_counter[i+1] += 1
+            if not all( check ):
+                check_counter[0] += 1
+                if args.status_out:
+                    check_list.append( 
+                        "%s\t%s" % ( 
+                            d.output_dir, 
+                            "\t".join( map(str, map(int, check)) ) 
+                        )
+                    )
+
+        print "  failed: %i" % check_counter[0]
+        for i, f in enumerate(of):
+            print "  failed: [%s]: %i" % ( f, check_counter[i+1] )
+
+        if args.status_out:
+            with open( os.path.join( args.status_out, "msms_failed.txt" ), "w" ) as fp:
+                fp.write( "path\t%s\n" % "\t".join( of ) )
+                fp.write( "\n".join( check_list ) )
+
 
 
     if args.analyze and args.pdb_path:
