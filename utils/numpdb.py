@@ -5,9 +5,11 @@ import operator
 import functools
 from collections import defaultdict
 import numpy as np
+from cStringIO import StringIO
+
 
 from utils import try_int, get_index
-from math import vec_dihedral, vec_mag
+from math import dihedral, vec_dihedral, mag
 
 
 
@@ -16,8 +18,8 @@ from math import vec_dihedral, vec_mag
 
 
 # http://sourceforge.net/p/pymmlib/code/HEAD/tree/trunk/pymmlib/mmLib/Superposition.py
-# http://cmhill.googlecode.com/svn/trunk/BaCon/biopython-1.51/Bio/PDB/Vector.py
 # https://github.com/bryan-lunt/pdb_tools
+# https://github.com/biopython/biopython/tree/master/Bio/PDB
 
 
 # http://docs.scipy.org/doc/numpy/user/basics.io.genfromtxt.html
@@ -77,48 +79,34 @@ class SimpleParser():
         return np.array( self._list )
 
 
-def test_atom_line( line ):
-    return line.startswith( "ATOM" ) and line[16] in [" ", "A"]
+
+pdb_delimiter=(6,5,1,4,1,3,1,1,4,1,3,8,8,8,6,6)
+pdb_dtype=[
+    ('record', '|S6'),          # 0
+    ('atomno', np.int),         # 1
+    ('empty1', '|S1'),          # 2
+    ('atomname', '|S4'),        # 3
+    ('altloc', '|S1'),          # 4
+    ('resname', '|S3'),         # 5
+    ('empty2', '|S1'),          # 6
+    ('chain', '|S1'),           # 7
+    ('resno', np.int),          # 8
+    ('insertion', '|S1'),       # 9
+    ('empty3', '|S3'),          # 10
+    ('x', np.float),            # 11
+    ('y', np.float),            # 12
+    ('z', np.float),            # 13
+    ('occupancy', np.float),    # 14
+    ('bfac', np.float)          # 15
+]
+# pdb_usecols=(3,4,5,7,8,11,12,13)
+pdb_usecols=(3,4,7,8,11,12,13)
+pdb_cols=( 
+    (0,6), (6,11), (11,12), (12,16), (16,17), (17,20), (20,21), (21,22), 
+    (22,26), (26,27), (27,30), (30,38), (38,46), (46,54), (54,60), (60,66)
+)
 
 
-class SimpleAtomParser( SimpleParser ):
-    _test_line = "test_atom_line"
-
-class CoordsParser( SimpleAtomParser ):
-    type = np.float
-    def __call__( self, line ):
-        self._list += self._parse_line( line )
-    def _parse_line( self, line ):
-        return float(line[30:38]), float(line[38:46]), float(line[46:54])
-    def get( self ):
-        return np.array( self._list, dtype=self.type ).reshape(-1,3)
-
-class ChainParser( SimpleAtomParser ):
-    type = '|S1'
-    def _parse_line( self, line ):
-        return line[21]
-
-class ResnoParser( SimpleAtomParser ):
-    type = np.uint16
-    _test_line = SimpleAtomParser._test_line
-    def _parse_line( self, line ):
-        return int( line[22:26] )
-
-class ResnameParser( SimpleAtomParser ):
-    type = '|S3'
-    def _parse_line( self, line ):
-        return line[17:20]
-
-class AtomnameParser( SimpleAtomParser ):
-    type = '|S4'
-    _test_line = SimpleAtomParser._test_line
-    def _parse_line( self, line ):
-        return line[12:16]
-
-class AltlocParser( SimpleAtomParser ):
-    type = '|S1'
-    def _parse_line( self, line ):
-        return line[16]
 
 class SstrucParser( SimpleParser ):
     def __init__( self ):
@@ -192,31 +180,32 @@ class NumPdb:
         self._parse()
     def _set_parsers( self ):
         self._parsers = {
-            "coords": CoordsParser(),
-            "chain": ChainParser(),
-            "resno": ResnoParser(),
-            "resname": ResnameParser(),
-            "atomname": AtomnameParser(),
-            #"altloc": AltlocParser(),
             #"sstruc": SstrucParser()
         }
     def _parse( self ):
-        tests = defaultdict( list )
-        for name, p in self._parsers.items():
-            if isinstance( p._test_line, str ):
-                tests[ eval(p._test_line) ].append( name )
-            else:
-                tests[ p._test_line ].append( name )
+        cols = []
+        types = []
+        for j, c in enumerate(pdb_usecols):
+            cols.append( pdb_cols[c] )
+            types.append( pdb_dtype[c] )
+
+        atoms = []
+        header = []
+
         with open( self.pdb_path, "r" ) as fp:
-            d = fp.readlines()
-            for line in d:
-                for test_func, names in tests.items():
-                    if test_func( line ):
-                        for name in names:
-                            self._parsers[ name ]( line )
-        for name in self._parsers.keys():
-            self.__dict__[ "_"+name ] = self._parsers[ name ].get()
-        self.length = len( self.__dict__[ "_"+[ x for x in self._parsers.keys() if x!="sstruc" ][0] ] )
+            for line in fp:
+                if line.startswith("ATOM") or line.startswith("HETATM"):
+                    atoms.append( tuple([ line[ c[0]:c[1] ] for c in cols ]) )
+                else:
+                    header.append( line )
+        
+        atoms = np.array(atoms, dtype=types)
+        #print atoms[ atoms['atomname']==' CA ' ]
+
+        for name, dtype in types:
+            self.__dict__[ "_"+name ] = atoms[ name ]
+        self._coords = np.vstack(( atoms['x'], atoms['y'], atoms['z'] )).T
+        self.length = len( atoms )
         self.__tmp_sele = np.ones( self.length, bool )
     def _sele( self, chain=None, resno=None, atomname=None, pre_sele=None, copy=False ):
         if copy:
@@ -298,7 +287,7 @@ class NumPdb:
                 idx_c = self._idx_first( pre_sele=pre_sele&c_sele )
                 try:
                     idx_c1 = self._idx_first( resno=resno-1, pre_sele=chain_sele&c_sele )
-                    phi = vec_dihedral(
+                    phi = dihedral(
                         self._coords[ idx_c1 ], self._coords[ idx_n ],
                         self._coords[ idx_ca ], self._coords[ idx_c ]
                     )
@@ -306,7 +295,7 @@ class NumPdb:
                     phi = np.nan
                 try:
                     idx_n1 = self._idx_first( resno=resno+1, pre_sele=chain_sele&n_sele )
-                    psi = vec_dihedral(
+                    psi = dihedral(
                         self._coords[ idx_n ], self._coords[ idx_ca ],
                         self._coords[ idx_c ], self._coords[ idx_n1 ]
                     )
@@ -328,7 +317,7 @@ class NumPdb:
         c2 = self.coords( **sele2 )
         v1 = np.sum( c1, axis=0 ) / len(c1)
         v2 = np.sum( c2, axis=0 ) / len(c2)
-        return vec_mag( v1 - v2 )
+        return mag( v1 - v2 )
 
 
 

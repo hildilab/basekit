@@ -66,3 +66,35 @@ def vec_dihedral( v1, v2, v3, v4 ):
     if vec_dot( n1, v34 ) < 0:
         torsion *= -1
     return torsion
+
+
+
+def norm( v ):
+    return v/mag(v)
+
+def mag( v ):
+    return np.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])
+    
+def dot( v1, v2 ):
+    return np.dot( v1, v2 )
+    
+def angle( v1, v2 ):
+    dot = np.dot(v1, v2)
+    ang = np.arccos( dot / (mag(v1)*mag(v2)) )
+    return ang*180 / np.pi
+
+def dihedral( v1, v2, v3, v4 ):
+    v12 = v2-v1
+    v23 = v3-v2
+    v34 = v4-v3
+
+    n1 = norm( np.cross( v12, v23 ) )
+    n2 = norm( np.cross( v23, v34 ) )
+
+    torsion = angle( n1, n2 )
+    if dot( n1, v34 ) < 0:
+        torsion *= -1
+    return torsion
+
+
+
