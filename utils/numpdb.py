@@ -3,6 +3,8 @@ from __future__ import division
 import os
 import operator
 import functools
+import itertools
+import collections
 from collections import defaultdict
 import numpy as np
 from cStringIO import StringIO
@@ -10,7 +12,6 @@ from cStringIO import StringIO
 
 from utils import try_int, get_index
 from math import dihedral, vec_dihedral, mag
-
 
 
 # https://pypi.python.org/pypi/Bottleneck
@@ -189,23 +190,27 @@ class NumPdb:
             cols.append( pdb_cols[c] )
             types.append( pdb_dtype[c] )
 
+        types += [ ( 'phi', np.float ), ( 'psi', np.float ) ]
+
         atoms = []
         header = []
 
         with open( self.pdb_path, "r" ) as fp:
             for line in fp:
-                if line.startswith("ATOM") or line.startswith("HETATM"):
-                    atoms.append( tuple([ line[ c[0]:c[1] ] for c in cols ]) )
+                if line.startswith("ATOM"):# or line.startswith("HETATM"):
+                    atoms.append( tuple([ line[ c[0]:c[1] ] for c in cols ] + [ np.nan, np.nan ] ) )
                 else:
                     header.append( line )
         
-        atoms = np.array(atoms, dtype=types)
-        #print atoms[ atoms['atomname']==' CA ' ]
+        self._atoms = np.array(atoms, dtype=types)
 
-        for name, dtype in types:
-            self.__dict__[ "_"+name ] = atoms[ name ]
-        self._coords = np.vstack(( atoms['x'], atoms['y'], atoms['z'] )).T
+        # for name, dtype in types:
+        #     self.__dict__[ "_"+name ] = atoms[ name ]
+        self._coords = np.vstack(( self._atoms['x'], self._atoms['y'], self._atoms['z'] )).T
+        # print np.may_share_memory( self._atoms, self._coords )
+        # print self._atoms.flags.owndata, self._coords.flags.owndata
         self.length = len( atoms )
+        self.__calc_phi_psi()
         self.__tmp_sele = np.ones( self.length, bool )
     def _sele( self, chain=None, resno=None, atomname=None, pre_sele=None, copy=False ):
         if copy:
@@ -257,67 +262,72 @@ class NumPdb:
         return axis( self.coords( **sele ) )
     def sequence( self, **sele ):
         return "".join([ AA1.get( r, "?" ) for r in self._resname[ self._sele( **sele ) ] ])
-    def _idx( self, **sele ):
-        return np.nonzero( self._sele( **sele ) )[0]
-    def _idx_first( self, **sele ):
-        return self._idx( **sele )[0]
     def iter_chain( self, **sele ):
-        for chain in np.unique( self._chain[ self._sele( **sele ) ] ):
-            yield chain, self._chain==chain
-    def iter_resno( self, **sele ):
-        for chain, chain_sele in self.iter_chain( **sele ):
-            sele["pre_sele"] = chain_sele
-            for resno in np.unique( self._resno[ self._sele( **sele ) ] ):
-                yield resno, self._resno==resno, chain, chain_sele
+        chain = self._atoms['chain'][0]
+        k = 0
+        l = 0
+        for a in self._atoms:
+            if chain!=a['chain']:
+                yield self._atoms[k:l], self._coords[k:l]
+                chain = a['chain']
+                k = l
+            l += 1
+        yield self._atoms[k:l], self._coords[k:l]
+    def iter_resno( self ):
+        for atoms, coords in self.iter_chain():
+            resno = atoms['resno'][0]
+            k = 0
+            l = 0
+            begin = True
+            for a in atoms:
+                if resno!=a['resno']:
+                    yield atoms[k:l], coords[k:l], begin
+                    k = l
+                    # detect chain breaks
+                    begin = True if (resno!=a['resno']-1) else False
+                    resno = a['resno']
+                l += 1
+            yield atoms[k:l], coords[k:l], begin
+    def iter_resno2( self, window ):
+        # TODO assumes the first a has a[2]=True and
+        #   the first results window has no additional a[2]=True
+        it = self.iter_resno()
+        for a in it:
+            if a[2]:
+                result = (a,) + tuple(itertools.islice(it, window-1))
+            else:
+                result = result[1:] + (a,)
+            yield result
     def __calc_phi_psi( self ):
-        # IDEA: create several matrices with coords of continuous residues
-        #   and then use only one call to vec_dihedral for each matrix.
-        #   Also, precompute the "matrices with coords of continuous residues"
-        #   as they are of use elsewhere
-        self._phi = np.empty( self.length, float )
-        self._psi = np.empty( self.length, float )
-        ca_sele = self._sele( atomname="CA", copy=True )
-        n_sele = self._sele( atomname="N", copy=True )
-        c_sele = self._sele( atomname="C", copy=True )
-        for resno, resno_sele, chain, chain_sele in self.iter_resno():
-            pre_sele = resno_sele & chain_sele
-            try:
-                idx_ca = self._idx_first( pre_sele=pre_sele&ca_sele )
-                idx_n = self._idx_first( pre_sele=pre_sele&n_sele )
-                idx_c = self._idx_first( pre_sele=pre_sele&c_sele )
-                try:
-                    idx_c1 = self._idx_first( resno=resno-1, pre_sele=chain_sele&c_sele )
-                    phi = dihedral(
-                        self._coords[ idx_c1 ], self._coords[ idx_n ],
-                        self._coords[ idx_ca ], self._coords[ idx_c ]
-                    )
-                except:
-                    phi = np.nan
-                try:
-                    idx_n1 = self._idx_first( resno=resno+1, pre_sele=chain_sele&n_sele )
-                    psi = dihedral(
-                        self._coords[ idx_n ], self._coords[ idx_ca ],
-                        self._coords[ idx_c ], self._coords[ idx_n1 ]
-                    )
-                except:
-                    psi = np.nan
-            except:
-                phi = np.nan
-                psi = np.nan
-            self._phi[ self._sele( pre_sele=pre_sele ) ] = phi
-            self._psi[ self._sele( pre_sele=pre_sele ) ] = psi
-    def phi( self, **sele ):
-        if not hasattr( self, "_phi" ): self.__calc_phi_psi()
-        return self._phi[ self._sele( **sele ) ]
-    def psi( self, **sele ):
-        if not hasattr( self, "_psi" ): self.__calc_phi_psi()
-        return self._psi[ self._sele( **sele ) ]
-    def dist( self, sele1, sele2 ):
-        c1 = self.coords( **sele1 )
-        c2 = self.coords( **sele2 )
-        v1 = np.sum( c1, axis=0 ) / len(c1)
-        v2 = np.sum( c2, axis=0 ) / len(c2)
+
+        def get_coords( atoms, coords ):
+            return [ coords[ atoms['atomname']==atomname ][0] for atomname in [ ' N  ', ' CA ', ' C  ' ] ]
+
+        for resno3 in self.iter_resno2( 3 ):
+            atoms_prev, coords_prev, begin_prev = resno3[0]
+            atoms, coords, begin = resno3[1]
+            atoms_next, coords_next, begin_next = resno3[2]
+
+            if begin_prev:
+                coords_n_prev, coords_ca_prev, coords_c_prev = get_coords( atoms_prev, coords_prev )
+                coords_n, coords_ca, coords_c = get_coords( atoms, coords )
+                coords_n_next, coords_ca_next, coords_c_next = get_coords( atoms_next, coords_next )
+                atoms_prev['psi'] = dihedral( coords_n_prev, coords_ca_prev, coords_c_prev, coords_n )
+                atoms['phi'] = dihedral( coords_c_prev, coords_n, coords_ca, coords_c )
+            else:
+                coords_n, coords_ca, coords_c = coords_n_ca_c
+                coords_n_next, coords_ca_next, coords_c_next = get_coords( atoms_next, coords_next )
+            
+            atoms_next['phi'] = dihedral( coords_c, coords_n_next, coords_ca_next, coords_c_next )
+            atoms['psi'] = dihedral( coords_n, coords_ca, coords_c, coords_n_next )
+            coords_n_ca_c = ( coords_n_next, coords_ca_next, coords_c_next )
+        #for a in self._atoms: print a
+    def dist( self, coords1, coords2 ):
+        v1 = np.sum( coords1, axis=0 ) / len(coords1)
+        v2 = np.sum( coords2, axis=0 ) / len(coords2)
         return mag( v1 - v2 )
+
+
 
 
 
