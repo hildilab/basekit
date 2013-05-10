@@ -10,7 +10,7 @@ import os
 import shutil
 import argparse
 
-from utils.tool import CmdTool
+from basekit.utils.tool import CmdTool, make_args
 
 
 PDB2PQR_CMD = "pdb2pqr.py"
@@ -21,10 +21,12 @@ APBS_CMD = "apbs"
 # => 1u19-input.p 1u19.pqr 1u19.in
 
 class Pdb2pqr( CmdTool ):
-    def __init__( self, pdb_file, **kw ):
+    args = make_args([
+        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+    ])
+    def _init( self, pdb_file, **kwargs ):
     	self.pdb_file = os.path.abspath( pdb_file )
     	stem = os.path.splitext( os.path.split( self.pdb_file )[-1] )[0]
-    	print stem
         self.pqr_file = "%s.pqr" % stem
         self.apbsin_file = "%s.in" % stem
         self.apbsin_pickle = "%s-input.p" % stem
@@ -34,7 +36,6 @@ class Pdb2pqr( CmdTool ):
         self.output_files = [ 
         	self.pqr_file, self.apbsin_file, self.apbsin_pickle
     	]
-        super(Pdb2pqr, self).__init__( **kw )
 
 
 
@@ -42,17 +43,19 @@ class Pdb2pqr( CmdTool ):
 # => pot-PE0.dx io.mc
 
 class Apbs( CmdTool ):
-    def __init__( self, pdb_file, **kw ):
+    args = make_args([
+        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+    ])
+    def _init( self, pdb_file, **kwargs ):
         self.pdb2pqr = Pdb2pqr( 
-            pdb_file, output_dir=kw.get("output_dir"), 
-            timeout=kw.get("timeout"), run=False
+            pdb_file, output_dir=self.output_dir, 
+            timeout=self.timeout, run=False
         )
         self.cmd = [ 
             APBS_CMD, self.pdb2pqr.apbsin_file
         ]
         self.output_files = self.pdb2pqr.output_files + \
             [ "pot-PE0", "io.mc" ]
-        super(Apbs, self).__init__( **kw )
     def _pre_exec( self ):
         self.pdb2pqr()
 

@@ -71,4 +71,3 @@ def iter_consume(iterator, n):
         # advance to the empty slice starting at position n
         next(itertools.islice(iterator, n, n), None)
 
-

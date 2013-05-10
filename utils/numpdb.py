@@ -320,7 +320,7 @@ class NumPdb:
         }
         self._parse()
     def __getattr__(self, attr):
-        # delegate access to nonexistant attributes to the NumAtoms instance
+        # delegate access off nonexistant attributes to the NumAtoms instance
         return getattr(self.numatoms, attr)
     def _parse( self ):
         cols = []

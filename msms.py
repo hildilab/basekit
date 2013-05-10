@@ -4,8 +4,8 @@ from __future__ import with_statement
 from __future__ import division
 
 
-
 import re
+import sys
 import os
 import shutil
 import argparse
@@ -15,12 +15,12 @@ from itertools import izip
 from operator import itemgetter, methodcaller
 from string import Template
 
-from utils import try_int, get_index, boolean
-from utils.timer import Timer
-from utils.job import run_command2, working_directory, do_parallel
-from utils.db import get_pdb_files
-from utils.jmol import run_jmol_script
-from utils.tool import CmdTool
+from basekit.utils import try_int, get_index, boolean
+from basekit.utils.timer import Timer
+from basekit.utils.job import run_command2, working_directory, do_parallel
+from basekit.utils.db import get_pdb_files
+from basekit.utils.jmol import run_jmol_script
+from basekit.utils.tool import CmdTool, make_args
 
 
 MSMS_CMD = "msms"
@@ -47,10 +47,13 @@ def pdb_path_split( fpdb ):
 
 
 class Msms( CmdTool ):
-    def __init__( self, pdb_file, **kw ):
+    args = make_args([
+        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+    ])
+    def _init( self, pdb_file ):
         self.pdb2xyzr = Pdb2xyzr( 
-            pdb_file, output_dir=kw.get("output_dir"), 
-            timeout=kw.get("timeout"), run=False
+            pdb_file, output_dir=self.output_dir, 
+            timeout=self.timeout, run=False
         )
         self.cmd = [ 
             MSMS_CMD, "-if", self.pdb2xyzr.xyzr_file, 
@@ -58,23 +61,24 @@ class Msms( CmdTool ):
         ]
         self.output_files = self.pdb2xyzr.output_files + \
             [ "area.area", "tri_surface.face", "tri_surface.vert" ]
-        super(Msms, self).__init__( **kw )
     def _pre_exec( self ):
         self.pdb2xyzr()
 
 
 
 class Pdb2xyzr( CmdTool ):
-    def __init__( self, pdb_file, **kw ):
+    args = make_args([
+        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+    ])
+    def _init( self, pdb_file ):
         self.pdb_file = os.path.abspath( pdb_file )
         self.pdb_prep_file = "prep.pdb"
-        self.xyzr_file = "%s.xyzr" % os.path.splitext( self.pdb_file )[0]
+        self.xyzr_file = "%s.xyzr" % os.path.splitext( os.path.split( self.pdb_file )[-1] )[0]
         self.cmd = [ 
             BABEL_CMD, '-i', 'pdb', self.pdb_prep_file,
             '-o', 'msms', self.xyzr_file 
         ]
         self.output_files = [ self.pdb_prep_file, self.xyzr_file ]
-        super(Pdb2xyzr, self).__init__( **kw )
     def _pre_exec( self ):
         with working_directory( self.output_dir ):
             pdb_select( self.pdb_file, self.pdb_prep_file )
@@ -116,11 +120,19 @@ def main():
         '-pdb_path', help='path to the pdb files and directories', type=str)
     parser.add_argument(
         '-test_sample', help='how many?', type=int)
+    parser.add_argument(
+        '-pdb', help='analyze a single pdb file', type=str)
+    parser.add_argument(
+        '-out', help='output directory', type=str, default=".")
 
     
     # parse the command line
     args = parser.parse_args()
 
+    if args.pdb and args.out:
+        with Timer("single pdb"):
+            # Msms( args.pdb, output_dir=args.out )
+            Msms( fileargs=True, output_dir=args.out )
 
     if args.pdb_path:
         pdb_files = get_pdb_files( args.pdb_path, pattern=".pdb" )
@@ -132,7 +144,7 @@ def main():
     if args.test_sample:
         pdb_files = pdb_files[0:args.test_sample]
         if args.test_sample<=10: print pdb_files
-    if pdb_files:
+    if "pdb_files" in locals():
         print "%s pdb files" % len( pdb_files )
 
 
