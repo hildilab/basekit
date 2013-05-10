@@ -6,9 +6,9 @@ import functools
 import itertools
 import collections
 from collections import defaultdict
-import numpy as np
 from cStringIO import StringIO
 
+import numpy as np
 
 from utils import try_int, get_index
 from math import dihedral, vec_dihedral, mag
@@ -101,7 +101,7 @@ pdb_dtype=[
     ('bfac', np.float)          # 15
 ]
 # pdb_usecols=(3,4,5,7,8,11,12,13)
-pdb_usecols=(3,4,7,8,11,12,13)
+pdb_usecols=(3,4,5,7,8,11,12,13)
 pdb_cols=( 
     (0,6), (6,11), (11,12), (12,16), (16,17), (17,20), (20,21), (21,22), 
     (22,26), (26,27), (27,30), (30,38), (38,46), (46,54), (54,60), (60,66)
@@ -164,8 +164,10 @@ def axis( coords ):
     return np.array([ lsq(coords[...,i]) for i in range(3) ]).T
 
 
+        
 
-class NumPdb:
+
+class NumAtoms:
     atomname_dict = { 
         "CA": " CA ",
         "N": " N  ",
@@ -174,11 +176,132 @@ class NumPdb:
         "backbone": ( " CA ", " N  ", " C  ", " O  " ),
         "mainchain": ( " CA ", " N  ", " C  " )
     }
+    def __init__( self, atoms, coords, flag=None ):
+        self._atoms = atoms
+        self._coords = coords
+        self.flag = flag
+        self.length = len( atoms )
+    def __getitem__( self, key ):
+        if key=='xyz':
+            return self._coords
+        else:
+            return self._atoms[ key ]
+    def __setitem__( self, key, value ):
+        if key=='xyz':
+            self._coords = value
+        else:
+            self._atoms[ key ] = value
+    def sele( self, chain=None, resno=None, atomname=None, sele=None ):
+        atoms = self._atoms
+        if sele==None:
+            sele = np.ones( self.length, bool )
+        if chain!=None:
+            if isinstance( chain, (list, tuple) ):
+                sele &= reduce( 
+                    lambda x, y: x | (atoms['chain']==y), 
+                    chain[1:],
+                    atoms['chain']==chain[0]
+                )
+            else:
+                sele &= atoms['chain']==chain
+        if resno!=None:
+            if isinstance( resno, (list, tuple) ):
+                sele &= (atoms['resno']>=resno[0]) & (atoms['resno']<=resno[1])
+            else:
+                sele &= atoms['resno']==resno
+        if atomname!=None:
+            
+            if isinstance( atomname, (list, tuple) ):
+                atomname = [ self.atomname_dict.get( a, a ) for a in atomname ]
+                sele &= reduce( 
+                    lambda x, y: x | (atoms['atomname']==y), 
+                    atomname[1:],
+                    atoms['atomname']==atomname[0]
+                )
+            else:
+                atomname = self.atomname_dict.get( atomname, atomname )
+                sele &= atoms['atomname']==atomname
+        return sele
+    def slice( self, begin, end, flag=None ):
+        return NumAtoms( self._atoms[begin:end], self._coords[begin:end], flag=flag )
+    def copy( self, **sele ):
+        _sele = self.sele( **sele )
+        return NumAtoms( self._atoms[ _sele ], self._coords[ _sele ] )
+    def get( self, key, **sele ):
+        if key=='xyz':
+            return self._coords[ self.sele( **sele ) ]
+        else:
+            return self._atoms[ self.sele( **sele ) ][ key ]
+    def iter_chain( self, **sele ):
+        if len(sele):
+            _sele = self.sele( **sele )
+            atoms = self._atoms[ _sele ]
+            coords = self._coords[ _sele ]
+        else:
+            atoms = self._atoms
+            coords = self._coords
+        
+        chain = atoms['chain'][0]
+        k = 0
+        l = 0
+        for a in atoms:
+            if chain!=a['chain']:
+                yield self.slice( k, l )
+                chain = a['chain']
+                k = l
+            l += 1
+        yield self.slice( k, l )
+    def iter_resno( self, **sele ):
+        for numatoms in self.iter_chain( **sele ):
+            resno = numatoms['resno'][0]
+            atoms = numatoms._atoms
+            k = 0
+            l = 0
+            flag = True
+            for a in atoms:
+                if resno!=a['resno']:
+                    yield numatoms.slice( k, l, flag=flag )
+                    k = l
+                    # detect chain breaks
+                    flag = True if (resno!=a['resno']-1) else False
+                    resno = a['resno']
+                l += 1
+            yield numatoms.slice( k, l, flag=flag )
+    def iter_resno2( self, window, **sele ):
+        # TODO assumes the first a has a[2]=True and
+        #   the first results window has no additional a[2]=True
+        it = self.iter_resno( **sele )
+        for a in it:
+            if a.flag:
+                result = (a,) + tuple(itertools.islice(it, window-1))
+            else:
+                result = result[1:] + (a,)
+            yield result
+    def axis( self, **sele ):
+        return axis( self.get( 'xyz', **sele ) )
+    def sequence( self, **sele ):
+        return "".join([ AA1.get( a['resname'][0], "?" ) for a in self.iter_resno( **sele ) ])
+    def dist( self, sele1, sele2 ):
+        coords1 = self.get( 'xyz', **sele1 )
+        coords2 = self.get( 'xyz', **sele2 )
+        v1 = np.sum( coords1, axis=0 ) / len(coords1)
+        v2 = np.sum( coords2, axis=0 ) / len(coords2)
+        return mag( v1 - v2 )
+
+
+
+
+class NumPdb:
     def __init__( self, pdb_path, features=None ):
         self.pdb_path = pdb_path
-        self.features = features
+        self.features = features or {
+            "phi_psi": True,
+            "sstruc": True
+        }
         self._set_parsers()
         self._parse()
+    def __getitem__( self, key ):
+        return self.numatoms[ key ]
     def _set_parsers( self ):
         self._parsers = {
             #"sstruc": SstrucParser()
@@ -190,7 +313,13 @@ class NumPdb:
             cols.append( pdb_cols[c] )
             types.append( pdb_dtype[c] )
 
-        types += [ ( 'phi', np.float ), ( 'psi', np.float ) ]
+        extra = []
+        if self.features["phi_psi"]:
+            types += [ ( 'phi', np.float ), ( 'psi', np.float ) ]
+            extra += [ np.nan, np.nan ]
+        if self.features["sstruc"]:
+            types += [ ( 'sstruc', '|S1' ) ]
+            extra += [ np.nan ]
 
         atoms = []
         header = []
@@ -198,134 +327,61 @@ class NumPdb:
         with open( self.pdb_path, "r" ) as fp:
             for line in fp:
                 if line.startswith("ATOM"):# or line.startswith("HETATM"):
-                    atoms.append( tuple([ line[ c[0]:c[1] ] for c in cols ] + [ np.nan, np.nan ] ) )
+                    atoms.append( tuple([ line[ c[0]:c[1] ] for c in cols ] + extra) )
                 else:
                     header.append( line )
         
-        self._atoms = np.array(atoms, dtype=types)
+        atoms = np.array(atoms, dtype=types)
+        coords = np.vstack(( atoms['x'], atoms['y'], atoms['z'] )).T
+        # print np.may_share_memory( self.atoms, self.coords )
+        # print self.atoms.flags.owndata, self.coords.flags.owndata
 
-        # for name, dtype in types:
-        #     self.__dict__[ "_"+name ] = atoms[ name ]
-        self._coords = np.vstack(( self._atoms['x'], self._atoms['y'], self._atoms['z'] )).T
-        # print np.may_share_memory( self._atoms, self._coords )
-        # print self._atoms.flags.owndata, self._coords.flags.owndata
+        self.numatoms = NumAtoms( atoms, coords )
+
         self.length = len( atoms )
-        self.__calc_phi_psi()
-        self.__tmp_sele = np.ones( self.length, bool )
-    def _sele( self, chain=None, resno=None, atomname=None, pre_sele=None, copy=False ):
-        if copy:
-            sele = np.ones( self.length, bool )
-        else:
-            self.__tmp_sele.fill( True )
-            sele = self.__tmp_sele
-        if pre_sele!=None:
-            sele &= pre_sele
-        if chain!=None:
-            if isinstance( chain, (list, tuple) ):
-                sele &= reduce( 
-                    lambda x, y: x | (self._chain==y), 
-                    chain[1:],
-                    self._chain==chain[0]
-                )
-            else:
-                sele &= self._chain==chain
-        if resno!=None:
-            if isinstance( resno, (list, tuple) ):
-                sele &= (self._resno>=resno[0]) & (self._resno<=resno[1])
-            else:
-                sele &= self._resno==resno
-        if atomname!=None:
-            atomname = self.atomname_dict.get( atomname, atomname )
-            if isinstance( atomname, (list, tuple) ):
-                sele &= reduce( 
-                    lambda x, y: x | (self._atomname==y), 
-                    atomname[1:],
-                    self._atomname==atomname[0]
-                )
-            else:
-                sele &= self._atomname==atomname
-        return sele
-    def coords( self, **sele ):
-        return self._coords[ self._sele( **sele ) ]
+        if self.features["phi_psi"]:
+            self.__calc_phi_psi()
+        if self.features["sstruc"]:
+            self.__calc_sstruc()
+    
     @property
     def sstruc( self ):
         for i, ss in enumerate( self._sstruc ):
             a = self.axis( sstruc=i )
             ss.extend([ a[1]-a[0], a[0], a[1], i+1 ])
         return self._sstruc
-    def axis( self, sstruc=None, **sele ):
-        ss = get_index( self._sstruc, sstruc )
-        if ss:
-            sele["chain"] = ss[1]
-            sele["atomname"] = "CA"
-            sele["resno"] = [ ss[2], ss[4] ]
-        return axis( self.coords( **sele ) )
-    def sequence( self, **sele ):
-        return "".join([ AA1.get( r, "?" ) for r in self._resname[ self._sele( **sele ) ] ])
     def iter_chain( self, **sele ):
-        chain = self._atoms['chain'][0]
-        k = 0
-        l = 0
-        for a in self._atoms:
-            if chain!=a['chain']:
-                yield self._atoms[k:l], self._coords[k:l]
-                chain = a['chain']
-                k = l
-            l += 1
-        yield self._atoms[k:l], self._coords[k:l]
-    def iter_resno( self ):
-        for atoms, coords in self.iter_chain():
-            resno = atoms['resno'][0]
-            k = 0
-            l = 0
-            begin = True
-            for a in atoms:
-                if resno!=a['resno']:
-                    yield atoms[k:l], coords[k:l], begin
-                    k = l
-                    # detect chain breaks
-                    begin = True if (resno!=a['resno']-1) else False
-                    resno = a['resno']
-                l += 1
-            yield atoms[k:l], coords[k:l], begin
-    def iter_resno2( self, window ):
-        # TODO assumes the first a has a[2]=True and
-        #   the first results window has no additional a[2]=True
-        it = self.iter_resno()
-        for a in it:
-            if a[2]:
-                result = (a,) + tuple(itertools.islice(it, window-1))
-            else:
-                result = result[1:] + (a,)
-            yield result
+        return self.numatoms.iter_chain( **sele )
+    def iter_resno( self, **sele ):
+        return self.numatoms.iter_resno( **sele )
+    def iter_resno2( self, window, **sele ):
+        return self.numatoms.iter_resno2( window, **sele )
+    def __calc_sstruc( self ):
+        pass
     def __calc_phi_psi( self ):
 
-        def get_coords( atoms, coords ):
-            return [ coords[ atoms['atomname']==atomname ][0] for atomname in [ ' N  ', ' CA ', ' C  ' ] ]
+        sele = { "atomname": ["N", "CA", "C"] }
 
-        for resno3 in self.iter_resno2( 3 ):
-            atoms_prev, coords_prev, begin_prev = resno3[0]
-            atoms, coords, begin = resno3[1]
-            atoms_next, coords_next, begin_next = resno3[2]
+        for na_prev, na_curr, na_next in self.iter_resno2( 3 ):
 
-            if begin_prev:
-                coords_n_prev, coords_ca_prev, coords_c_prev = get_coords( atoms_prev, coords_prev )
-                coords_n, coords_ca, coords_c = get_coords( atoms, coords )
-                coords_n_next, coords_ca_next, coords_c_next = get_coords( atoms_next, coords_next )
-                atoms_prev['psi'] = dihedral( coords_n_prev, coords_ca_prev, coords_c_prev, coords_n )
-                atoms['phi'] = dihedral( coords_c_prev, coords_n, coords_ca, coords_c )
+            if na_prev.flag:
+                xyz_n_prev, xyz_ca_prev, xyz_c_prev = na_prev.get( 'xyz', **sele )
+                xyz_n, xyz_ca, xyz_c = na_curr.get( 'xyz', **sele )
+                xyz_n_next, xyz_ca_next, xyz_c_next = na_next.get( 'xyz', **sele )
+                na_prev['psi'] = dihedral( xyz_n_prev, xyz_ca_prev, xyz_c_prev, xyz_n )
+                na_curr['phi'] = dihedral( xyz_c_prev, xyz_n, xyz_ca, xyz_c )
             else:
-                coords_n, coords_ca, coords_c = coords_n_ca_c
-                coords_n_next, coords_ca_next, coords_c_next = get_coords( atoms_next, coords_next )
+                xyz_n, xyz_ca, xyz_c = xyz_n_ca_c
+                xyz_n_next, xyz_ca_next, xyz_c_next = na_next.get( 'xyz', **sele )
             
-            atoms_next['phi'] = dihedral( coords_c, coords_n_next, coords_ca_next, coords_c_next )
-            atoms['psi'] = dihedral( coords_n, coords_ca, coords_c, coords_n_next )
-            coords_n_ca_c = ( coords_n_next, coords_ca_next, coords_c_next )
+            na_next['phi'] = dihedral( xyz_c, xyz_n_next, xyz_ca_next, xyz_c_next )
+            na_curr['psi'] = dihedral( xyz_n, xyz_ca, xyz_c, xyz_n_next )
+            xyz_n_ca_c = ( xyz_n_next, xyz_ca_next, xyz_c_next )
         #for a in self._atoms: print a
-    def dist( self, coords1, coords2 ):
-        v1 = np.sum( coords1, axis=0 ) / len(coords1)
-        v2 = np.sum( coords2, axis=0 ) / len(coords2)
-        return mag( v1 - v2 )
+    def dist( self, sele1, sele2 ):
+        return self.numatoms.dist( sele1, sele2 )
+    def sequence( self, **sele ):
+        return self.numatoms.sequence( **sele )
 
 
 

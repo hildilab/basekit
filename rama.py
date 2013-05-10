@@ -47,12 +47,11 @@ def main():
         with Timer("read/parse pdb"):
             npdb = numpdb.NumPdb( args.pdb )
         with Timer("dist"):
-            print npdb.dist( 
-                npdb._coords[ npdb._atoms["chain"]=="A" ], 
-                npdb._coords[ npdb._atoms["chain"]=="B" ] 
-            )
+            print npdb.dist( {"chain":"A"}, {"chain":"B"} )
         with Timer("access phi/psi"):
-            print np.nansum( npdb._atoms['phi'] )
+            print np.nansum( npdb['phi'] )
+        with Timer("sequence"):
+            print npdb.sequence( chain="A" )
 
 
 if __name__ == "__main__":
