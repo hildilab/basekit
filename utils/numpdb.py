@@ -318,18 +318,10 @@ class NumPdb:
             "phi_psi": True,
             "sstruc": True
         }
-        self._set_parsers()
         self._parse()
-    def __getitem__( self, key ):
-        return self.numatoms[ key ]
-    def index( self, first=False, last=False, **sele ):
-        return self.numatoms.index( first=first, last=last, **sele )
-    def slice( self, begin, end, flag=None ):
-        return self.numatoms.slice( begin, end, flag=flag )
-    def _set_parsers( self ):
-        self._parsers = {
-            "sstruc": SstrucParser()
-        }
+    def __getattr__(self, attr):
+        # delegate access to nonexistant attributes to the NumAtoms instance
+        return getattr(self.numatoms, attr)
     def _parse( self ):
         cols = []
         types = []
@@ -338,12 +330,14 @@ class NumPdb:
             types.append( pdb_dtype[c] )
 
         extra = []
+        parsers = {}
         if self.features["phi_psi"]:
             types += [ ( 'phi', np.float ), ( 'psi', np.float ) ]
             extra += [ np.nan, np.nan ]
         if self.features["sstruc"]:
             types += [ ( 'sstruc', '|S1' ) ]
             extra += [ " " ]
+            parsers[ "sstruc" ] = SstrucParser()
 
         atoms = []
         header = []
@@ -354,11 +348,11 @@ class NumPdb:
                     atoms.append( tuple([ line[ c[0]:c[1] ] for c in cols ] + extra) )
                 else:
                     header.append( line )
-                    for p in self._parsers.values():
+                    for p in parsers.values():
                         p( line )
 
-        for name in self._parsers.keys():
-            p=self._parsers.get( name )
+        for name in parsers.keys():
+            p=parsers.get( name )
             if p:
                 self.__dict__[ "_"+name ] = p.get()
         
@@ -370,27 +364,13 @@ class NumPdb:
         self.numatoms = NumAtoms( atoms, coords )
         self._atoms = atoms
         self._coords = coords
+        self._header = header
 
         self.length = len( atoms )
         if self.features["phi_psi"]:
             self.__calc_phi_psi()
         if self.features["sstruc"]:
             self.__calc_sstruc()
-    
-    @property
-    def sstruc( self ):
-        for i, ss in enumerate( self._sstruc ):
-            a = self.axis( sstruc=i )
-            ss.extend([ a[1]-a[0], a[0], a[1], i+1 ])
-        return self._sstruc
-    def iter_chain( self, **sele ):
-        return self.numatoms.iter_chain( **sele )
-    def iter_sstruc( self, **sele ):
-        return self.numatoms.iter_sstruc( **sele )
-    def iter_resno( self, **sele ):
-        return self.numatoms.iter_resno( **sele )
-    def iter_resno2( self, window, **sele ):
-        return self.numatoms.iter_resno2( window, **sele )
     def __calc_sstruc( self ):
         for ss in self._sstruc:
             idx_beg = self.index( chain=ss[1], resno=ss[2], first=True )
@@ -418,10 +398,6 @@ class NumPdb:
             na_curr['psi'] = dihedral( xyz_n, xyz_ca, xyz_c, xyz_n_next )
             xyz_n_ca_c = ( xyz_n_next, xyz_ca_next, xyz_c_next )
         #for a in self._atoms: print a
-    def dist( self, sele1, sele2 ):
-        return self.numatoms.dist( sele1, sele2 )
-    def sequence( self, **sele ):
-        return self.numatoms.sequence( **sele )
 
 
 

@@ -55,7 +55,7 @@ def main():
         with Timer("sstruc"):
             for numa in npdb.iter_sstruc():
                 if numa["sstruc"][0]=="H":
-                    print numa.axis( atomname="CA" )
+                    pass #print numa.axis( atomname="CA" )
 
 
 if __name__ == "__main__":
