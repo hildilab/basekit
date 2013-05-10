@@ -52,6 +52,10 @@ def main():
             print np.nansum( npdb['phi'] )
         with Timer("sequence"):
             print npdb.sequence( chain="A" )
+        with Timer("sstruc"):
+            for numa in npdb.iter_sstruc():
+                if numa["sstruc"][0]=="H":
+                    print numa.axis( atomname="CA" )
 
 
 if __name__ == "__main__":

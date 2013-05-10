@@ -69,7 +69,8 @@ class SimpleParser():
     def __init__( self ):
         self._list = []
     def __call__( self, line ):
-        self._list.append( self._parse_line( line ) )
+        if self._test_line( line ):
+            self._list.append( self._parse_line( line ) )
     def _test_line( self, line ):
         return len( line ) > 0
     def _parse_line( self, line ):
@@ -112,8 +113,6 @@ pdb_cols=(
 class SstrucParser( SimpleParser ):
     def __init__( self ):
         self._list = []
-    def __call__( self, line ):
-        self._list.append( self._parse_line( line ) )
     def _test_line( self, line ):
         return line.startswith("HELIX") or line.startswith("SHEET")
     def _parse_line( self, line ):
@@ -232,6 +231,14 @@ class NumAtoms:
             return self._coords[ self.sele( **sele ) ]
         else:
             return self._atoms[ self.sele( **sele ) ][ key ]
+    def index( self, first=False, last=False, **sele ):
+        indices = np.nonzero( self.sele( **sele ) )[0]
+        if first:
+            return indices[0]
+        elif last:
+            return indices[-1]
+        else:
+            return indices
     def iter_chain( self, **sele ):
         if len(sele):
             _sele = self.sele( **sele )
@@ -251,6 +258,19 @@ class NumAtoms:
                 k = l
             l += 1
         yield self.slice( k, l )
+    def iter_sstruc( self, **sele ):
+        for numatoms in self.iter_chain( **sele ):
+            sstruc = numatoms['sstruc'][0]
+            atoms = numatoms._atoms
+            k = 0
+            l = 0
+            for a in atoms:
+                if sstruc!=a['sstruc']:
+                    yield numatoms.slice( k, l )
+                    k = l
+                    sstruc = a['sstruc']
+                l += 1
+            yield numatoms.slice( k, l )
     def iter_resno( self, **sele ):
         for numatoms in self.iter_chain( **sele ):
             resno = numatoms['resno'][0]
@@ -302,9 +322,13 @@ class NumPdb:
         self._parse()
     def __getitem__( self, key ):
         return self.numatoms[ key ]
+    def index( self, first=False, last=False, **sele ):
+        return self.numatoms.index( first=first, last=last, **sele )
+    def slice( self, begin, end, flag=None ):
+        return self.numatoms.slice( begin, end, flag=flag )
     def _set_parsers( self ):
         self._parsers = {
-            #"sstruc": SstrucParser()
+            "sstruc": SstrucParser()
         }
     def _parse( self ):
         cols = []
@@ -319,7 +343,7 @@ class NumPdb:
             extra += [ np.nan, np.nan ]
         if self.features["sstruc"]:
             types += [ ( 'sstruc', '|S1' ) ]
-            extra += [ np.nan ]
+            extra += [ " " ]
 
         atoms = []
         header = []
@@ -330,6 +354,13 @@ class NumPdb:
                     atoms.append( tuple([ line[ c[0]:c[1] ] for c in cols ] + extra) )
                 else:
                     header.append( line )
+                    for p in self._parsers.values():
+                        p( line )
+
+        for name in self._parsers.keys():
+            p=self._parsers.get( name )
+            if p:
+                self.__dict__[ "_"+name ] = p.get()
         
         atoms = np.array(atoms, dtype=types)
         coords = np.vstack(( atoms['x'], atoms['y'], atoms['z'] )).T
@@ -337,6 +368,8 @@ class NumPdb:
         # print self.atoms.flags.owndata, self.coords.flags.owndata
 
         self.numatoms = NumAtoms( atoms, coords )
+        self._atoms = atoms
+        self._coords = coords
 
         self.length = len( atoms )
         if self.features["phi_psi"]:
@@ -352,14 +385,21 @@ class NumPdb:
         return self._sstruc
     def iter_chain( self, **sele ):
         return self.numatoms.iter_chain( **sele )
+    def iter_sstruc( self, **sele ):
+        return self.numatoms.iter_sstruc( **sele )
     def iter_resno( self, **sele ):
         return self.numatoms.iter_resno( **sele )
     def iter_resno2( self, window, **sele ):
         return self.numatoms.iter_resno2( window, **sele )
     def __calc_sstruc( self ):
-        pass
+        for ss in self._sstruc:
+            idx_beg = self.index( chain=ss[1], resno=ss[2], first=True )
+            idx_end = self.index( chain=ss[3], resno=ss[4], last=True )
+            if ss[0]==HELIX:
+                self.slice( idx_beg, idx_end )['sstruc'] = "H"
+            elif ss[0]==SHEET:
+                self.slice( idx_beg, idx_end )['sstruc'] = "E"
     def __calc_phi_psi( self ):
-
         sele = { "atomname": ["N", "CA", "C"] }
 
         for na_prev, na_curr, na_next in self.iter_resno2( 3 ):
