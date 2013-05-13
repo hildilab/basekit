@@ -2,7 +2,7 @@
 
 import os
 
-from job import run_command
+from utils.job import run_command
 
 
 

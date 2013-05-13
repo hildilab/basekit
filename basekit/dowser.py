@@ -4,7 +4,8 @@ from unipath import Path
 import argparse
 import shutil
 
-from utils import dir_walker, working_directory, run_command
+from utils import dir_walker, working_directory
+from utils.job import run_command
 
 
 DOWSER_CMD = "dowser"

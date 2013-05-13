@@ -10,7 +10,7 @@ from cStringIO import StringIO
 
 import numpy as np
 
-from utils import try_int, get_index
+from basekit.utils import try_int, get_index
 from math import dihedral, vec_dihedral, mag
 
 

@@ -17,9 +17,9 @@ import inspect
 from string import Template
 from collections import OrderedDict
 
-from basekit.utils import try_int, get_index, boolean
+from basekit.utils import try_int, get_index, boolean, working_directory
 from basekit.utils.timer import Timer
-from basekit.utils.job import run_command2, working_directory
+from basekit.utils.job import run_command2
 
 
 TIMEOUT_CMD = "timeout"

@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 from __future__ import with_statement
 from __future__ import division
 
@@ -10,7 +8,7 @@ import os
 import shutil
 import argparse
 
-from basekit.utils.tool import CmdTool, make_args
+from utils.tool import CmdTool, make_args
 
 
 PDB2PQR_CMD = "pdb2pqr.py"
@@ -61,30 +59,3 @@ class Apbs( CmdTool ):
 
 
 
-
-def main():
-
-    # create the parser
-    parser = argparse.ArgumentParser(
-        description = __doc__,
-    )
-    # add the arguments
-    parser.add_argument(
-        '-pdb', help='pdb file', type=str)
-    parser.add_argument(
-        '-output_dir', help='output dir', type=str, default=".")
-
-
-    # parse the command line
-    args = parser.parse_args()
-
-
-    if args.pdb and args.output_dir:
-    	Apbs( args.pdb, output_dir=args.output_dir )
-
-
-
-
-
-if __name__ == "__main__":
-    main()

@@ -17,14 +17,13 @@ import numpy as np
 from utils import try_int, get_index, boolean
 from utils.timer import Timer
 from utils.db import get_pdb_files, create_table
-from utils.job import _prep_func, do_parallel
+from utils.job import do_parallel
 from utils.math import vec_angle
 
 import utils.numpdb as numpdb
 
 
 
-@_prep_func
 def _sstruc_pdb( fpath ):
     return get_sstruc_records( numpdb.NumPdb( fpath ) )
 

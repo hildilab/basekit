@@ -1,6 +1,9 @@
 from __future__ import division
 from __future__ import with_statement
 
+import contextlib
+import os
+import re
 
 
 
@@ -70,4 +73,23 @@ def iter_consume(iterator, n):
     else:
         # advance to the empty slice starting at position n
         next(itertools.islice(iterator, n, n), None)
+
+
+def dir_walker( dir, pattern ):
+    for root, dirs, files in os.walk(top):
+        for name in files:
+            fpath = os.path.join(root, name)
+            m = re.match( pattern, name )
+            if( m ):
+                yield (m, fpath)
+
+
+@contextlib.contextmanager 
+def working_directory(directory): 
+    original_directory = os.getcwd()
+    try: 
+        os.chdir(directory) 
+        yield directory 
+    finally: 
+        os.chdir(original_directory) 
 

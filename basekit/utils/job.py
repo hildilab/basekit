@@ -5,7 +5,6 @@ import multiprocessing
 import functools
 import os
 import sys
-import contextlib
 import subprocess
 import fcntl
 import select
@@ -15,15 +14,6 @@ import logging
 
 
 
-
-@contextlib.contextmanager 
-def working_directory(directory): 
-    original_directory = os.getcwd()
-    try: 
-        os.chdir(directory) 
-        yield directory 
-    finally: 
-        os.chdir(original_directory) 
 
 
 # TODO: remove shell dependency

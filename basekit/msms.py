@@ -15,18 +15,16 @@ from itertools import izip
 from operator import itemgetter, methodcaller
 from string import Template
 
-from basekit.utils import try_int, get_index, boolean
-from basekit.utils.timer import Timer
-from basekit.utils.job import run_command2, working_directory, do_parallel
-from basekit.utils.db import get_pdb_files
-from basekit.utils.jmol import run_jmol_script
-from basekit.utils.tool import CmdTool, make_args
+from utils import try_int, get_index, boolean, working_directory
+from utils.timer import Timer
+from utils.job import run_command2, do_parallel
+from utils.db import get_pdb_files
+from utils.tool import CmdTool, make_args
 
 
 MSMS_CMD = "msms"
 BABEL_CMD = "babel"
 PDB_TO_XYZR_CMD = "pdb_to_xyzr"
-
 
 
 
