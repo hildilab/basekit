@@ -1,0 +1,72 @@
+; author: jochen ismer
+
+;boxgroesse etc. aus dem ergebnis von box.spi auslesen
+[usermap]='${map_name1}'
+[usermapb]='${map_name2}'
+UD IC 1,[bs],[obenlinks1],[obenlinks2],[obenlinks3],[ps], [rs]
+${box_name}
+;Groesse Usermap
+FI [x8],[x9],[x10]
+[usermap]
+1,2,12
+;anzahl der linker??
+[nl]=10
+;Loops zu maps machen
+
+DO  [y]=1,[nl]
+ [filename]='${loop_dir}{**[y]}_bb.pdb' 
+;Dichten aus PDB erstellen
+ CP FROM PDB
+ [filename]
+ 1
+ N
+ A
+ [x8] [x9] [x10]
+ [filename]box
+ RT 3d
+ [filename]box
+ [filename]box1
+ -90,0,0
+ RT 3d
+ [filename]box1
+ [filename]box2
+ 0,180,0
+;box ausschneiden
+ WI 
+ [filename]box2
+ [filename]boxwi
+ [bs] [bs] [bs]
+ [obenlinks1] [obenlinks2] [obenlinks3]
+;theoretische maps auf gleiche auflösung filtern wie usermap
+
+;maske bestimmen testen!
+;min max werte
+FS [X4], [X5]
+[usermapb]
+;mitte des spektrums bestimmen
+[x6]=(X5-X4)/2
+
+;Maske erstellen noch zu testen
+TH M
+[usermapb]
+mask
+B
+[x6]
+
+
+;cross correlation ausrechnen
+ CC C [ccc]
+ [usermapb]
+ [filename]boxwi
+ mask
+ 1
+ ;cross correlation in ein file schreiben
+ sd [y],[ccc]
+ crosscorrelation
+
+
+
+ENDDO
+VM
+rm *bb.pdbbo*
+en

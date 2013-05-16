@@ -1,0 +1,58 @@
+; author: jochen ismer
+
+;script zu löschen von dichten die bereits von der PDB structure besetzt sind
+;input files
+
+[map]='${map_name}'
+[pdb]='${pdb_file}'
+[tmp_dir]='${tmp_dir}'
+;[path]=''
+;groesse der box der usermap bestimmen
+FI [X1], [X2], [X3]
+[map]
+12,2,1
+;theoretische map erstellen
+CP FROM PDB
+[pdb]
+${pixelsize}  ;pixelsize (wo bekomme ich die her??)
+N
+A
+[X1],[X2],[X3] ;boxgröße sollte die gleiche sein wie bei 
+[tmp_dir]pdb_map
+;rotieren
+ RT 3d
+ [tmp_dir]pdb_map
+ [tmp_dir]pdb_map1
+ -90,0,0
+ RT 3d
+ [tmp_dir]pdb_map1
+ [tmp_dir]pdb_map2
+ 0,180,0
+;filtern der pdb map damit sie zum löschen taugt
+fq
+[tmp_dir]pdb_map2
+[tmp_dir]pdb_mapfi
+7
+.03 .13
+
+;levelbereiche von usermap und pdb map bestimmen
+FS [X4], [X5]
+[map]
+FS [X6] [X7]
+[tmp_dir]pdb_mapfi
+;faktor berechnen
+[X8]=[X4]/[X6]
+;map entsprechend verstärken...
+ar
+[tmp_dir]pdb_mapfi
+[tmp_dir]pdb_mapfife
+p1*[X8]
+
+sub
+[map]
+[tmp_dir]pdb_mapfife
+usermap
+*
+VM
+rm [tmp_dir]pdb_map*
+en

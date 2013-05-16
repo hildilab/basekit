@@ -1,0 +1,8 @@
+; author: jochen ismer
+
+[file]='${mrc_file}'
+cp from mrc
+[file]
+mapupload	; output file
+N N
+EN

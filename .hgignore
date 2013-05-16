@@ -13,6 +13,6 @@ Icon*
 
 *.pyc
 
-data/*
+data/test/*
 
 basekit.egg-info/*

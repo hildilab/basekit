@@ -1,0 +1,6 @@
+set preserveState false;
+load "${pdb_file}";
+set defaultVDW babel;
+spacefill;
+var x = {not hetero and 1.1}.label("%8.3x %8.3y %8.3z %4.2[spacefill] 1 [%n]%r.%a#%i");
+write var x "${out_file}";
