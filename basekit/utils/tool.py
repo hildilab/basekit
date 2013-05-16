@@ -6,11 +6,8 @@ from __future__ import division
 
 
 import sys
-import re
 import os
-import shutil
 import argparse
-import sqlite3
 import functools
 import itertools
 import inspect
@@ -31,9 +28,57 @@ def make_args( args ):
         _args[ a.pop("name") ] = a
     return _args
 
+def get_type( params ):
+    if params.get('fixed'):
+        return float
+    elif params["type"]=="slider":
+        return int
+    elif params["type"] in [ "file", "text", "select" ]:
+        return str
+    elif params["type"]=="checkbox":
+        return boolean
+    else:
+        return str
+
+def make_parser( Tool, parser=None ):
+    if not parser:
+        parser = argparse.ArgumentParser()
+    for name, params in Tool.args.iteritems():
+        option = '--%s'%name if "default_value" in params else name
+        default = params.get( "default_value", None )
+        type = get_type( params )
+        parser.add_argument( option, type=type, default=default)    
+    parser.add_argument( '-o', '--output_dir', type=str, default="./" )
+    return parser
+
+def parse_args( Tool, kwargs=None ):
+    if not kwargs:
+        parser = make_parser( Tool )
+        kwargs = vars( parser.parse_args() )
+    args = []
+    for name, params in Tool.args.iteritems():
+        if "default_value" not in params:
+            args.append( kwargs.pop( name ) )
+    return args, kwargs
+
+def parse_subargs( tools ):
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers( title='subcommands' )
+    for name, Tool in tools.iteritems():
+        subp = subparsers.add_parser( name )
+        make_parser( Tool, subp )
+        subp.set_defaults(Tool=Tool)
+    pargs = vars( parser.parse_args() )
+    Tool = pargs.pop("Tool")
+    args, kwargs = parse_args( Tool, kwargs=pargs )
+    return Tool, args, kwargs
+
+
+
+
 
 class Tool( object ):
-    _args = make_args([])
+    args = make_args([])
     def __init__( self, *args, **kwargs ):
         self.name = self.__class__.__name__.lower()
 

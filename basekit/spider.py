@@ -65,7 +65,7 @@ class SpiderDeleteFilledDensities( Spider ):
     args = make_args([
         { "name": "map_file", "type": "file", "ext": "cpv" },
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
-        { "name": "pixelsize", "type": "slider", "range": [1, 10], "fixed": True, "default_value": 1.0 }
+        { "name": "pixelsize", "type": "slider", "range": [1, 10], "fixed": True }
     ])
     tmpl_file = "delete_filled_densities.spi"
     def _init( self, map_file, pdb_file, pixelsize=1 ):
@@ -84,12 +84,12 @@ class SpiderBox( Spider ):
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
         { "name": "res1", "type": "text" },
         { "name": "res2", "type": "text" },
-        { "name": "length", "type": "slider", "range": [1, 30], "default_value": 5 },
-        { "name": "pixelsize", "type": "slider", "range": [1, 10], "fixed": True, "default_value": 1.0 },
-        { "name": "resolution", "type": "slider", "range": [1, 10], "fixed": True, "default_value": 5.4 }
+        { "name": "length", "type": "slider", "range": [1, 30] },
+        { "name": "pixelsize", "type": "slider", "range": [1, 10], "fixed": True },
+        { "name": "resolution", "type": "slider", "range": [1, 10], "fixed": True }
     ])
     tmpl_file = "box.spi"
-    def _init( self, map_file, pdb_file, res1, res2, length, pixelsize=1, resolution=5.4 ):
+    def _init( self, map_file, pdb_file, res1, res2, length, pixelsize, resolution ):
         coords1, coords2 = self._get_coords( fabs( pdb_file ), res1, res2 )
         var_file = self._make_variables_file(
             coords1, coords2, length, pixelsize, resolution
