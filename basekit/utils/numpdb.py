@@ -65,6 +65,20 @@ AA3 = dict((v,k) for k, v in AA1.iteritems())
 
 
 
+def numsele( string ):
+    sele = { "chain": None, "resno": None, "atomname": None }
+    atomname = string.split(".")
+    if len(atomname)>1 and atomname[1]:
+        sele["atomname"] = atomname[1][0:4]
+    chain = atomname[0].split(":")
+    if len(chain)>1 and chain[1]:
+        sele["chain"] = chain[1][0]
+    if chain[0]:
+        sele["resno"] = int(chain[0])
+    return sele
+
+
+
 class SimpleParser():
     def __init__( self ):
         self._list = []
@@ -169,6 +183,8 @@ def axis( coords ):
 class NumAtoms:
     atomname_dict = { 
         "CA": " CA ",
+        "CD1": " CD1",
+        "CD2": " CD2",
         "N": " N  ",
         "C": " C  ",
         "O": " O  ",
@@ -301,12 +317,11 @@ class NumAtoms:
         return axis( self.get( 'xyz', **sele ) )
     def sequence( self, **sele ):
         return "".join([ AA1.get( a['resname'][0], "?" ) for a in self.iter_resno( **sele ) ])
+    def center( self, **sele ):
+        coords = self.get( 'xyz', **sele )
+        return np.sum( coords, axis=0 ) / len(coords)
     def dist( self, sele1, sele2 ):
-        coords1 = self.get( 'xyz', **sele1 )
-        coords2 = self.get( 'xyz', **sele2 )
-        v1 = np.sum( coords1, axis=0 ) / len(coords1)
-        v2 = np.sum( coords2, axis=0 ) / len(coords2)
-        return mag( v1 - v2 )
+        return mag( self.center( **sele1 ) - self.center( **sele2 ) )
 
 
 

@@ -1,3 +1,4 @@
 
 
-* implement handling of hetero atoms
+* numpdb: implement handling of hetero atoms
+* numpdb: empty sele objects should never do any selecting
