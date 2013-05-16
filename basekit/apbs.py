@@ -53,7 +53,7 @@ class Apbs( CmdTool ):
             APBS_CMD, self.pdb2pqr.apbsin_file
         ]
         self.output_files = self.pdb2pqr.output_files + \
-            [ "pot-PE0", "io.mc" ]
+            [ "pot-PE0.dx", "io.mc" ]
     def _pre_exec( self ):
         self.pdb2pqr()
 
