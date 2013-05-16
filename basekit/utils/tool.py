@@ -40,7 +40,7 @@ class Tool( object ):
         self.timeout = kwargs.get("timeout", None)
         self.fileargs = kwargs.get("fileargs", False)
 
-        self.output_dir = os.path.abspath( kwargs.get("output_dir", ".") )
+        self.output_dir = os.path.abspath( kwargs.get("output_dir", ".") ) + os.sep
         if not os.path.exists( self.output_dir ):
             os.makedirs( self.output_dir )
 
@@ -50,7 +50,7 @@ class Tool( object ):
                 args = fp.read().split(",")
         else:
             with open( self.args_file, "w" ) as fp:
-                fp.write( ",".join(args) )
+                fp.write( ",".join( map(str, args) ) )
 
         self._init( *args )
 
@@ -62,6 +62,7 @@ class Tool( object ):
             self._run()
     def __call__( self ):
         self.__run()
+        return self
     def _run( self ):
         pass
     def _pre_exec( self ):

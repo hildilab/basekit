@@ -46,16 +46,17 @@ def pdb_path_split( fpdb ):
 
 class Msms( CmdTool ):
     args = make_args([
-        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+        { "name": "pdb_file", "type": "file", "ext": "pdb" },
+        { "name": "density", "type": "slider", "range": [1, 10], "fixed": True, "default_value": 1.0  }
     ])
-    def _init( self, pdb_file ):
+    def _init( self, pdb_file, density=1.0 ):
         self.pdb2xyzr = Pdb2xyzr( 
             pdb_file, output_dir=self.output_dir, 
             timeout=self.timeout, run=False
         )
         self.cmd = [ 
             MSMS_CMD, "-if", self.pdb2xyzr.xyzr_file, 
-            "-af", "area", "-of", "tri_surface"
+            "-af", "area", "-of", "tri_surface", "-density", str(density)
         ]
         self.output_files = self.pdb2xyzr.output_files + \
             [ "area.area", "tri_surface.face", "tri_surface.vert" ]
