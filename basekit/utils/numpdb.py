@@ -242,11 +242,20 @@ class NumAtoms:
     def copy( self, **sele ):
         _sele = self.sele( **sele )
         return NumAtoms( self._atoms[ _sele ], self._coords[ _sele ] )
+    def _select( self, **sele ):
+        coords = self._coords
+        atoms = self._atoms
+        if len(sele):
+            _sele = self.sele( **sele )
+            coords = self._coords[ _sele ]
+            atoms = self._atoms[ _sele ]
+        return coords, atoms
     def get( self, key, **sele ):
+        coords, atoms = self._select( **sele )
         if key=='xyz':
-            return self._coords[ self.sele( **sele ) ]
+            return coords
         else:
-            return self._atoms[ self.sele( **sele ) ][ key ]
+            return atoms[ key ]
     def index( self, first=False, last=False, **sele ):
         indices = np.nonzero( self.sele( **sele ) )[0]
         if first:
@@ -256,14 +265,7 @@ class NumAtoms:
         else:
             return indices
     def iter_chain( self, **sele ):
-        if len(sele):
-            _sele = self.sele( **sele )
-            atoms = self._atoms[ _sele ]
-            coords = self._coords[ _sele ]
-        else:
-            atoms = self._atoms
-            coords = self._coords
-        
+        coords, atoms = self._select( **sele )
         chain = atoms['chain'][0]
         k = 0
         l = 0
@@ -324,6 +326,8 @@ class NumAtoms:
         return mag( self.center( **sele1 ) - self.center( **sele2 ) )
 
 
+def numdist( numa1, numa2 ):
+    return mag( numa1.center() - numa2.center() )
 
 
 class NumPdb:

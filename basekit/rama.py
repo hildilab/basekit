@@ -20,7 +20,7 @@ from utils.db import get_pdb_files, create_table
 from utils.job import do_parallel
 from utils.math import vec_angle
 
-import utils.numpdb as numpdb
+from utils.numpdb import NumPdb, numdist
 
 
 
@@ -45,9 +45,10 @@ def main():
 
     if args.pdb:
         with Timer("read/parse pdb"):
-            npdb = numpdb.NumPdb( args.pdb )
+            npdb = NumPdb( args.pdb )
         with Timer("dist"):
             print npdb.dist( {"chain":"A"}, {"chain":"B"} )
+            print numdist( npdb.copy( chain="A" ), npdb.copy( chain="B" ) )
         with Timer("access phi/psi"):
             print np.nansum( npdb['phi'] )
         with Timer("sequence"):
