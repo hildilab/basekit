@@ -363,7 +363,7 @@ class NumPdb:
 
         with open( self.pdb_path, "r" ) as fp:
             for line in fp:
-                if line.startswith("ATOM"):# or line.startswith("HETATM"):
+                if line.startswith("ATOM") and line[16] in [' ', 'A']:# or line.startswith("HETATM"):
                     atoms.append( tuple([ line[ c[0]:c[1] ] for c in cols ] + extra) )
                 else:
                     header.append( line )
