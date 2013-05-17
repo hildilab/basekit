@@ -139,7 +139,7 @@ class PyTool( Tool ):
         if not hasattr( self, "func" ):
             raise Exception("A PyTool needs a 'func' attribute")
     def _run( self ):
-        self.func( self )
+        self.func()
 
 
 class CmdTool( Tool ):

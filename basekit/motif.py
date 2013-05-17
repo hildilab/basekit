@@ -6,9 +6,8 @@ import os
 from utils.tool import PyTool, make_args
 
 
-def find_all( tool ):
-    print tool.output_dir, tool.pdb_file
-    print tool.motif_type
+def find_all( pdb_file, motif_type, output_dir ):
+    print pdb_file, motif_type, output_dir
 
 
 class CapsMotifFinder( PyTool ):
@@ -19,5 +18,7 @@ class CapsMotifFinder( PyTool ):
     def _init( self, pdb_file, motif_type="alpha_beta", **kwargs ):
         self.pdb_file = os.path.abspath( pdb_file )
         self.motif_type = motif_type.split(",")
-        self.func = find_all
         self.output_files = [ "foo.txt" ]
+    def func( self ):
+        # self.output_dir is created by the base class
+        find_all( self.pdb_file, self.motif_type, self.output_dir )
