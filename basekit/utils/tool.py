@@ -97,7 +97,7 @@ class Tool( object ):
             with open( self.args_file, "w" ) as fp:
                 fp.write( ",".join( map(str, args) ) )
 
-        self._init( *args )
+        self._init( *args, **kwargs )
 
         if kwargs.get("run", True):
             self.__run()
@@ -136,7 +136,7 @@ class PyTool( Tool ):
         if not hasattr( self, "func" ):
             raise Exception("A PyTool needs a 'func' attribute")
     def _run( self ):
-        self.func()
+        self.func( self )
 
 
 class CmdTool( Tool ):

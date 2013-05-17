@@ -7,7 +7,7 @@ from utils.job import run_command
 
 
 
-JMOL_PATH = os.environ["JMOL_PATH"]
+JMOL_PATH = os.environ.get("JMOL_PATH", "")
 JMOL_JAR = os.path.join( JMOL_PATH, "Jmol.jar" )
 JMOL_DATA_JAR = os.path.join( JMOL_PATH, "Jmol.jar" )
 
