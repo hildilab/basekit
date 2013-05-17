@@ -32,7 +32,7 @@ class Spider( CmdTool ):
         { "name": "script_file", "type": "file", "ext": "spi" }
     ])
     spi_tmpl_file = None
-    def _init( self, script_file, script_ext="spi", data_ext="cpv" ):
+    def _init( self, script_file, script_ext="spi", data_ext="cpv", **kwargs ):
         # spider spi/cpv @box
         self.script_file = fabs( script_file )
         self.cmd = [
@@ -54,7 +54,7 @@ class SpiderConvert( Spider ):
         { "name": "mrc_file", "type": "file", "ext": "mrc" }
     ])
     tmpl_file = "convert.spi"
-    def _init( self, mrc_file ):
+    def _init( self, mrc_file, **kwargs ):
         script_file = self._make_script_file( mrc_file=fabs( mrc_file ) )
         super(SpiderConvert, self)._init( script_file )
         self.output_files = [ "mapupload.cpv" ]
@@ -68,7 +68,7 @@ class SpiderDeleteFilledDensities( Spider ):
         { "name": "pixelsize", "type": "slider", "range": [1, 10], "fixed": True }
     ])
     tmpl_file = "delete_filled_densities.spi"
-    def _init( self, map_file, pdb_file, pixelsize=1 ):
+    def _init( self, map_file, pdb_file, pixelsize=1, **kwargs ):
         script_file = self._make_script_file( 
             map_name=fname( map_file ), pdb_file=fabs( pdb_file ), pixelsize=pixelsize,
             tmp_dir=self.output_dir
@@ -89,7 +89,7 @@ class SpiderBox( Spider ):
         { "name": "resolution", "type": "slider", "range": [1, 10], "fixed": True }
     ])
     tmpl_file = "box.spi"
-    def _init( self, map_file, pdb_file, res1, res2, length, pixelsize, resolution ):
+    def _init( self, map_file, pdb_file, res1, res2, length, pixelsize, resolution, **kwargs ):
         coords1, coords2 = self._get_coords( fabs( pdb_file ), res1, res2 )
         var_file = self._make_variables_file(
             coords1, coords2, length, pixelsize, resolution
@@ -125,7 +125,7 @@ class SpiderCrosscorrelation( Spider ):
         { "name": "loop_dir", "type": "text" }
     ])
     tmpl_file = "crosscorrelation.spi"
-    def _init( self, map_file1, map_file2, box_file, loop_dir ):
+    def _init( self, map_file1, map_file2, box_file, loop_dir, **kwargs ):
         script_file = self._make_script_file( 
             map_name1=fname( map_file1 ), map_name2=fname( map_file2 ),
             box_name=fname( box_file ), loop_dir=fabs( loop_dir )+os.sep

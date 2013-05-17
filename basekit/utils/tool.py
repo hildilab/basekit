@@ -16,7 +16,7 @@ from collections import OrderedDict
 
 from basekit.utils import try_int, get_index, boolean, working_directory
 from basekit.utils.timer import Timer
-from basekit.utils.job import run_command2
+from basekit.utils.job import run_command
 
 
 TIMEOUT_CMD = "timeout"
@@ -49,6 +49,8 @@ def make_parser( Tool, parser=None ):
         type = get_type( params )
         parser.add_argument( option, type=type, default=default)    
     parser.add_argument( '-o', '--output_dir', type=str, default="./" )
+    parser.add_argument( '-v', '--verbose', type=boolean, default=False )
+    parser.add_argument( '-t', '--timeout', type=int, default=0 )
     return parser
 
 def parse_args( Tool, kwargs=None ):
@@ -84,6 +86,7 @@ class Tool( object ):
 
         self.timeout = kwargs.get("timeout", None)
         self.fileargs = kwargs.get("fileargs", False)
+        self.verbose = kwargs.get("verbose", False)
 
         self.output_dir = os.path.abspath( kwargs.get("output_dir", ".") ) + os.sep
         if not os.path.exists( self.output_dir ):
@@ -149,7 +152,7 @@ class CmdTool( Tool ):
         if self.timeout:
             cmd = [ TIMEOUT_CMD, self.timeout ] + cmd
         log_file = "%s_cmd.log" % self.name
-        run_command2( cmd, log=log_file )
+        run_command( cmd, log=log_file, verbose=self.verbose )
 
 
 

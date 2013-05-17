@@ -1,4 +1,3 @@
-from __future__ import division
 from __future__ import with_statement
 
 import multiprocessing
@@ -15,32 +14,7 @@ import logging
 
 
 
-
-# TODO: remove shell dependency
-def run_command( program, log=None, stdout=None, close_fds=True ):
-    # this function allow a stream-like access to stdout/stderr 
-    command="(%s) 2>&1" % program
-    p = subprocess.Popen( command, shell=True, stdout=subprocess.PIPE, close_fds=close_fds )
-    if log: fp = open( log, 'w' )
-    fcntl.fcntl(
-        p.stdout.fileno(),
-        fcntl.F_SETFL,
-        fcntl.fcntl(p.stdout.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK,
-    )
-    while True:
-        readx = select.select([p.stdout.fileno()], [], [])[0]
-        if readx:
-            chunk = p.stdout.read()
-            if chunk == '':
-                break
-            if stdout: sys.stdout.write( chunk )
-            if log: fp.write( chunk )
-        time.sleep(.1)
-    if log: fp.close()
-    return
-
-
-def run_command2( cmd, cwd=".", log=None ):
+def run_command( cmd, cwd=".", log=None, verbose=False ):
     kwargs = {
         "args": map( str, cmd ),
         "cwd": cwd,
@@ -49,13 +23,33 @@ def run_command2( cmd, cwd=".", log=None ):
         "env": os.environ,
         "preexec_fn": os.setpgrp
     }
-    if log:
+    if verbose:
+        kwargs.update( stdout=subprocess.PIPE )
+        if log:
+            with open( log, "w" ) as fp:
+                p = subprocess.Popen( **kwargs )
+                fcntl.fcntl(
+                    p.stdout.fileno(),
+                    fcntl.F_SETFL,
+                    fcntl.fcntl(p.stdout.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK,
+                )
+                while True:
+                    readx = select.select([p.stdout.fileno()], [], [])[0]
+                    if readx:
+                        chunk = p.stdout.read()
+                        if chunk == '': break
+                        sys.stdout.write( chunk )
+                        fp.write( chunk )
+                    time.sleep(.1)
+            return p.returncode
+        else:
+            return subprocess.call( **kwargs )
+    elif log:
         with open( log, "w" ) as fp:
-            kwargs.update(stdout=fp)
-            ret = subprocess.call( **kwargs )
+            kwargs.update( stdout=fp )
+            return subprocess.call( **kwargs )
     else:
-        ret = subprocess.call( **kwargs )
-    return ret
+        return subprocess.call( **kwargs )
 
 
 

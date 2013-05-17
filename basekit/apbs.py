@@ -45,15 +45,9 @@ class Apbs( CmdTool ):
         { "name": "pdb_file", "type": "file", "ext": "pdb" }
     ])
     def _init( self, pdb_file, **kwargs ):
-        self.pdb2pqr = Pdb2pqr( 
-            pdb_file, output_dir=self.output_dir, 
-            timeout=self.timeout, run=False
-        )
-        self.cmd = [ 
-            APBS_CMD, self.pdb2pqr.apbsin_file
-        ]
-        self.output_files = self.pdb2pqr.output_files + \
-            [ "pot-PE0.dx", "io.mc" ]
+        self.pdb2pqr = Pdb2pqr( pdb_file, run=False, **kwargs )
+        self.cmd = [ APBS_CMD, self.pdb2pqr.apbsin_file ]
+        self.output_files = self.pdb2pqr.output_files + [ "pot-PE0.dx", "io.mc" ]
     def _pre_exec( self ):
         self.pdb2pqr()
 

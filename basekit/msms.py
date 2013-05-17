@@ -17,7 +17,7 @@ from string import Template
 
 from utils import try_int, get_index, boolean, working_directory
 from utils.timer import Timer
-from utils.job import run_command2, do_parallel
+from utils.job import do_parallel
 from utils.db import get_pdb_files
 from utils.tool import CmdTool, make_args
 
@@ -49,11 +49,8 @@ class Msms( CmdTool ):
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
         { "name": "density", "type": "slider", "range": [1, 10], "fixed": True, "default_value": 1.0  }
     ])
-    def _init( self, pdb_file, density=1.0 ):
-        self.pdb2xyzr = Pdb2xyzr( 
-            pdb_file, output_dir=self.output_dir, 
-            timeout=self.timeout, run=False
-        )
+    def _init( self, pdb_file, density=1.0, **kwargs ):
+        self.pdb2xyzr = Pdb2xyzr( pdb_file, run=False, **kwargs )
         self.cmd = [ 
             MSMS_CMD, "-if", self.pdb2xyzr.xyzr_file, 
             "-af", "area", "-of", "tri_surface", "-density", str(density)
@@ -69,7 +66,7 @@ class Pdb2xyzr( CmdTool ):
     args = make_args([
         { "name": "pdb_file", "type": "file", "ext": "pdb" }
     ])
-    def _init( self, pdb_file ):
+    def _init( self, pdb_file, **kwargs ):
         self.pdb_file = os.path.abspath( pdb_file )
         self.pdb_prep_file = "prep.pdb"
         self.xyzr_file = "%s.xyzr" % os.path.splitext( os.path.split( self.pdb_file )[-1] )[0]
