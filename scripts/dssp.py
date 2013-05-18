@@ -1,14 +1,14 @@
 #! /usr/bin/env python
 
 from basekit.utils.tool import parse_args
-from basekit.apbs import Apbs
+from basekit.dssp import Dssp
 
 
 
 def main():
-    args, kwargs = parse_args( Apbs )
-    apbs = Apbs( *args, **kwargs )
-    print apbs
+    args, kwargs = parse_args( Dssp )
+    dssp = Dssp( *args, **kwargs )
+    print dssp
 
 
 if __name__ == "__main__":

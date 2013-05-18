@@ -11,6 +11,7 @@ import argparse
 import functools
 import itertools
 import inspect
+import json
 from string import Template
 from collections import OrderedDict
 
@@ -49,8 +50,9 @@ def make_parser( Tool, parser=None ):
         type = get_type( params )
         parser.add_argument( option, type=type, default=default)    
     parser.add_argument( '-o', '--output_dir', type=str, default="./" )
-    parser.add_argument( '-v', '--verbose', type=boolean, default=False )
     parser.add_argument( '-t', '--timeout', type=int, default=0 )
+    parser.add_argument( '-v', '--verbose', action='store_true' )
+    parser.add_argument( '-c', '--check', action='store_true' )
     return parser
 
 def parse_args( Tool, kwargs=None ):
@@ -92,17 +94,17 @@ class Tool( object ):
         if not os.path.exists( self.output_dir ):
             os.makedirs( self.output_dir )
 
-        self.args_file = os.path.join( self.output_dir, "%s.args" % self.name )
+        self.args_file = os.path.join( self.output_dir, "%s.json" % self.name )
         if self.fileargs:
             with open( self.args_file, "r" ) as fp:
-                args = fp.read().split(",")
+                args, kwargs = json.load( fp )
         else:
             with open( self.args_file, "w" ) as fp:
-                fp.write( ",".join( map(str, args) ) )
-
+                json.dump( ( args, kwargs ), fp, indent=4 )
+        print args, kwargs
         self._init( *args, **kwargs )
 
-        if kwargs.get("run", True):
+        if kwargs.get("run", True) and not kwargs.get("check", True):
             self.__run()
     def __run( self ):
         with working_directory( self.output_dir ):
@@ -131,6 +133,11 @@ class Tool( object ):
                     return all( isfile )
         else:
             return True
+    def __str__( self ):
+        status = "ok" if self.check() else "failed"
+        return "%s status: %s" % ( self.name, status )
+
+
 
 
 class PyTool( Tool ):
@@ -153,6 +160,41 @@ class CmdTool( Tool ):
             cmd = [ TIMEOUT_CMD, self.timeout ] + cmd
         log_file = "%s_cmd.log" % self.name
         run_command( cmd, log=log_file, verbose=self.verbose )
+
+
+
+
+class ScriptMixin( object ):
+    def _make_script_file( self, **values_dict ):
+        tmpl_file = os.path.join( self.tmpl_dir, self.tmpl_file )
+        with open( tmpl_file, "r" ) as fp:
+            tmpl_str = fp.read()
+        script_file = os.path.join( self.output_dir, self.tmpl_file )
+        with open( script_file, "w" ) as fp:
+            fp.write( Template( tmpl_str ).substitute( **values_dict ) )
+        return script_file
+
+
+
+
+def do_parallel( tool, files, args=None, kwargs=None, nworkers=None, run=True ):
+    # !important - allows one to abort via CTRL-C
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    multiprocessing.log_to_stderr( logging.ERROR )
+    
+    if not nworkers: nworkers = multiprocessing.cpu_count()
+    p = multiprocessing.Pool( nworkers )
+
+    if not kwargs: kwargs = {}
+    kwargs["run"] = run
+    if not args: args = []
+    data = p.map( functools.partial( tool, *args, **kwargs ), files ) # does partial work with a functor?
+    p.close()
+    p.join()
+
+    return data
+
+
 
 
 

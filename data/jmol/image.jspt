@@ -1,0 +1,23 @@
+load "${jmol_file}";
+select none;
+frank off;
+set imageState false;
+set antialiasImages true;
+set cartoonFancy ${cartoon_fancy};
+var width = ${width};
+var height = ${height};
+var scale = ${scale};
+if( scale & scale!=1 ){
+	width = scale * _width;
+	height = scale * _height;
+}else{
+	if( width & !height ){
+		height = (width/_width) * _height;
+	}else if( !width & height ){
+		width = (height/_height) * _width;
+	}else if( !width & !height ){
+		width = _width;
+		height = _height;
+	}
+}
+write image @{width%0} @{height%0} jpg 100 "image.jpg";

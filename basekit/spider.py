@@ -1,15 +1,10 @@
-#! /usr/bin/env python
-
 from __future__ import with_statement
 from __future__ import division
 
-
-import re
-import sys
 import os
 from string import Template
 
-from utils.tool import CmdTool, make_args
+from utils.tool import CmdTool, ScriptMixin, make_args
 from utils.numpdb import NumPdb, numsele
 
 
@@ -27,25 +22,18 @@ def fname( fpath ):
 
 
 
-class Spider( CmdTool ):
+class Spider( CmdTool, ScriptMixin ):
     args = make_args([
         { "name": "script_file", "type": "file", "ext": "spi" }
     ])
     spi_tmpl_file = None
+    tmpl_dir = TMPL_DIR
     def _init( self, script_file, script_ext="spi", data_ext="cpv", **kwargs ):
         # spider spi/cpv @box
         self.script_file = fabs( script_file )
         self.cmd = [
             SPIDER_CMD, "%s/%s" % ( script_ext, data_ext ), "@%s" % fname( script_file )
         ]
-    def _make_script_file( self, **values_dict ):
-        tmpl_file = os.path.join( TMPL_DIR, self.tmpl_file )
-        with open( tmpl_file, "r" ) as fp:
-            tmpl_str = fp.read()
-        script_file = os.path.join( self.output_dir, self.tmpl_file )
-        with open( script_file, "w" ) as fp:
-            fp.write( Template( tmpl_str ).substitute( **values_dict ) )
-        return script_file
 
 
 

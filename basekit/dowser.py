@@ -1,6 +1,5 @@
 #! /usr/bin/env python
 
-from unipath import Path
 import argparse
 import shutil
 
@@ -11,6 +10,18 @@ from utils.job import run_command
 DOWSER_CMD = "dowser"
 DOWSERX_CMD = "dowserx"
 DOWSER_REPEAT_CMD = "dowser-repeat"
+
+
+from utils.tool import CmdTool, make_args
+
+
+class Dowser( CmdTool ):
+    pass
+
+
+class DowserRepeat( CmdTool ):
+    pass
+
 
 
 def dowser( input_file, output_dir, log=None,
