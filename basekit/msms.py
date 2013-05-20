@@ -24,7 +24,6 @@ from utils.tool import CmdTool, make_args
 
 MSMS_CMD = "msms"
 BABEL_CMD = "babel"
-PDB_TO_XYZR_CMD = "pdb_to_xyzr"
 
 
 

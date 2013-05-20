@@ -43,7 +43,7 @@ class JmolImage( Jmol ):
     	height = str(height) if height else "0"
     	scale = str(scale) if scale else "0"
     	cartoon_fancy = "true" if cartoon_fancy else "false"
-        script_file = self._make_script_file( 
+        script_file = self._make_script_file(
         	jmol_file=os.path.abspath( jmol_file ),
         	scale=scale,
         	width=width,

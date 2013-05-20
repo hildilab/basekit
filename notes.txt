@@ -1,0 +1,14 @@
+
+
+
+
+export MIRRORDIR=./              # your top level rsync directory
+export LOGFILE=rsync-ftp.log      # file for storing logs
+export RSYNC=/usr/bin/rsync       # location of local rsync
+
+export SERVER=snapshotrsync.rcsb.org                       # RCSB server name
+export PORT=8730
+
+${RSYNC} -rlpt -v -z --delete --port=$PORT \
+$SERVER::20130101/pub/pdb/data/structures/divided/pdb/ \
+$MIRRORDIR > $LOGFILE 2>/dev/null
