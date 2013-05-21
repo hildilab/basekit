@@ -93,3 +93,8 @@ def working_directory(directory):
     finally: 
         os.chdir(original_directory) 
 
+
+def copy_dict( dict, **kwargs ):
+    dict2 = dict.copy()
+    dict2.update( kwargs )
+    return dict2

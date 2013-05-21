@@ -15,7 +15,7 @@ from itertools import izip
 from operator import itemgetter, methodcaller
 from string import Template
 
-from utils import try_int, get_index, boolean, working_directory
+from utils import try_int, get_index, boolean, working_directory, copy_dict
 from utils.timer import Timer
 from utils.job import do_parallel
 from utils.db import get_pdb_files
@@ -49,7 +49,7 @@ class Msms( CmdTool ):
         { "name": "density", "type": "slider", "range": [1, 10], "fixed": True, "default_value": 1.0  }
     ])
     def _init( self, pdb_file, density=1.0, **kwargs ):
-        self.pdb2xyzr = Pdb2xyzr( pdb_file, run=False, **kwargs )
+        self.pdb2xyzr = Pdb2xyzr( pdb_file, **copy_dict( kwargs, run=False ) )
         self.cmd = [ 
             MSMS_CMD, "-if", self.pdb2xyzr.xyzr_file, 
             "-af", "area", "-of", "tri_surface", "-density", str(density)
