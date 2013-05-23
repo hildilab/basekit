@@ -402,20 +402,22 @@ class NumPdb:
         sele = { "atomname": ["N", "CA", "C"] }
 
         for na_prev, na_curr, na_next in self.iter_resno2( 3 ):
-
-            if na_prev.flag:
-                xyz_n_prev, xyz_ca_prev, xyz_c_prev = na_prev.get( 'xyz', **sele )
-                xyz_n, xyz_ca, xyz_c = na_curr.get( 'xyz', **sele )
-                xyz_n_next, xyz_ca_next, xyz_c_next = na_next.get( 'xyz', **sele )
-                na_prev['psi'] = dihedral( xyz_n_prev, xyz_ca_prev, xyz_c_prev, xyz_n )
-                na_curr['phi'] = dihedral( xyz_c_prev, xyz_n, xyz_ca, xyz_c )
-            else:
-                xyz_n, xyz_ca, xyz_c = xyz_n_ca_c
-                xyz_n_next, xyz_ca_next, xyz_c_next = na_next.get( 'xyz', **sele )
-            
-            na_next['phi'] = dihedral( xyz_c, xyz_n_next, xyz_ca_next, xyz_c_next )
-            na_curr['psi'] = dihedral( xyz_n, xyz_ca, xyz_c, xyz_n_next )
-            xyz_n_ca_c = ( xyz_n_next, xyz_ca_next, xyz_c_next )
+            try:
+                if na_prev.flag:
+                    xyz_n_prev, xyz_ca_prev, xyz_c_prev = na_prev.get( 'xyz', **sele )
+                    xyz_n, xyz_ca, xyz_c = na_curr.get( 'xyz', **sele )
+                    xyz_n_next, xyz_ca_next, xyz_c_next = na_next.get( 'xyz', **sele )
+                    na_prev['psi'] = dihedral( xyz_n_prev, xyz_ca_prev, xyz_c_prev, xyz_n )
+                    na_curr['phi'] = dihedral( xyz_c_prev, xyz_n, xyz_ca, xyz_c )
+                else:
+                    xyz_n, xyz_ca, xyz_c = xyz_n_ca_c
+                    xyz_n_next, xyz_ca_next, xyz_c_next = na_next.get( 'xyz', **sele )
+                
+                na_next['phi'] = dihedral( xyz_c, xyz_n_next, xyz_ca_next, xyz_c_next )
+                na_curr['psi'] = dihedral( xyz_n, xyz_ca, xyz_c, xyz_n_next )
+                xyz_n_ca_c = ( xyz_n_next, xyz_ca_next, xyz_c_next )
+            except:
+                pass
         #for a in self._atoms: print a
 
 
