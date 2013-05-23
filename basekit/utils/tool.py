@@ -23,11 +23,6 @@ from basekit.utils.job import run_command
 TIMEOUT_CMD = "timeout"
 
 
-def make_args( args ):
-    _args = OrderedDict()
-    for a in args:
-        _args[ a.pop("name") ] = a
-    return _args
 
 def get_type( params ):
     if params.get('fixed'):
@@ -48,11 +43,12 @@ def make_parser( Tool, parser=None ):
         option = '--%s'%name if "default_value" in params else name
         default = params.get( "default_value", None )
         type = get_type( params )
-        parser.add_argument( option, type=type, default=default)    
-    parser.add_argument( '-o', '--output_dir', type=str, default="./" )
-    parser.add_argument( '-t', '--timeout', type=int, default=0 )
-    parser.add_argument( '-v', '--verbose', action='store_true' )
-    parser.add_argument( '-c', '--check', action='store_true' )
+        parser.add_argument( option, type=type, default=default)
+    if not Tool.no_output:
+        parser.add_argument( '-o', '--output_dir', type=str, default="./" )
+        parser.add_argument( '-t', '--timeout', type=int, default=0 )
+        parser.add_argument( '-v', '--verbose', action='store_true' )
+        parser.add_argument( '-c', '--check', action='store_true' )
     return parser
 
 def parse_args( Tool, kwargs=None ):
@@ -79,43 +75,57 @@ def parse_subargs( tools ):
 
 
 
+class ToolMetaclass(type):
+    def __init__(cls, name, bases, dct):
+        if not "no_output" in dct:
+            cls.no_output = False
+
+        args = OrderedDict()
+        for a in dct.get( "args", [] ):
+            args[ a.pop("name") ] = a
+        cls.args = args
+
 
 
 class Tool( object ):
-    args = make_args([])
+    __metaclass__ = ToolMetaclass
     def __init__( self, *args, **kwargs ):
         self.name = self.__class__.__name__.lower()
 
         self.timeout = kwargs.get("timeout", None)
         self.fileargs = kwargs.get("fileargs", False)
         self.verbose = kwargs.get("verbose", False)
-
         self.output_dir = os.path.abspath( kwargs.get("output_dir", ".") ) + os.sep
-        if not os.path.exists( self.output_dir ):
-            os.makedirs( self.output_dir )
 
-        self.args_file = os.path.join( self.output_dir, "%s.json" % self.name )
-        if self.fileargs:
-            with open( self.args_file, "r" ) as fp:
-                args, kwargs = json.load( fp )
-        else:
-            with open( self.args_file, "w" ) as fp:
-                json.dump( ( args, kwargs ), fp, indent=4 )
-        print args, kwargs
+        if not self.no_output:
+            if not os.path.exists( self.output_dir ):
+                os.makedirs( self.output_dir )
+
+            self.args_file = os.path.join( self.output_dir, "%s.json" % self.name )
+            if self.fileargs:
+                with open( self.args_file, "r" ) as fp:
+                    args, kwargs = json.load( fp )
+            else:
+                with open( self.args_file, "w" ) as fp:
+                    json.dump( ( args, kwargs ), fp, indent=4 )
+        
         self._init( *args, **kwargs )
 
-        if kwargs.get("run", True) and not kwargs.get("check", True):
+        if kwargs.get("run", True) and not kwargs.get("check", False):
             self.__run()
     def __run( self ):
         with working_directory( self.output_dir ):
             self._pre_exec()
             self._run()
+            self._post_exec()
     def __call__( self ):
         self.__run()
         return self
     def _run( self ):
         pass
     def _pre_exec( self ):
+        pass
+    def _post_exec( self ):
         pass
     def __check_file( self, f ):
         f = os.path.abspath(f)

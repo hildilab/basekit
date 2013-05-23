@@ -8,7 +8,7 @@ import os
 import shutil
 import argparse
 
-from utils.tool import CmdTool, make_args
+from utils.tool import CmdTool
 
 
 DSSP_CMD = "dssp"
@@ -36,9 +36,9 @@ DSSP_CMD = "dssp"
 
 
 class Dssp( CmdTool ):
-    args = make_args([
+    args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" }
-    ])
+    ]
     def _init( self, pdb_file, **kwargs ):
     	self.pdb_file = os.path.abspath( pdb_file )
     	stem = os.path.splitext( os.path.split( self.pdb_file )[-1] )[0]

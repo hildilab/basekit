@@ -1,7 +1,7 @@
 import os
 from string import Template
 
-from utils.tool import CmdTool, ScriptMixin, make_args
+from utils.tool import CmdTool, ScriptMixin
 from utils.job import run_command
 
 
@@ -17,9 +17,9 @@ JMOL_JAR = os.path.join( JMOL_PATH, "Jmol.jar" )
 
 
 class Jmol( CmdTool, ScriptMixin ):
-    args = make_args([
+    args = [
         { "name": "script_file", "type": "file", "ext": "jspt" }
-    ])
+    ]
     jspt_tmpl_file = None
     tmpl_dir = TMPL_DIR
     def _init( self, script_file, **kwargs ):
@@ -30,13 +30,13 @@ class Jmol( CmdTool, ScriptMixin ):
 
 
 class JmolImage( Jmol ):
-    args = make_args([
+    args = [
         { "name": "jmol_file", "type": "file", "ext": "jmol" },
         { "name": "scale", "type": "slider", "range": [0, 4], "default_value": 1, "fixed": True },
         { "name": "width", "type": "slider", "range": [0, 2048], "default_value": 0 },
         { "name": "height", "type": "slider", "range": [0, 2048], "default_value": 0 },
         { "name": "cartoon_fancy", "type": "checkbox", "default_value": True }
-    ])
+    ]
     tmpl_file = "image.jspt"
     def _init( self, jmol_file, scale="", width="", height="", cartoon_fancy=True, **kwargs ):
     	width = str(width) if width else "0"
