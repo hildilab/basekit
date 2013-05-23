@@ -7,8 +7,7 @@ from basekit.msms import Msms
 
 def main():
     args, kwargs = parse_args( Msms )
-    msms = Msms( *args, **kwargs )
-    print msms
+    print Msms( *args, **kwargs )
 
 
 if __name__ == "__main__":

@@ -7,8 +7,7 @@ from basekit.dssp import Dssp
 
 def main():
     args, kwargs = parse_args( Dssp )
-    dssp = Dssp( *args, **kwargs )
-    print dssp
+    print Dssp( *args, **kwargs )
 
 
 if __name__ == "__main__":

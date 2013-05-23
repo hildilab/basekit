@@ -15,8 +15,7 @@ def main():
         "crosscorrel": SpiderCrosscorrelation
     }
     Tool, args, kwargs = parse_subargs( tools )
-    tool = Tool( *args, **kwargs )
-    print tool
+    print Tool( *args, **kwargs )
 
 
 

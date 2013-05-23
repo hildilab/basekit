@@ -12,8 +12,7 @@ def main():
         "split": PdbSplit
     }
     Tool, args, kwargs = parse_subargs( tools )
-    tool = Tool( *args, **kwargs )
-    print tool
+    print Tool( *args, **kwargs )
 
 
 

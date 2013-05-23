@@ -12,10 +12,7 @@ def main():
         "image": JmolImage
     }
     Tool, args, kwargs = parse_subargs( tools )
-    # kwargs["run"] = False
-    # kwargs["fileargs"] = True
-    tool = Tool( *args, **kwargs )
-    print tool
+    print Tool( *args, **kwargs )
 
 
 

@@ -7,8 +7,7 @@ from basekit.motif import CapsMotifFinder
 
 def main():
     args, kwargs = parse_args( CapsMotifFinder )
-    caps_motif_finder = CapsMotifFinder( *args, **kwargs )
-    print caps_motif_finder
+    print CapsMotifFinder( *args, **kwargs )
 
 
 if __name__ == "__main__":

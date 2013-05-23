@@ -7,8 +7,7 @@ from basekit.apbs import Apbs
 
 def main():
     args, kwargs = parse_args( Apbs )
-    apbs = Apbs( *args, **kwargs )
-    print apbs
+    print Apbs( *args, **kwargs )
 
 
 if __name__ == "__main__":
