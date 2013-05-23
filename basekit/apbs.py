@@ -3,13 +3,10 @@ from __future__ import division
 
 
 
-import re
 import os
-import shutil
-import argparse
 
 from utils import copy_dict
-from utils.tool import CmdTool, make_args
+from utils.tool import CmdTool
 
 
 PDB2PQR_CMD = "pdb2pqr.py"
@@ -20,9 +17,9 @@ APBS_CMD = "apbs"
 # => 1u19-input.p 1u19.pqr 1u19.in
 
 class Pdb2pqr( CmdTool ):
-    args = make_args([
+    args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" }
-    ])
+    ]
     def _init( self, pdb_file, **kwargs ):
     	self.pdb_file = os.path.abspath( pdb_file )
     	stem = os.path.splitext( os.path.split( self.pdb_file )[-1] )[0]
@@ -41,9 +38,9 @@ class Pdb2pqr( CmdTool ):
 # => pot-PE0.dx io.mc
 
 class Apbs( CmdTool ):
-    args = make_args([
+    args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" }
-    ])
+    ]
     def _init( self, pdb_file, **kwargs ):
         self.pdb2pqr = Pdb2pqr( pdb_file, **copy_dict( kwargs, run=False ) )
         self.cmd = [ APBS_CMD, self.pdb2pqr.apbsin_file ]

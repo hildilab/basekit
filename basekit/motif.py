@@ -3,7 +3,7 @@ from __future__ import division
 
 import os
 
-from utils.tool import PyTool, make_args
+from utils.tool import PyTool
 
 
 def find_all( pdb_file, motif_type, output_dir ):
@@ -11,10 +11,10 @@ def find_all( pdb_file, motif_type, output_dir ):
 
 
 class CapsMotifFinder( PyTool ):
-    args = make_args([
+    args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
         { "name": "motif_type", "type": "text", "default_value": "alpha_beta" }
-    ])
+    ]
     def _init( self, pdb_file, motif_type="alpha_beta", **kwargs ):
         self.pdb_file = os.path.abspath( pdb_file )
         self.motif_type = motif_type.split(",")

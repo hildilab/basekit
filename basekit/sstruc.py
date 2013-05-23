@@ -19,7 +19,7 @@ from utils.timer import Timer
 from utils.db import get_pdb_files, create_table
 from utils.job import do_parallel
 from utils.math import vec_angle
-from utils.tool import PyTool, make_args
+from utils.tool import PyTool
 
 import utils.numpdb as numpdb
 

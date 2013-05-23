@@ -4,7 +4,7 @@ from __future__ import division
 import os
 from string import Template
 
-from utils.tool import CmdTool, ScriptMixin, make_args
+from utils.tool import CmdTool, ScriptMixin
 from utils.numpdb import NumPdb, numsele
 
 
@@ -23,9 +23,9 @@ def fname( fpath ):
 
 
 class Spider( CmdTool, ScriptMixin ):
-    args = make_args([
+    args = [
         { "name": "script_file", "type": "file", "ext": "spi" }
-    ])
+    ]
     spi_tmpl_file = None
     tmpl_dir = TMPL_DIR
     def _init( self, script_file, script_ext="spi", data_ext="cpv", **kwargs ):
@@ -38,9 +38,9 @@ class Spider( CmdTool, ScriptMixin ):
 
 
 class SpiderConvert( Spider ):
-    args = make_args([
+    args = [
         { "name": "mrc_file", "type": "file", "ext": "mrc" }
-    ])
+    ]
     tmpl_file = "convert.spi"
     def _init( self, mrc_file, **kwargs ):
         script_file = self._make_script_file( mrc_file=fabs( mrc_file ) )
@@ -50,11 +50,11 @@ class SpiderConvert( Spider ):
 
 
 class SpiderDeleteFilledDensities( Spider ):
-    args = make_args([
+    args = [
         { "name": "map_file", "type": "file", "ext": "cpv" },
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
         { "name": "pixelsize", "type": "slider", "range": [1, 10], "fixed": True }
-    ])
+    ]
     tmpl_file = "delete_filled_densities.spi"
     def _init( self, map_file, pdb_file, pixelsize=1, **kwargs ):
         script_file = self._make_script_file( 
@@ -67,7 +67,7 @@ class SpiderDeleteFilledDensities( Spider ):
 
 
 class SpiderBox( Spider ):
-    args = make_args([
+    args = [
         { "name": "map_file", "type": "file", "ext": "cpv" },
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
         { "name": "res1", "type": "text" },
@@ -75,7 +75,7 @@ class SpiderBox( Spider ):
         { "name": "length", "type": "slider", "range": [1, 30] },
         { "name": "pixelsize", "type": "slider", "range": [1, 10], "fixed": True },
         { "name": "resolution", "type": "slider", "range": [1, 10], "fixed": True }
-    ])
+    ]
     tmpl_file = "box.spi"
     def _init( self, map_file, pdb_file, res1, res2, length, pixelsize, resolution, **kwargs ):
         coords1, coords2 = self._get_coords( fabs( pdb_file ), res1, res2 )
@@ -106,12 +106,12 @@ class SpiderBox( Spider ):
 
 
 class SpiderCrosscorrelation( Spider ):
-    args = make_args([
+    args = [
         { "name": "map_file1", "type": "file", "ext": "cpv" },
         { "name": "map_file2", "type": "file", "ext": "cpv" },
         { "name": "box_file", "type": "file", "ext": "cpv" },
         { "name": "loop_dir", "type": "text" }
-    ])
+    ]
     tmpl_file = "crosscorrelation.spi"
     def _init( self, map_file1, map_file2, box_file, loop_dir, **kwargs ):
         script_file = self._make_script_file( 

@@ -12,7 +12,7 @@ DOWSERX_CMD = "dowserx"
 DOWSER_REPEAT_CMD = "dowser-repeat"
 
 
-from utils.tool import CmdTool, make_args
+from utils.tool import CmdTool
 
 
 class Dowser( CmdTool ):

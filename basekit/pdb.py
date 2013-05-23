@@ -4,7 +4,11 @@ import os
 import re
 import urllib2
 
-from utils.tool import PyTool, make_args
+import numpy as np
+
+from utils.tool import PyTool
+from utils.timer import Timer
+from utils.numpdb import NumPdb, numdist
 
 
 
@@ -28,9 +32,9 @@ def pdb_download( pdb_id, output_file ):
 
 
 class PdbDownload( PyTool ):
-    args = make_args([
+    args = [
         { "name": "pdb_id", "type": "text" }
-    ])
+    ]
     def _init( self, pdb_id, **kwargs ):
         self.pdb_id = pdb_id.strip()[0:4]
         self.pdb_file = os.path.join( self.output_dir, "%s.pdb" % self.pdb_id )
@@ -67,12 +71,46 @@ def pdb_split( inputfile, output_dir ):
 
 
 class PdbSplit( PyTool ):
-    args = make_args([
+    args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" }
-    ])
+    ]
     def _init( self, pdb_file, **kwargs ):
         self.pdb_file = os.path.abspath( pdb_file )
         self.output_files = [] # TODO doesn't work here
     def func( self ):
         pdb_split( self.pdb_file, self.output_dir )
+
+
+
+
+
+def numpdb_test( pdb_file ):
+    with Timer("read/parse pdb plain"):
+        NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False} )
+    with Timer("read/parse pdb"):
+        npdb = NumPdb( pdb_file )
+    with Timer("dist"):
+        print npdb.dist( {"chain":"A"}, {"chain":"B"} )
+    with Timer("access phi/psi"):
+        print np.nansum( npdb['phi'] )
+    with Timer("sequence"):
+        print npdb.sequence( chain="A" )
+    with Timer("sstruc iter"):
+        for numa in npdb.iter_sstruc():
+            pass
+    with Timer("resno iter"):
+        for numa in npdb.iter_resno():
+            pass
+
+
+class NumpdbTest( PyTool ):
+    args = [
+        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+    ]
+    no_output = True
+    def _init( self, pdb_file, **kwargs ):
+        self.pdb_file = os.path.abspath( pdb_file )
+        self.output_files = [] # TODO doesn't work here
+    def func( self ):
+        numpdb_test( self.pdb_file )
 
