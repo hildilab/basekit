@@ -63,6 +63,16 @@ AA1 = {
 }
 AA3 = dict((v,k) for k, v in AA1.iteritems())
 
+ATOMS = { 
+    "CA": " CA ",
+    "CD1": " CD1",
+    "CD2": " CD2",
+    "N": " N  ",
+    "C": " C  ",
+    "O": " O  ",
+    "backbone": ( " CA ", " N  ", " C  ", " O  " ),
+    "mainchain": ( " CA ", " N  ", " C  " )
+}
 
 
 def numsele( string ):
@@ -124,6 +134,7 @@ pdb_cols=(
 
 
 
+
 class SstrucParser( SimpleParser ):
     def __init__( self ):
         self._list = []
@@ -181,16 +192,6 @@ def axis( coords ):
 
 
 class NumAtoms:
-    atomname_dict = { 
-        "CA": " CA ",
-        "CD1": " CD1",
-        "CD2": " CD2",
-        "N": " N  ",
-        "C": " C  ",
-        "O": " O  ",
-        "backbone": ( " CA ", " N  ", " C  ", " O  " ),
-        "mainchain": ( " CA ", " N  ", " C  " )
-    }
     def __init__( self, atoms, coords, flag=None ):
         self._atoms = atoms
         self._coords = coords
@@ -227,14 +228,14 @@ class NumAtoms:
         if atomname!=None:
             
             if isinstance( atomname, (list, tuple) ):
-                atomname = [ self.atomname_dict.get( a, a ) for a in atomname ]
+                atomname = [ ATOMS.get( a, a ) for a in atomname ]
                 sele &= reduce( 
                     lambda x, y: x | (atoms['atomname']==y), 
                     atomname[1:],
                     atoms['atomname']==atomname[0]
                 )
             else:
-                atomname = self.atomname_dict.get( atomname, atomname )
+                atomname = ATOMS.get( atomname, atomname )
                 sele &= atoms['atomname']==atomname
         return sele
     def slice( self, begin, end, flag=None ):
@@ -333,10 +334,12 @@ def numdist( numa1, numa2 ):
 class NumPdb:
     def __init__( self, pdb_path, features=None ):
         self.pdb_path = pdb_path
-        self.features = features or {
+        self.features = {
             "phi_psi": True,
-            "sstruc": True
+            "sstruc": True,
+            "backbone": False
         }
+        if features: self.features.update( features )
         self._parse()
     def __getattr__(self, attr):
         # delegate access off nonexistant attributes to the NumAtoms instance
@@ -362,8 +365,10 @@ class NumPdb:
         header = []
 
         with open( self.pdb_path, "r" ) as fp:
+            backbone = ATOMS['backbone']
+            bb = not self.features["backbone"]
             for line in fp:
-                if line.startswith("ATOM") and line[16] in [' ', 'A']:# or line.startswith("HETATM"):
+                if line[0:4]=="ATOM" and line[16] in (' ', 'A') and ( bb or line[12:16] in backbone ):
                     atoms.append( tuple([ line[ c[0]:c[1] ] for c in cols ] + extra) )
                 else:
                     header.append( line )

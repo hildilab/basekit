@@ -86,7 +86,9 @@ class PdbSplit( PyTool ):
 
 def numpdb_test( pdb_file ):
     with Timer("read/parse pdb plain"):
-        NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False} )
+        NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone": True} )
+    with Timer("read/parse pdb phi/psi"):
+        NumPdb( pdb_file, features={"sstruc": False} )
     with Timer("read/parse pdb"):
         npdb = NumPdb( pdb_file )
     with Timer("dist"):
@@ -110,7 +112,6 @@ class NumpdbTest( PyTool ):
     no_output = True
     def _init( self, pdb_file, **kwargs ):
         self.pdb_file = os.path.abspath( pdb_file )
-        self.output_files = [] # TODO doesn't work here
     def func( self ):
         numpdb_test( self.pdb_file )
 

@@ -1,4 +1,7 @@
 
 
-* numpdb: implement handling of hetero atoms
-* numpdb: empty sele objects should never do any selecting
+NUMPDB
+* implement handling of hetero atoms
+* handling of RNA/DNA aka nukleotides
+* option to only parse backbone atoms
+* option to flag (or only parse) complete residues (w.r.t. sidechain/ backbone atoms)
