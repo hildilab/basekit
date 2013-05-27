@@ -5,6 +5,7 @@ import operator
 import functools
 import itertools
 import collections
+import logging
 from collections import defaultdict
 from cStringIO import StringIO
 
@@ -12,6 +13,15 @@ import numpy as np
 
 from basekit.utils import try_int, get_index
 from math import dihedral, vec_dihedral, mag
+
+
+logging.basicConfig()
+LOG = logging.getLogger('numpdb')
+# LOG.setLevel( logging.ERROR )
+LOG.setLevel( logging.WARNING )
+# LOG.setLevel( logging.DEBUG )
+
+
 
 
 # https://pypi.python.org/pypi/Bottleneck
@@ -86,6 +96,10 @@ def numsele( string ):
     if chain[0]:
         sele["resno"] = int(chain[0])
     return sele
+
+
+def numdist( numa1, numa2 ):
+    return mag( numa1.center() - numa2.center() )
 
 
 
@@ -267,6 +281,7 @@ class NumAtoms:
             return indices
     def iter_chain( self, **sele ):
         coords, atoms = self._select( **sele )
+        if len(atoms)==0: return
         chain = atoms['chain'][0]
         k = 0
         l = 0
@@ -327,9 +342,6 @@ class NumAtoms:
         return mag( self.center( **sele1 ) - self.center( **sele2 ) )
 
 
-def numdist( numa1, numa2 ):
-    return mag( numa1.center() - numa2.center() )
-
 
 class NumPdb:
     def __init__( self, pdb_path, features=None ):
@@ -337,7 +349,7 @@ class NumPdb:
         self.features = {
             "phi_psi": True,
             "sstruc": True,
-            "backbone": False
+            "backbone_only": False
         }
         if features: self.features.update( features )
         self._parse()
@@ -366,9 +378,10 @@ class NumPdb:
 
         with open( self.pdb_path, "r" ) as fp:
             backbone = ATOMS['backbone']
-            bb = not self.features["backbone"]
+            nbo = not self.features["backbone_only"]
+            altloc = (' ', 'A', '1')
             for line in fp:
-                if line[0:4]=="ATOM" and line[16] in (' ', 'A') and ( bb or line[12:16] in backbone ):
+                if line[0:4]=="ATOM" and line[16] in altloc and ( nbo or line[12:16] in backbone ):
                     atoms.append( tuple([ line[ c[0]:c[1] ] for c in cols ] + extra) )
                 else:
                     header.append( line )
@@ -397,12 +410,15 @@ class NumPdb:
             self.__calc_sstruc()
     def __calc_sstruc( self ):
         for ss in self._sstruc:
-            idx_beg = self.index( chain=ss[1], resno=ss[2], first=True )
-            idx_end = self.index( chain=ss[3], resno=ss[4], last=True )
-            if ss[0]==HELIX:
-                self.slice( idx_beg, idx_end )['sstruc'] = "H"
-            elif ss[0]==SHEET:
-                self.slice( idx_beg, idx_end )['sstruc'] = "E"
+            try:
+                idx_beg = self.index( chain=ss[1], resno=ss[2], first=True )
+                idx_end = self.index( chain=ss[3], resno=ss[4], last=True )
+                if ss[0]==HELIX:
+                    self.slice( idx_beg, idx_end )['sstruc'] = "H"
+                elif ss[0]==SHEET:
+                    self.slice( idx_beg, idx_end )['sstruc'] = "E"
+            except Exception as e:
+                LOG.error( "calc sstruc (%s) => %s" % ( e, ss ) )
     def __calc_phi_psi( self ):
         sele = { "atomname": ["N", "CA", "C"] }
 
@@ -421,8 +437,10 @@ class NumPdb:
                 na_next['phi'] = dihedral( xyz_c, xyz_n_next, xyz_ca_next, xyz_c_next )
                 na_curr['psi'] = dihedral( xyz_n, xyz_ca, xyz_c, xyz_n_next )
                 xyz_n_ca_c = ( xyz_n_next, xyz_ca_next, xyz_c_next )
-            except:
-                pass
+            except Exception as e:
+                LOG.error( "calc phi/psi (%s) => %s, %s, %s" % (
+                    e, na_prev['atomname'], na_curr['atomname'], na_next['atomname'] 
+                ))
         #for a in self._atoms: print a
 
 

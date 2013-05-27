@@ -86,7 +86,7 @@ class PdbSplit( PyTool ):
 
 def numpdb_test( pdb_file ):
     with Timer("read/parse pdb plain"):
-        NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone": True} )
+        NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone_only": True} )
     with Timer("read/parse pdb phi/psi"):
         NumPdb( pdb_file, features={"sstruc": False} )
     with Timer("read/parse pdb"):
@@ -95,14 +95,15 @@ def numpdb_test( pdb_file ):
         print npdb.dist( {"chain":"A"}, {"chain":"B"} )
     with Timer("access phi/psi"):
         print np.nansum( npdb['phi'] )
-    with Timer("sequence"):
-        print npdb.sequence( chain="A" )
     with Timer("sstruc iter"):
         for numa in npdb.iter_sstruc():
             pass
     with Timer("resno iter"):
-        for numa in npdb.iter_resno():
+        for numa in npdb.iter_resno( chain="A" ):
             pass
+    with Timer("sequence"):
+        first_chain = npdb["chain"][0]
+        print npdb.sequence( chain=first_chain )
 
 
 class NumpdbTest( PyTool ):
