@@ -86,6 +86,13 @@ class PdbSplit( PyTool ):
 
 def numpdb_test( pdb_file ):
     with Timer("read/parse pdb plain"):
+        NumPdb( pdb_file, features={
+            "phi_psi": False, 
+            "sstruc": False, 
+            "backbone_only": True,
+            "detect_incomplete": False
+        })
+    with Timer("read/parse pdb incomplete"):
         NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone_only": True} )
     with Timer("read/parse pdb phi/psi"):
         NumPdb( pdb_file, features={"sstruc": False} )

@@ -6,7 +6,6 @@ import functools
 import itertools
 import collections
 import logging
-from collections import defaultdict
 from cStringIO import StringIO
 
 import numpy as np
@@ -80,8 +79,8 @@ ATOMS = {
     "N": " N  ",
     "C": " C  ",
     "O": " O  ",
-    "backbone": ( " CA ", " N  ", " C  ", " O  " ),
-    "mainchain": ( " CA ", " N  ", " C  " )
+    "backbone": frozenset([ " N  ", " CA ", " C  ", " O  " ]),
+    "mainchain": frozenset([ " N  ", " CA ", " C  " ])
 }
 
 
@@ -226,28 +225,23 @@ class NumAtoms:
         if sele==None:
             sele = np.ones( self.length, bool )
         if chain!=None:
-            if isinstance( chain, (list, tuple) ):
-                sele &= reduce( 
-                    lambda x, y: x | (atoms['chain']==y), 
-                    chain[1:],
-                    atoms['chain']==chain[0]
-                )
+            if isinstance( chain, collections.Iterable ):
+                tmps = atoms['chain']==chain[0]
+                for an in chain[1:]: tmps |= atoms['chain']==an
+                sele &= tmps
             else:
                 sele &= atoms['chain']==chain
         if resno!=None:
-            if isinstance( resno, (list, tuple) ):
+            if isinstance( resno, collections.Iterable ):
                 sele &= (atoms['resno']>=resno[0]) & (atoms['resno']<=resno[1])
             else:
                 sele &= atoms['resno']==resno
         if atomname!=None:
-            
-            if isinstance( atomname, (list, tuple) ):
+            if isinstance( atomname, collections.Iterable ):
                 atomname = [ ATOMS.get( a, a ) for a in atomname ]
-                sele &= reduce( 
-                    lambda x, y: x | (atoms['atomname']==y), 
-                    atomname[1:],
-                    atoms['atomname']==atomname[0]
-                )
+                tmps = atoms['atomname']==atomname[0]
+                for an in atomname[1:]: tmps |= atoms['atomname']==an
+                sele &= tmps
             else:
                 atomname = ATOMS.get( atomname, atomname )
                 sele &= atoms['atomname']==atomname
@@ -349,7 +343,8 @@ class NumPdb:
         self.features = {
             "phi_psi": True,
             "sstruc": True,
-            "backbone_only": False
+            "backbone_only": False,
+            "detect_incomplete": True
         }
         if features: self.features.update( features )
         self._parse()
@@ -365,6 +360,9 @@ class NumPdb:
 
         extra = []
         parsers = {}
+        if self.features["detect_incomplete"]:
+            types += [ ( 'incomplete', np.bool ) ]
+            extra += [ False ]
         if self.features["phi_psi"]:
             types += [ ( 'phi', np.float ), ( 'psi', np.float ) ]
             extra += [ np.nan, np.nan ]
@@ -392,22 +390,34 @@ class NumPdb:
             p=parsers.get( name )
             if p:
                 self.__dict__[ "_"+name ] = p.get()
-        
+
         atoms = np.array(atoms, dtype=types)
         coords = np.vstack(( atoms['x'], atoms['y'], atoms['z'] )).T
         # print np.may_share_memory( self.atoms, self.coords )
         # print self.atoms.flags.owndata, self.coords.flags.owndata
 
-        self.numatoms = NumAtoms( atoms, coords )
         self._atoms = atoms
         self._coords = coords
         self._header = header
+        self.numatoms = NumAtoms( self._atoms, self._coords )
 
         self.length = len( atoms )
+        if self.features["detect_incomplete"]:
+            self.__calc_incomplete()
         if self.features["phi_psi"]:
             self.__calc_phi_psi()
         if self.features["sstruc"]:
             self.__calc_sstruc()
+    def __calc_incomplete( self ):
+        backbone = ATOMS['backbone']
+        for numa in self.iter_resno():
+            if not backbone.issubset( numa["atomname"] ):
+                numa['incomplete'] = True
+                # print numa._atoms
+        sele = self._atoms["incomplete"]==False
+        self._atoms = self._atoms[ sele ]
+        self._coords = self._coords[ sele ]
+        self.numatoms = NumAtoms( self._atoms, self._coords )
     def __calc_sstruc( self ):
         for ss in self._sstruc:
             try:
@@ -420,28 +430,18 @@ class NumPdb:
             except Exception as e:
                 LOG.error( "calc sstruc (%s) => %s" % ( e, ss ) )
     def __calc_phi_psi( self ):
-        sele = { "atomname": ["N", "CA", "C"] }
-
-        for na_prev, na_curr, na_next in self.iter_resno2( 3 ):
+        mainchain = ATOMS['mainchain']
+        for na_curr, na_next in self.iter_resno2( 2 ):
             try:
-                if na_prev.flag:
-                    xyz_n_prev, xyz_ca_prev, xyz_c_prev = na_prev.get( 'xyz', **sele )
-                    xyz_n, xyz_ca, xyz_c = na_curr.get( 'xyz', **sele )
-                    xyz_n_next, xyz_ca_next, xyz_c_next = na_next.get( 'xyz', **sele )
-                    na_prev['psi'] = dihedral( xyz_n_prev, xyz_ca_prev, xyz_c_prev, xyz_n )
-                    na_curr['phi'] = dihedral( xyz_c_prev, xyz_n, xyz_ca, xyz_c )
-                else:
-                    xyz_n, xyz_ca, xyz_c = xyz_n_ca_c
-                    xyz_n_next, xyz_ca_next, xyz_c_next = na_next.get( 'xyz', **sele )
-                
-                na_next['phi'] = dihedral( xyz_c, xyz_n_next, xyz_ca_next, xyz_c_next )
+                xyz_n, xyz_ca, xyz_c = na_curr.get( 'xyz', atomname=mainchain )
+                xyz_n_next, xyz_ca_next, xyz_c_next = na_next.get( 'xyz', atomname=mainchain )
                 na_curr['psi'] = dihedral( xyz_n, xyz_ca, xyz_c, xyz_n_next )
-                xyz_n_ca_c = ( xyz_n_next, xyz_ca_next, xyz_c_next )
+                na_next['phi'] = dihedral( xyz_c, xyz_n_next, xyz_ca_next, xyz_c_next )
             except Exception as e:
-                LOG.error( "calc phi/psi (%s) => %s, %s, %s" % (
-                    e, na_prev['atomname'], na_curr['atomname'], na_next['atomname'] 
+                LOG.error( "calc phi/psi (%s) => %s, %s" % (
+                    e, na_curr['atomname'], na_next['atomname']
                 ))
-        #for a in self._atoms: print a
+        #for a in self.iter_resno(): print a._atoms[0]
 
 
 
