@@ -139,7 +139,7 @@ pdb_dtype=[
     ('bfac', np.float)          # 15
 ]
 # pdb_usecols=(3,4,5,7,8,11,12,13)
-pdb_usecols=(3,4,5,7,8,11,12,13)
+pdb_usecols=(3,4,5,7,8,9,11,12,13)
 pdb_cols=( 
     (0,6), (6,11), (11,12), (12,16), (16,17), (17,20), (20,21), (21,22), 
     (22,26), (26,27), (27,30), (30,38), (38,46), (46,54), (54,60), (60,66)
@@ -301,22 +301,36 @@ class NumAtoms:
             yield numatoms.slice( k, l )
     def iter_resno( self, **sele ):
         for numatoms in self.iter_chain( **sele ):
-            resno = numatoms['resno'][0]
+            
+            def get_slice( k, l, numa_prev ):
+                numa = numatoms.slice( k, l, flag=True )
+                if numa_prev:
+                    if numa_prev['resno'][0]==numa['resno'][0]-1:
+                        flag = False
+                    elif numdist( numa_prev.copy( atomname="C" ), numa.copy( atomname="N" ) ) > 1.4:
+                        flag = True
+                    else:
+                        flag = False
+                    numa.flag = flag
+                return numa
+
+            res = ( numatoms['resno'][0], numatoms['insertion'][0] )
+            numa_prev = None
             atoms = numatoms._atoms
             k = 0
             l = 0
-            flag = True
+
             for a in atoms:
-                if resno!=a['resno']:
-                    yield numatoms.slice( k, l, flag=flag )
+                if res!=( a['resno'], a['insertion'] ):
+                    numa = get_slice( k, l, numa_prev )
+                    yield numa
                     k = l
-                    # detect chain breaks
-                    flag = True if (resno!=a['resno']-1) else False
-                    resno = a['resno']
+                    res = ( a['resno'], a['insertion'] )
+                    numa_prev = numa
                 l += 1
-            yield numatoms.slice( k, l, flag=flag )
+            yield get_slice( k, l, numa_prev )
     def iter_resno2( self, window, **sele ):
-        # TODO assumes the first a has a.flag==True
+        # (TODO) assumes the first a has a.flag==True
         it = self.iter_resno( **sele )
         for a in it:
             if a.flag:
@@ -451,7 +465,7 @@ class NumPdb:
                 LOG.error( "calc phi/psi (%s) => %s, %s" % (
                     e, na_curr['atomname'], na_next['atomname']
                 ))
-        #for a in self.iter_resno(): print a._atoms[0]
+        # for a in self.iter_resno(): print a._atoms[0], a.flag
 
 
 
