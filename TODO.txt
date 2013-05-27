@@ -3,7 +3,6 @@
 NUMPDB
 * implement handling of hetero atoms
 * handling of RNA/DNA aka nukleotides
-* option to only parse backbone atoms => rename "backbone_only"
-* option to flag (or only parse) complete residues (w.r.t. sidechain/ backbone atoms) => name "detect_incomplete"
+* option to flag (or only parse) complete residues (w.r.t. sidechain/ backbone atoms)
+	=> name "detect_incomplete" [done for backbone]
 * http://docs.python.org/2/library/itertools.html#itertools.groupby
-* iter_resno2: check if the first window has additional flags set (i.e. chain breaks)

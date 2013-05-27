@@ -316,12 +316,22 @@ class NumAtoms:
                 l += 1
             yield numatoms.slice( k, l, flag=flag )
     def iter_resno2( self, window, **sele ):
-        # TODO assumes the first a has a[2]=True and
-        #   the first results window has no additional a[2]=True
+        # TODO assumes the first a has a.flag==True
         it = self.iter_resno( **sele )
         for a in it:
             if a.flag:
-                result = (a,) + tuple(itertools.islice(it, window-1))
+                result = [ a ]
+                for b in it:
+                    if b.flag: 
+                        result = [ b ]
+                    else: 
+                        result.append( b )
+                    if len( result ) == window:
+                        break
+                if len( result ) == window:
+                    result = tuple(result)
+                else:
+                    return
             else:
                 result = result[1:] + (a,)
             yield result

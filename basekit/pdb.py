@@ -98,19 +98,22 @@ def numpdb_test( pdb_file ):
         NumPdb( pdb_file, features={"sstruc": False} )
     with Timer("read/parse pdb"):
         npdb = NumPdb( pdb_file )
-    with Timer("dist"):
-        print npdb.dist( {"chain":"A"}, {"chain":"B"} )
+    with Timer("resno iter2"):
+        for numa_list in npdb.iter_resno2( 6, chain="A", resno=[1,22] ):
+            print [ numa["resno"][0] for numa in numa_list ]
+    # with Timer("dist"):
+    #     print npdb.dist( {"chain":"A"}, {"chain":"B"} )
     with Timer("access phi/psi"):
         print np.nansum( npdb['phi'] )
-    with Timer("sstruc iter"):
-        for numa in npdb.iter_sstruc():
-            pass
-    with Timer("resno iter"):
-        for numa in npdb.iter_resno( chain="A" ):
-            pass
-    with Timer("sequence"):
-        first_chain = npdb["chain"][0]
-        print npdb.sequence( chain=first_chain )
+    # with Timer("sstruc iter"):
+    #     for numa in npdb.iter_sstruc():
+    #         pass
+    # with Timer("resno iter"):
+    #     for numa in npdb.iter_resno( chain="A" ):
+    #         pass
+    # with Timer("sequence"):
+    #     first_chain = npdb["chain"][0]
+    #     print npdb.sequence( chain=first_chain )
 
 
 class NumpdbTest( PyTool ):
