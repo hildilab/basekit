@@ -237,7 +237,7 @@ class NumAtoms:
             else:
                 sele &= atoms['resno']==resno
         if atomname!=None:
-            if isinstance( atomname, collections.Iterable ):
+            if isinstance( atomname, collections.Iterable ) and not isinstance( atomname, basestring ):
                 atomname = [ ATOMS.get( a, a ) for a in atomname ]
                 tmps = atoms['atomname']==atomname[0]
                 for an in atomname[1:]: tmps |= atoms['atomname']==an
