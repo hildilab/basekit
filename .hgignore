@@ -14,5 +14,6 @@ Icon*
 *.pyc
 
 data/test/*
+data/voronoia/get_volume.lg
 
 basekit.egg-info/*
