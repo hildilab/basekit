@@ -46,39 +46,40 @@ class PdbDownload( PyTool ):
 
 
 
-def pdb_split( inputfile, output_dir ):
+def pdb_split( pdb_file, output_dir, backbone_only=False ):
     """ author: Johanna Thiemann
+        author: Alexander Rose
         This function puts pdb-models into their own file.
     """ 
-    BASE = re.sub("\..*$", "", re.sub("/.*$", "", inputfile[::-1])[::-1])
-    with open( inputfile, "r" ) as fp_in:
-        number=0
-        for zeile in fp_in:
-            if zeile.startswith('MODEL'):
-                number=number+1
-                newfile=open(outputDir+'/'+str(number).zfill(2)+'.pdb', 'w')
-                newfilebb=open(outputDir+'/'+str(number).zfill(2)+'_bb.pdb', 'w')
-            elif zeile.startswith('ATOM'):
-                newfile.write(zeile)
-                type=(' N ',' C ', ' CA ',' O ')
-                for elem in type:
-                    if elem in zeile: newfilebb.write(zeile)
-            elif zeile.startswith('ENDMDL'):
-                newfile.write('END')
-                newfile.close()
-                newfilebb.write('END')
-                newfilebb.close()
+    backbone = ( ' N  ',' C  ', ' CA ',' O  ' )
+    bb_tag = "_bb" if backbone_only else ""
+    model_no=0
+    with open( pdb_file, "r" ) as fp:
+        for line in fp:
+            if line[0:5]=='MODEL':
+                model_no += 1
+                file_name = "%05i%s.pdb" % ( model_no, bb_tag )
+                file_path = os.path.join( output_dir, file_name )
+                with open( file_path, 'w') as fp_out:
+                    for line in fp:
+                        if line[0:4]=='ATOM' and ( not backbone_only or line[12:16] in backbone ):
+                            fp_out.write( line )
+                        elif line[0:6]=='ENDMDL':
+                            fp_out.write( 'END' )
+                            break
 
 
 class PdbSplit( PyTool ):
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+        { "name": "pdb_file", "type": "file", "ext": "pdb" },
+        { "name": "backbone_only", "type": "checkbox", "default_value": False }
     ]
-    def _init( self, pdb_file, **kwargs ):
+    def _init( self, pdb_file, backbone_only=False, **kwargs ):
         self.pdb_file = os.path.abspath( pdb_file )
+        self.backbone_only = backbone_only
         self.output_files = [] # TODO doesn't work here
     def func( self ):
-        pdb_split( self.pdb_file, self.output_dir )
+        pdb_split( self.pdb_file, self.output_dir, backbone_only=self.backbone_only )
 
 
 
