@@ -26,7 +26,7 @@ LINKIT_CMD = os.path.join( LINKIT_DIR, "Link_It_dos2.exe" )
 
 
 
-class Linker( CmdTool ):
+class LinkIt( CmdTool ):
     args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
         { "name": "res1", "type": "text" },
@@ -38,14 +38,20 @@ class Linker( CmdTool ):
         stem = os.path.splitext( os.path.split( self.pdb_file )[-1] )[0]
         self.bin_file = os.path.join( self.output_dir, "%s_linker.bin" % stem )
         self.txt_file = os.path.join( self.output_dir, "%s_linker.txt" % stem )
+        self.pdb_linker_file = os.path.join( self.output_dir, "%s_linker.pdb" % stem )
+        self.pdb_linker_file2 = os.path.join( self.output_dir, "%s_linker2.pdb" % stem )
         self.kos_file = os.path.join( self.output_dir, "%s_kos.txt" % stem )
         self.res1 = res1
         self.res2 = res2
         self.seq = seq
         self.cmd = [ "wine", LINKIT_CMD, self.kos_file, self.bin_file, "t" ]
         self.output_files = [ 
-            self.bin_file, self.txt_file
+            self.bin_file, self.txt_file, self.pdb_linker_file
         ]
+    def _pre_exec( self ):
+        self._make_kos()
+    def _post_exec( self ):
+        self._fix_linker_pdb()
     def _make_kos( self ):
         npdb = NumPdb( self.pdb_file, features={ 
             "phi_psi": False, "sstruc": False, "backbone_only": True
@@ -62,8 +68,17 @@ class Linker( CmdTool ):
             fp.write( "%s\n" % self.seq )
             for sele in ( sele1, sele2 ):
                 fp.write( "%s\t%s\n" % ( sele.get("chain", " "), sele["resno"] ) )
-    def _pre_exec( self ):
-        self._make_kos()
+    def _fix_linker_pdb( self ):
+        with open( self.pdb_linker_file, "r" ) as fp:
+            with open( self.pdb_linker_file2, "w" ) as fp_out:
+                for i, line in enumerate( fp ):
+                    if line.startswith("ATOM") and line[22]=="X":
+                        tag = "1000 " if line[24]==" " else "2000 "
+                        fp_out.write( line[0:22] + tag + line[27:] )
+                    else:
+                        fp_out.write( line )
+
+    
 
 
 
