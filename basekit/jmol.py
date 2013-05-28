@@ -12,7 +12,7 @@ TMPL_DIR = os.path.join( PARENT_DIR, "data", "jmol" )
 JAVA_CMD = "java" 
 
 JMOL_PATH = os.environ.get("JMOL_PATH", "")
-JMOL_JAR = os.path.join( JMOL_PATH, "Jmol.jar" )
+JMOL_JAR = os.path.join( JMOL_PATH, "JmolData.jar" )
 
 
 
@@ -25,7 +25,7 @@ class Jmol( CmdTool, ScriptMixin ):
     def _init( self, script_file, **kwargs ):
         self.script_file = os.path.abspath( script_file )
         self.cmd = [
-            JAVA_CMD, "-Xmx4096M", "-jar", JMOL_JAR, "-ionx", "-s", self.script_file
+            JAVA_CMD, "-Xmx4096M", "-jar", JMOL_JAR, "-oxdl", "-s", self.script_file
         ]
 
 
@@ -39,21 +39,26 @@ class JmolImage( Jmol ):
     ]
     tmpl_file = "image.jspt"
     def _init( self, jmol_file, scale="", width="", height="", cartoon_fancy=True, **kwargs ):
-    	width = str(width) if width else "0"
-    	height = str(height) if height else "0"
-    	scale = str(scale) if scale else "0"
-    	cartoon_fancy = "true" if cartoon_fancy else "false"
-        script_file = self._make_script_file(
-        	jmol_file=os.path.abspath( jmol_file ),
-        	scale=scale,
-        	width=width,
-        	height=height,
-        	cartoon_fancy=cartoon_fancy
-    	)
-        super(JmolImage, self)._init( script_file )
+        self.jmol_file = os.path.abspath( jmol_file )
+        self.width = str(width) if width else "0"
+        self.height = str(height) if height else "0"
+        self.scale = str(scale) if scale else "0"
+        self.cartoon_fancy = "true" if cartoon_fancy else "false"
+        self.script_file = os.path.join( self.output_dir, self.tmpl_file )
+        self.image_file = os.path.join( self.output_dir, "image.jpg" )
+        super(JmolImage, self)._init( self.script_file )
         self.output_files = [ "image.jpg" ]
+    def _pre_exec( self ):
+        self._make_script_file(
+            jmol_file=self.jmol_file,
+            scale=self.scale,
+            width=self.width,
+            height=self.height,
+            cartoon_fancy=self.cartoon_fancy,
+            image_file=self.image_file
+        )
 
 
 class JmolMovie( Jmol ):
-	pass
+    pass
 
