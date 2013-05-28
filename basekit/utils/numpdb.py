@@ -396,19 +396,38 @@ class NumPdb:
             parsers[ "sstruc" ] = SstrucParser()
 
         atoms = []
+        atoms_append = atoms.append
         header = []
+        header_append = header.append
 
         with open( self.pdb_path, "r" ) as fp:
             backbone = ATOMS['backbone']
             nbo = not self.features["backbone_only"]
             altloc = (' ', 'A', '1')
+            keys = ('ATOM  ', 'HETATM', 'MODEL ')
+            ftell = fp.tell
+            parsrs = parsers.values()
+            tupl = tuple
+
+            x = ftell()
             for line in fp:
-                if line[0:4]=="ATOM" and line[16] in altloc and ( nbo or line[12:16] in backbone ):
-                    atoms.append( tuple([ line[ c[0]:c[1] ] for c in cols ] + extra) )
-                else:
-                    header.append( line )
-                    for p in parsers.values():
-                        p( line )
+                if line[0:6] in keys:
+                    break
+                x = ftell()
+                header_append( line )
+                for p in parsrs:
+                    p( line )
+            
+            fp.seek(x)
+            for line in fp:
+                if line[0:4]=="ATOM":
+                    if ( nbo or line[12:16] in backbone ) and line[16] in altloc:
+                        atoms_append( tupl( [ line[ c[0]:c[1] ] for c in cols ] + extra ) )
+                elif line[0:5]=="MODEL":
+                    pass
+                elif line[0:6]=="CONECT":
+                    break
+                    
 
         for name in parsers.keys():
             p=parsers.get( name )
@@ -433,9 +452,9 @@ class NumPdb:
         if self.features["sstruc"]:
             self.__calc_sstruc()
     def __calc_incomplete( self ):
-        backbone = ATOMS['backbone']
+        bb_subset = ATOMS['backbone'].issubset
         for numa in self.iter_resno():
-            if not backbone.issubset( numa["atomname"] ):
+            if not bb_subset( numa["atomname"] ):
                 numa['incomplete'] = True
                 # print numa._atoms
         sele = self._atoms["incomplete"]==False
@@ -453,7 +472,7 @@ class NumPdb:
                     self.slice( idx_beg, idx_end )['sstruc'] = "E"
             except Exception as e:
                 LOG.error( "calc sstruc (%s) => %s" % ( e, ss ) )
-    def __calc_phi_psi( self ):
+    def __calc_phi_psi( self, dihedral=dihedral ):
         mainchain = ATOMS['mainchain']
         for na_curr, na_next in self.iter_resno2( 2 ):
             try:
