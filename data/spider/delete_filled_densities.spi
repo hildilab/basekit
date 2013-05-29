@@ -3,6 +3,7 @@
 ;script zu löschen von dichten die bereits von der PDB structure besetzt sind
 ;input files
 
+
 [map]='${map_name}'
 [pdb]='${pdb_file}'
 [tmp_dir]='${tmp_dir}'

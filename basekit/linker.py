@@ -4,12 +4,14 @@ from __future__ import division
 
 
 import os
+import itertools
 
 from utils import copy_dict
-from utils.tool import CmdTool
+from utils.tool import Tool, CmdTool
 from utils.numpdb import NumPdb, numsele
 
 import provi_prep as provi
+from spider import LoopCrosscorrel
 
 
 
@@ -46,7 +48,7 @@ class LinkIt( CmdTool ):
         self.seq = seq
         self.cmd = [ "wine", LINKIT_CMD, self.kos_file, self.bin_file, "t" ]
         self.output_files = [ 
-            self.bin_file, self.txt_file, self.pdb_linker_file
+            self.bin_file, self.txt_file, self.pdb_linker_file, self.pdb_linker_file2
         ]
     def _pre_exec( self ):
         self._make_kos()
@@ -79,6 +81,40 @@ class LinkIt( CmdTool ):
                         fp_out.write( line )
 
     
+
+class LinkItDensity( Tool ):
+    args = [
+        { "name": "pdb_file", "type": "file", "ext": "pdb" },
+        { "name": "mrc_file", "type": "file", "ext": "mrc" },
+        { "name": "res1", "type": "text" },
+        { "name": "res2", "type": "text" },
+        { "name": "seq", "type": "text" },
+        { "name": "pixelsize", "type": "slider", "range": [1, 10], "fixed": True },
+        { "name": "resolution", "type": "slider", "range": [1, 10], "fixed": True },
+        { "name": "max_loops", "type": "slider", "range": [0, 200], "default_value": 100 }
+    ]
+    def _init( self, pdb_file, mrc_file, res1, res2, seq, 
+               pixelsize, resolution, max_loops=100, **kwargs ):
+        def outdir( subdir ):
+            return os.path.join( self.output_dir, subdir )
+        self.pdb_file = os.path.abspath( pdb_file )
+        self.mrc_file = os.path.abspath( mrc_file )
+        self.link_it = LinkIt( 
+            self.pdb_file, res1, res2, seq,
+            **copy_dict( kwargs, run=False, output_dir=outdir("linkt_it") )
+        )
+        self.loop_correl = LoopCrosscorrel(
+            self.mrc_file, self.pdb_file, self.link_it.pdb_linker_file2, 
+            res1, res2, len(seq), pixelsize, resolution, max_loops=max_loops,
+            **copy_dict( kwargs, run=False, output_dir=outdir("loop_correl") )
+        )
+        self.output_files = list( itertools.chain(
+            self.link_it.output_files, 
+            self.loop_correl.output_files
+        ))
+    def _pre_exec( self ):
+        self.link_it()
+        self.loop_correl()
 
 
 

@@ -1,8 +1,8 @@
 ; author: jochen ismer
 
 ;boxgroesse etc. aus dem ergebnis von box.spi auslesen
-[usermap]='${map_name1}'
-[usermapb]='${map_name2}'
+[usermap]='${map_name}'
+[usermapb]='${box_map_name}'
 UD IC 1,[bs],[obenlinks1],[obenlinks2],[obenlinks3],[ps], [rs]
 ${box_name}
 ;Groesse Usermap
@@ -10,11 +10,11 @@ FI [x8],[x9],[x10]
 [usermap]
 1,2,12
 ;anzahl der linker??
-[nl]=10
+[nl]=${max_loops}
 ;Loops zu maps machen
 
 DO  [y]=1,[nl]
- [filename]='${loop_dir}{**[y]}_bb.pdb' 
+ [filename]='${loop_dir}{***[y]}_bb.pdb' 
 ;Dichten aus PDB erstellen
  CP FROM PDB
  [filename]

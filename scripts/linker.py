@@ -1,13 +1,17 @@
 #! /usr/bin/env python
 
-from basekit.utils.tool import parse_args
-from basekit.linker import LinkIt
+from basekit.utils.tool import parse_subargs
+from basekit.linker import LinkIt, LinkItDensity
 
 
 
 def main():
-    args, kwargs = parse_args( LinkIt )
-    print LinkIt( *args, **kwargs )
+    tools = {
+        "linkit": LinkIt, 
+        "linkit+dens": LinkItDensity
+    }
+    Tool, args, kwargs = parse_subargs( tools )
+    print Tool( *args, **kwargs )
 
 
 if __name__ == "__main__":
