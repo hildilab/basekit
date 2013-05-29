@@ -99,9 +99,9 @@ def numpdb_test( pdb_file ):
         NumPdb( pdb_file, features={"sstruc": False} )
     with Timer("read/parse pdb"):
         npdb = NumPdb( pdb_file )
-    with Timer("resno iter2"):
-        for numa_list in npdb.iter_resno2( 6, chain="A", resno=[1,22] ):
-            print [ numa["resno"][0] for numa in numa_list ]
+    # with Timer("resno iter2"):
+    #     for numa_list in npdb.iter_resno2( 6, chain="A", resno=[1,22] ):
+    #         print [ numa["resno"][0] for numa in numa_list ]
     # with Timer("dist"):
     #     print npdb.dist( {"chain":"A"}, {"chain":"B"} )
     with Timer("access phi/psi"):

@@ -405,21 +405,17 @@ class NumPdb:
             nbo = not self.features["backbone_only"]
             altloc = (' ', 'A', '1')
             keys = ('ATOM  ', 'HETATM', 'MODEL ')
-            ftell = fp.tell
             parsrs = parsers.values()
             tupl = tuple
 
-            x = ftell()
             for line in fp:
                 if line[0:6] in keys:
                     break
-                x = ftell()
                 header_append( line )
                 for p in parsrs:
                     p( line )
             
-            fp.seek(x)
-            for line in fp:
+            for line in itertools.chain( [line], fp ):
                 if line[0:4]=="ATOM":
                     if ( nbo or line[12:16] in backbone ) and line[16] in altloc:
                         atoms_append( tupl( [ line[ c[0]:c[1] ] for c in cols ] + extra ) )
@@ -428,7 +424,6 @@ class NumPdb:
                 elif line[0:6]=="CONECT":
                     break
                     
-
         for name in parsers.keys():
             p=parsers.get( name )
             if p:
