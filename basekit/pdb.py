@@ -46,40 +46,68 @@ class PdbDownload( PyTool ):
 
 
 
-def pdb_split( pdb_file, output_dir, backbone_only=False ):
+def pdb_split( pdb_file, output_dir, backbone_only=False, 
+               resno_ignore=False, max_models=False, zfill=False ):
     """ author: Johanna Thiemann
         author: Alexander Rose
         This function puts pdb-models into their own file.
     """ 
     backbone = ( ' N  ',' C  ', ' CA ',' O  ' )
     bb_tag = "_bb" if backbone_only else ""
-    model_no=0
+    model_no = 0
+    if max_models and not zfill:
+        zfill = len( str(max_models) )
     with open( pdb_file, "r" ) as fp:
         for line in fp:
             if line[0:5]=='MODEL':
                 model_no += 1
-                file_name = "%05i%s.pdb" % ( model_no, bb_tag )
+                if max_models and model_no>max_models:
+                    break
+                file_name = "%s%s.pdb" % ( str(model_no).zfill( zfill ), bb_tag )
                 file_path = os.path.join( output_dir, file_name )
                 with open( file_path, 'w') as fp_out:
                     for line in fp:
-                        if line[0:4]=='ATOM' and ( not backbone_only or line[12:16] in backbone ):
-                            fp_out.write( line )
-                        elif line[0:6]=='ENDMDL':
-                            fp_out.write( 'END' )
-                            break
+                        if line[0:4]!='ATOM':
+                            if line[0:6]=='ENDMDL':
+                                fp_out.write( 'END' )
+                                break
+                            continue
+                        if backbone_only and line[12:16] not in backbone:
+                            continue
+                        if resno_ignore and int( line[22:26] ) in resno_ignore:
+                            continue
+                        fp_out.write( line )
+                        
 
 
 class PdbSplit( PyTool ):
     args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
-        { "name": "backbone_only", "type": "checkbox", "default_value": False }
+        { "name": "backbone_only", "type": "checkbox", "default_value": False },
+        { "name": "max_models", "type": "slider", "range": [0, 100], "default_value": 0 },
+        { "name": "resno_ignore", "type": "text", "default_value": "" }
     ]
-    def _init( self, pdb_file, backbone_only=False, **kwargs ):
+    def _init( self, pdb_file, backbone_only=False, max_models=False, 
+               resno_ignore=False, zfill=False, **kwargs ):
         self.pdb_file = os.path.abspath( pdb_file )
         self.backbone_only = backbone_only
+        self.max_models = int( max_models )
+        self.zfill = int( zfill )
+        self.resno_ignore = False
+        if resno_ignore:
+            if isinstance( resno_ignore, basestring ):
+                self.resno_ignore = map( int, resno_ignore.split(",") )
+            else:
+                self.resno_ignore = resno_ignore
         self.output_files = [] # TODO doesn't work here
     def func( self ):
-        pdb_split( self.pdb_file, self.output_dir, backbone_only=self.backbone_only )
+        pdb_split( 
+            self.pdb_file, self.output_dir, 
+            backbone_only=self.backbone_only,
+            max_models=self.max_models,
+            resno_ignore=self.resno_ignore,
+            zfill=self.zfill
+        )
 
 
 
