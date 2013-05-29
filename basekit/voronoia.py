@@ -4,6 +4,7 @@ from __future__ import division
 
 
 import os
+import json
 
 from utils import copy_dict
 from utils.tool import CmdTool
@@ -30,12 +31,45 @@ class Voronoia( CmdTool ):
     	self.pdb_file = os.path.abspath( pdb_file )
     	stem = os.path.splitext( os.path.split( self.pdb_file )[-1] )[0]
         self.vol_file = "%s.vol" % stem
+        self.provi_file = "vol.provi"
         self.cmd = [ 
             "wine", VOLUME_CMD, "ex:%0.1f"%float(ex), "rad:%s"%radii,
             "i:%s"%self.pdb_file, "o:%s"%self.vol_file
         ]
         self.output_files = [ 
-        	self.vol_file
+        	self.vol_file, self.provi_file
     	]
     def _post_exec( self ):
-        provi.prep_volume(  self.vol_file, self.pdb_file )
+        provi.prep_volume( self.vol_file, self.pdb_file )
+        self._make_provi()
+    def _make_provi( self ):
+        provi_json = [
+            { 
+                "filename": os.path.basename( self.pdb_file )
+            },
+            { 
+                "name": "vol_atomsele",
+                "filename": self.vol_file + '.atmsele'
+            },
+            {
+                "name": "vol_datalist",
+                "datalist": "Provi.Bio.Voronoia.VoronoiaDatalist", 
+                "params": {
+                    "holes_ds": "DATASET_vol_atomsele"
+                }
+            },
+            {
+                "widget": "Provi.Widget.Grid.GridWidget",
+                "params": {
+                    "heading": "Cavities",
+                    "parent_id": "tab_widgets",
+                    "datalist": "DATALIST_vol_datalist"
+                }
+            }
+        ]
+        print provi_json
+        with open( self.provi_file, "w" ) as fp:
+            json.dump( provi_json, fp, indent=4 )
+
+
+

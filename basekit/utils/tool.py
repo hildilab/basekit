@@ -156,7 +156,7 @@ class PyTool( Tool ):
         if not hasattr( self, "func" ):
             raise Exception("A PyTool needs a 'func' attribute")
     def _run( self ):
-        self.func()
+        return self.func()
 
 
 class CmdTool( Tool ):
@@ -169,7 +169,8 @@ class CmdTool( Tool ):
         if self.timeout:
             cmd = [ TIMEOUT_CMD, self.timeout ] + cmd
         log_file = "%s_cmd.log" % self.name
-        run_command( cmd, log=log_file, verbose=self.verbose )
+        ret = run_command( cmd, log=log_file, verbose=self.verbose )
+        return ret
 
 
 
