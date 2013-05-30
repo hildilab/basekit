@@ -46,8 +46,8 @@ def make_parser( Tool, parser=None ):
         parser.add_argument( option, type=type, default=default, help=params.get("help") )
     if not Tool.no_output:
         group = parser.add_argument_group( title="general arguments" )
-        group.add_argument( '-o', metavar='OUTPUT_DIR', type=str, default="./" )
-        group.add_argument( '-t', metavar='TIMEOUT', type=int, default=0 )
+        group.add_argument( '-o', dest="output_dir", metavar='OUTPUT_DIR', type=str, default="./" )
+        group.add_argument( '-t', dest="timeout", metavar='TIMEOUT', type=int, default=0 )
         group.add_argument( '-v', '--verbose', action='store_true' )
         group.add_argument( '-c', '--check', action='store_true' )
         group.add_argument( '-h', '--help', action="help", help="show this help message and exit" )
