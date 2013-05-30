@@ -1,0 +1,3 @@
+cache remove all;
+isosurface "${dat_file}" ${sigma} ${cutoff} ${resolution};
+write ISOSURFACE "${jvxl_file}";

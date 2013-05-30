@@ -60,6 +60,35 @@ class JmolImage( Jmol ):
         )
 
 
+class JmolJvxl( Jmol ):
+    """Create a JVXL file (the Jmol surface format) from various file formats"""
+    args = [
+        { "name": "dat_file", "type": "file", "ext": "dat", "help": "mrc, obj" },
+        { "name": "sigma", "type": "slider", "range": [0, 5], "default_value": 0, 
+            "fixed": True, "help": "level at which the surface will be created" },
+        { "name": "cutoff", "type": "slider", "range": [0, 255], "default_value": 0, 
+            "fixed": True, "help": "value at which the data is ignored" },
+        { "name": "resolution", "type": "slider", "range": [0, 10], "default_value": 3 }
+    ]
+    tmpl_file = "jvxl.jspt"
+    def _init( self, dat_file, sigma=None, cutoff=None, resolution=None, **kwargs ):
+        self.dat_file = self.abspath( dat_file )
+        self.jvxl_file = self.outpath( "dat.jvxl" )
+        self.sigma = sigma
+        self.cutoff = cutoff
+        self.resolution = resolution
+        super(JmolJvxl, self)._init( "__tmpl__" )
+        self.output_files = [ self.jvxl_file ]
+    def _pre_exec( self ):
+        self._make_script_file(
+            dat_file=self.dat_file,
+            sigma="" if self.sigma==None else "SIGMA %0.2f"%self.sigma,
+            cutoff="" if self.cutoff==None else "CUTOFF %0.3f"%self.cutoff,
+            resolution="" if self.resolution==None else "RESOLUTION %i"%self.resolution,
+            jvxl_file=self.jvxl_file
+        )
+
+
 class JmolMovie( Jmol ):
     pass
 
