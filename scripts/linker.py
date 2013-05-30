@@ -1,5 +1,7 @@
 #! /usr/bin/env python
 
+"""A collection of tools loops linking residues."""
+
 from basekit.utils.tool import parse_subargs
 from basekit.linker import LinkIt, LinkItDensity, LinkerTest
 
@@ -11,7 +13,7 @@ def main():
         "linkit+dens": LinkItDensity,
         "test": LinkerTest
     }
-    Tool, args, kwargs = parse_subargs( tools )
+    Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )
 
 

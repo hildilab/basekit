@@ -38,15 +38,15 @@ def get_type( params ):
 
 def make_parser( Tool, parser=None ):
     if not parser:
-        parser = argparse.ArgumentParser()
+        parser = argparse.ArgumentParser( description=Tool.__doc__, epilog="basekit" )
     for name, params in Tool.args.iteritems():
         option = '--%s'%name if "default_value" in params else name
         default = params.get( "default_value", None )
         type = get_type( params )
-        parser.add_argument( option, type=type, default=default)
+        parser.add_argument( option, type=type, default=default, help=params.get("help") )
     if not Tool.no_output:
-        parser.add_argument( '-o', '--output_dir', type=str, default="./" )
-        parser.add_argument( '-t', '--timeout', type=int, default=0 )
+        parser.add_argument( '-o', metavar='OUTPUT_DIR', type=str, default="./" )
+        parser.add_argument( '-t', metavar='TIMEOUT', type=int, default=0 )
         parser.add_argument( '-v', '--verbose', action='store_true' )
         parser.add_argument( '-c', '--check', action='store_true' )
     return parser
@@ -61,11 +61,15 @@ def parse_args( Tool, kwargs=None ):
             args.append( kwargs.pop( name ) )
     return args, kwargs
 
-def parse_subargs( tools ):
-    parser = argparse.ArgumentParser()
+def parse_subargs( tools, description=None ):
+    if description:
+        description += " The tools are accessible by the subcommands given below."
+    else:
+        description = "A collection of tools, accessible by the subcommands given below."
+    parser = argparse.ArgumentParser( description=description )
     subparsers = parser.add_subparsers( title='subcommands' )
     for name, Tool in tools.iteritems():
-        subp = subparsers.add_parser( name )
+        subp = subparsers.add_parser( name, description=Tool.__doc__, epilog="basekit" )
         make_parser( Tool, subp )
         subp.set_defaults(Tool=Tool)
     pargs = vars( parser.parse_args() )

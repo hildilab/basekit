@@ -1,5 +1,7 @@
 #! /usr/bin/env python
 
+"""A wrapper around the programms 'pdb2pqr' and 'apbs'"""
+
 from basekit.utils.tool import parse_args
 from basekit.apbs import Apbs
 

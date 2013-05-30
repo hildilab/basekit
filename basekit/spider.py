@@ -42,6 +42,7 @@ class Spider( CmdTool, ScriptMixin ):
 
 
 class SpiderConvert( Spider ):
+    """Simple tool that converts mrc files to the spider format"""
     args = [
         { "name": "mrc_file", "type": "file", "ext": "mrc" }
     ]
@@ -86,11 +87,11 @@ class SpiderBox( Spider ):
     args = [
         { "name": "map_file", "type": "file", "ext": "cpv" },
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
-        { "name": "res1", "type": "text" },
+        { "name": "res1", "type": "text", "help": "resno:chain, i.e. 10:A" },
         { "name": "res2", "type": "text" },
         { "name": "length", "type": "slider", "range": [1, 30] },
         { "name": "pixelsize", "type": "slider", "range": [1, 10], "fixed": True },
-        { "name": "resolution", "type": "slider", "range": [1, 10], "fixed": True }
+        { "name": "resolution", "type": "slider", "range": [1, 10], "fixed": True, "help": "of the map_file" }
     ]
     tmpl_file = "box.spi"
     def _init( self, map_file, pdb_file, res1, res2, length, pixelsize, resolution, **kwargs ):
