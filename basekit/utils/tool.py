@@ -12,8 +12,8 @@ import functools
 import itertools
 import inspect
 import json
-from string import Template
-from collections import OrderedDict
+import string
+import collections
 
 from basekit.utils import try_int, get_index, boolean, working_directory
 from basekit.utils.timer import Timer
@@ -80,7 +80,7 @@ class ToolMetaclass(type):
         if not "no_output" in dct:
             cls.no_output = False
 
-        args = OrderedDict()
+        args = collections.OrderedDict()
         for a in dct.get( "args", [] ):
             args[ a.pop("name") ] = a
         cls.args = args
@@ -146,6 +146,16 @@ class Tool( object ):
     def __str__( self ):
         status = "ok" if self.check() else "failed"
         return "%s status: %s" % ( self.name, status )
+    def relpath( self, path, no_ext=False ):
+        if no_ext:
+            path = os.path.splitext( path )[0]
+        return os.path.relpath( path, self.output_dir )
+    def outpath( self, file_name ):
+        return os.path.join( self.output_dir, file_name )
+    def abspath( self, path ):
+        return os.path.abspath( path )
+    def subdir( self, directory ):
+        return os.path.join( self.output_dir, directory )
 
 
 
@@ -182,7 +192,7 @@ class ScriptMixin( object ):
             tmpl_str = fp.read()
         script_file = os.path.join( self.output_dir, self.tmpl_file )
         with open( script_file, "w" ) as fp:
-            fp.write( Template( tmpl_str ).substitute( **values_dict ) )
+            fp.write( string.Template( tmpl_str ).substitute( **values_dict ) )
         return script_file
 
 

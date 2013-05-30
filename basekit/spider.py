@@ -2,6 +2,7 @@ from __future__ import with_statement
 from __future__ import division
 
 import os
+import json
 import itertools
 from string import Template
 
@@ -29,14 +30,13 @@ class Spider( CmdTool, ScriptMixin ):
     tmpl_dir = TMPL_DIR
     def _init( self, script_file, script_ext="spi", data_ext="cpv", **kwargs ):
         if script_file=="__tmpl__":
-            script_file = os.path.join( self.output_dir, self.tmpl_file )
-        self.script_file = os.path.abspath( script_file )
-        print self.script_file
+            script_file = self.outpath( self.tmpl_file )
+        self.script_file = self.abspath( script_file )
         # spider spi/cpv @box
         self.cmd = [
             SPIDER_CMD, 
             "%s/%s" % ( script_ext, data_ext ), 
-            "@%s" % os.path.splitext( os.path.relpath( self.script_file, self.output_dir ) )[0]
+            "@%s" % self.relpath( self.script_file, no_ext=True )
         ]
 
 
@@ -47,13 +47,13 @@ class SpiderConvert( Spider ):
     ]
     tmpl_file = "convert.spi"
     def _init( self, mrc_file, **kwargs ):
-        self.mrc_file = os.path.abspath( mrc_file )
-        self.map_file = os.path.join( self.output_dir, "mapupload.cpv" )
+        self.mrc_file = self.abspath( mrc_file )
+        self.map_file = self.outpath( "mapupload.cpv" )
         super(SpiderConvert, self)._init( "__tmpl__" )
         self.output_files = [ self.map_file ]
     def _pre_exec( self ):
         self._make_script_file( 
-            mrc_file=os.path.relpath( self.mrc_file )
+            mrc_file=self.relpath( self.mrc_file )
         )
 
 
@@ -66,19 +66,20 @@ class SpiderDeleteFilledDensities( Spider ):
     ]
     tmpl_file = "delete_filled_densities.spi"
     def _init( self, map_file, pdb_file, pixelsize, **kwargs ):
-        self.map_file = os.path.abspath( map_file )
-        self.pdb_file = os.path.abspath( pdb_file )
+        self.map_file = self.abspath( map_file )
+        self.pdb_file = self.abspath( pdb_file )
         self.pixelsize = pixelsize
-        self.empty_map_file = os.path.join( self.output_dir, "usermap.cpv" )
+        self.empty_map_file = self.outpath( "usermap.cpv" )
         super(SpiderDeleteFilledDensities, self)._init( "__tmpl__" )
         self.output_files = [ self.empty_map_file ]
     def _pre_exec( self ):
         self._make_script_file( 
-            map_name=os.path.splitext( os.path.relpath( self.map_file ) )[0], 
-            pdb_file=os.path.relpath( self.pdb_file ),
+            map_name=self.relpath( self.map_file, no_ext=True ), 
+            pdb_file=self.relpath( self.pdb_file ),
             pixelsize=self.pixelsize, 
-            tmp_dir=os.path.relpath( self.output_dir ) + os.sep
+            tmp_dir=self.relpath( self.output_dir ) + os.sep
         )
+
 
 
 class SpiderBox( Spider ):
@@ -93,16 +94,16 @@ class SpiderBox( Spider ):
     ]
     tmpl_file = "box.spi"
     def _init( self, map_file, pdb_file, res1, res2, length, pixelsize, resolution, **kwargs ):
-        self.map_file = os.path.abspath( map_file )
-        self.pdb_file = os.path.abspath( pdb_file )
+        self.map_file = self.abspath( map_file )
+        self.pdb_file = self.abspath( pdb_file )
         self.res1 = res1
         self.res2 = res2
         self.length = length
         self.pixelsize = pixelsize
         self.resolution = resolution
-        self.var_file = os.path.join( self.output_dir, "variables.cpv" )
-        self.box_file = os.path.join( self.output_dir, "ergebnisse.cpv" )
-        self.box_map_file = os.path.join( self.output_dir, "boxil.cpv" )
+        self.var_file = self.outpath( "variables.cpv" )
+        self.box_file = self.outpath( "ergebnisse.cpv" )
+        self.box_map_file = self.outpath( "boxil.cpv" )
         super(SpiderBox, self)._init( "__tmpl__" )
         self.output_files = [ self.box_file, self.box_map_file ]
     def _pre_exec( self ):
@@ -111,8 +112,8 @@ class SpiderBox( Spider ):
             coords1, coords2, self.length, self.pixelsize, self.resolution
         )
         self._make_script_file( 
-            map_name=os.path.splitext( os.path.relpath( self.map_file ) )[0], 
-            var_name=os.path.splitext( os.path.relpath( self.var_file ) )[0]
+            map_name=self.relpath( self.map_file, no_ext=True ), 
+            var_name=self.relpath( self.var_file, no_ext=True )
         )
     def _get_coords( self, pdb_file, res1, res2 ):
         npdb = NumPdb( pdb_file )
@@ -129,6 +130,27 @@ class SpiderBox( Spider ):
             fp.write( variables )
 
 
+class SpiderReConvert( Spider ):
+    args = [
+        { "name": "box_file", "type": "file", "ext": "cpv" },
+        { "name": "map_file", "type": "file", "ext": "cpv" },
+        { "name": "box_map_file", "type": "file", "ext": "cpv" },
+    ]
+    tmpl_file = "recon.spi"
+    def _init( self, box_file, map_file, box_map_file, **kwargs ):
+        self.box_file = self.abspath( box_file )
+        self.map_file = self.abspath( map_file )
+        self.box_map_file = self.abspath( box_map_file )
+        self.mrc_file = self.outpath( "reconvert.mrc" )
+        super(SpiderReConvert, self)._init( "__tmpl__" )
+        self.output_files = [ self.mrc_file ]
+    def _pre_exec( self ):
+        self._make_script_file( 
+            box_name=self.relpath( self.box_file, no_ext=True ),
+            map_name=self.relpath( self.map_file, no_ext=True ),
+            box_map_name=self.relpath( self.box_map_file, no_ext=True )
+        )
+
 
 class SpiderCrosscorrelation( Spider ):
     args = [
@@ -140,29 +162,44 @@ class SpiderCrosscorrelation( Spider ):
     ]
     tmpl_file = "crosscorrelation.spi"
     def _init( self, map_file, box_map_file, box_file, loop_file, max_loops=100, **kwargs ):
-        self.map_file = os.path.abspath( map_file )
-        self.box_map_file = os.path.abspath( box_map_file )
-        self.box_file = os.path.abspath( box_file )
-        self.loop_file = os.path.abspath( loop_file )
+        self.map_file = self.abspath( map_file )
+        self.box_map_file = self.abspath( box_map_file )
+        self.box_file = self.abspath( box_file )
+        self.loop_file = self.abspath( loop_file )
         self.max_loops = False if not max_loops else int(max_loops)
-        self.loop_dir = os.path.join( self.output_dir, "loops" )
-        self.crosscorrel_file = os.path.join( self.output_dir, "crosscorrelation.cpv" )
+        self.loop_dir = self.subdir( "loops" )
+        self.crosscorrel_file = self.outpath( "crosscorrelation.cpv" )
+        self.crosscorrel_json = self.outpath( "crosscorrelation.json" )
         super(SpiderCrosscorrelation, self)._init( "__tmpl__" )
         self.output_files = [ self.crosscorrel_file ]
     def _pre_exec( self ):
         self._split_loop_file()
         self._make_script_file( 
-            map_name=os.path.splitext( os.path.relpath( self.map_file ) )[0], 
-            box_map_name=os.path.splitext( os.path.relpath( self.box_map_file ) )[0],
-            box_name=os.path.splitext( os.path.relpath( self.box_file ) )[0],
-            loop_dir=os.path.relpath( self.loop_dir ) + os.sep,
+            map_name=self.relpath( self.map_file, no_ext=True ), 
+            box_map_name=self.relpath( self.box_map_file, no_ext=True ), 
+            box_name=self.relpath( self.box_file, no_ext=True ), 
+            loop_dir=self.relpath( self.loop_dir ) + os.sep,
             max_loops=self.max_loops or 999
         )
+    def _post_exec( self ):
+        self._make_crosscorrel_json( compact=True )
     def _split_loop_file( self ):
         PdbSplit( 
             self.loop_file, output_dir=self.loop_dir, backbone_only=True, 
             max_models=self.max_loops, resno_ignore=[ 1000, 2000 ], zfill=3
         )
+    def _make_crosscorrel_json( self, compact=False ):
+        crosscorrel_dict = {}
+        with open( self.crosscorrel_file, "r" ) as fp:
+            for line in fp:
+                d = line.split()
+                if len(d)==3:
+                    crosscorrel_dict[ int(d[0]) ] = float( d[2] )
+        with open( self.crosscorrel_json, "w" ) as fp:
+            if compact:
+                json.dump( crosscorrel_dict, fp, separators=(',',':') )
+            else:
+                json.dump( crosscorrel_dict, fp, indent=4 )
 
 
 class LoopCrosscorrel( Tool ):
@@ -179,40 +216,47 @@ class LoopCrosscorrel( Tool ):
     ]
     def _init( self, mrc_file, pdb_file, loop_file, 
                res1, res2, length, pixelsize, resolution, max_loops=100, **kwargs ):
-        def outdir( subdir ):
-            return os.path.join( self.output_dir, subdir )
-        self.mrc_file = os.path.abspath( mrc_file )
-        self.pdb_file = os.path.abspath( pdb_file )
-        self.loop_file = os.path.abspath( loop_file )
+        self.mrc_file = self.abspath( mrc_file )
+        self.pdb_file = self.abspath( pdb_file )
+        self.loop_file = self.abspath( loop_file )
         self.spider_convert = SpiderConvert( 
-            self.mrc_file, **copy_dict( kwargs, run=False, output_dir=outdir("convert") )
+            self.mrc_file, **copy_dict( kwargs, run=False, output_dir=self.subdir("convert") )
         )
         self.spider_delete_filled_densities = SpiderDeleteFilledDensities( 
             self.spider_convert.map_file, self.pdb_file, pixelsize,
-            **copy_dict( kwargs, run=False, output_dir=outdir("delete_filled_densities") )
+            **copy_dict( kwargs, run=False, output_dir=self.subdir("delete_filled_densities") )
         )
         self.spider_box = SpiderBox(
             self.spider_delete_filled_densities.empty_map_file, 
             self.pdb_file, res1, res2, length, pixelsize, resolution,
-            **copy_dict( kwargs, run=False, output_dir=outdir("box") )
+            **copy_dict( kwargs, run=False, output_dir=self.subdir("box") )
+        )
+        self.spider_reconvert = SpiderReConvert(
+            self.spider_box.box_file,
+            self.spider_convert.map_file,
+            self.spider_box.box_map_file,
+            **copy_dict( kwargs, run=False, output_dir=self.subdir("reconvert") )
         )
         self.spider_crosscorrelation = SpiderCrosscorrelation(
             self.spider_convert.map_file, 
             self.spider_box.box_map_file, 
-            self.spider_box.box_file, self.loop_file,
+            self.spider_box.box_file, 
+            self.loop_file,
             max_loops=max_loops,
-            **copy_dict( kwargs, run=False, output_dir=outdir("crosscorrelation") )   
+            **copy_dict( kwargs, run=False, output_dir=self.subdir("crosscorrelation") )
         )
         self.output_files = list( itertools.chain(
             self.spider_convert.output_files, 
             self.spider_delete_filled_densities.output_files,
-            self.spider_box.output_files, 
+            self.spider_box.output_files,
+            self.spider_reconvert.output_files,
             self.spider_crosscorrelation.output_files
         ))
     def _pre_exec( self ):
         self.spider_convert()
         self.spider_delete_filled_densities()
         self.spider_box()
+        self.spider_reconvert()
         self.spider_crosscorrelation()
 
 

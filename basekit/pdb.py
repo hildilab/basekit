@@ -6,6 +6,7 @@ import urllib2
 
 import numpy as np
 
+import utils.path
 from utils.tool import PyTool
 from utils.timer import Timer
 from utils.numpdb import NumPdb, numdist
@@ -37,7 +38,7 @@ class PdbDownload( PyTool ):
     ]
     def _init( self, pdb_id, **kwargs ):
         self.pdb_id = pdb_id.strip()[0:4]
-        self.pdb_file = os.path.join( self.output_dir, "%s.pdb" % self.pdb_id )
+        self.pdb_file = self.outpath( "%s.pdb" % self.pdb_id )
         self.output_files = [ self.pdb_file ]
     def func( self ):
         pdb_download( self.pdb_id, self.pdb_file )
@@ -89,7 +90,7 @@ class PdbSplit( PyTool ):
     ]
     def _init( self, pdb_file, backbone_only=False, max_models=False, 
                resno_ignore=False, zfill=False, **kwargs ):
-        self.pdb_file = os.path.abspath( pdb_file )
+        self.pdb_file = self.abspath( pdb_file )
         self.backbone_only = backbone_only
         self.max_models = int( max_models )
         self.zfill = int( zfill )
@@ -151,7 +152,7 @@ class NumpdbTest( PyTool ):
     ]
     no_output = True
     def _init( self, pdb_file, **kwargs ):
-        self.pdb_file = os.path.abspath( pdb_file )
+        self.pdb_file = self.abspath( pdb_file )
     def func( self ):
         numpdb_test( self.pdb_file )
 

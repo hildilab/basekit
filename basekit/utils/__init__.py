@@ -1,6 +1,9 @@
 from __future__ import division
 from __future__ import with_statement
 
+
+import collections
+import itertools
 import contextlib
 import os
 import re
@@ -55,14 +58,21 @@ def listify( item ):
 def iter_window(iterator, n=2):
     "Returns a sliding window (of width n) over data from the iterable"
     "   s -> (s0,s1,...s[n-1]), (s1,s2,...,sn), ...                   "
-    #iterator = iter(seq)
     result = tuple(itertools.islice(iterator, n))
-    if len(result) == n:
+    if len(result)==n:
         yield result    
     for elem in iterator:
         result = result[1:] + (elem,)
         yield result
 
+def iter_stride(iterator, n=2):
+    "Returns non-overlapping windows (of width n) over data from the iterable"
+    "   s -> (s0,s1,...s[n-1]), (sn,s[n+1],...,s[n+n-1]), ...                   "
+    while True:
+        result = tuple(itertools.islice(iterator, n))
+        if len(result)!=n:
+            return
+        yield result
 
 def iter_consume(iterator, n):
     "Advance the iterator n-steps ahead. If n is none, consume entirely."

@@ -24,8 +24,8 @@ class Jmol( CmdTool, ScriptMixin ):
     tmpl_dir = TMPL_DIR
     def _init( self, script_file, **kwargs ):
         if script_file=="__tmpl__":
-            script_file = os.path.join( self.output_dir, self.tmpl_file )
-        self.script_file = os.path.abspath( script_file )
+            script_file = self.outpath( self.tmpl_file )
+        self.script_file = self.abspath( script_file )
         self.cmd = [
             JAVA_CMD, "-Xmx4096M", "-jar", JMOL_JAR, "-oxdl", "-s", self.script_file
         ]
@@ -41,12 +41,12 @@ class JmolImage( Jmol ):
     ]
     tmpl_file = "image.jspt"
     def _init( self, jmol_file, scale="", width="", height="", cartoon_fancy=True, **kwargs ):
-        self.jmol_file = os.path.abspath( jmol_file )
+        self.jmol_file = self.abspath( jmol_file )
         self.width = str(width) if width else "0"
         self.height = str(height) if height else "0"
         self.scale = str(scale) if scale else "0"
         self.cartoon_fancy = "true" if cartoon_fancy else "false"
-        self.image_file = os.path.join( self.output_dir, "image.jpg" )
+        self.image_file = self.outpath( "image.jpg" )
         super(JmolImage, self)._init( "__tmpl__" )
         self.output_files = [ "image.jpg" ]
     def _pre_exec( self ):

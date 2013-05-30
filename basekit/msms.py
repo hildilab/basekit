@@ -15,6 +15,7 @@ from itertools import izip
 from operator import itemgetter, methodcaller
 from string import Template
 
+import utils.path
 from utils import try_int, get_index, boolean, working_directory, copy_dict
 from utils.timer import Timer
 from utils.job import do_parallel
@@ -66,9 +67,9 @@ class Pdb2xyzr( CmdTool ):
         { "name": "pdb_file", "type": "file", "ext": "pdb" }
     ]
     def _init( self, pdb_file, **kwargs ):
-        self.pdb_file = os.path.abspath( pdb_file )
+        self.pdb_file = self.abspath( pdb_file )
         self.pdb_prep_file = "prep.pdb"
-        self.xyzr_file = "%s.xyzr" % os.path.splitext( os.path.split( self.pdb_file )[-1] )[0]
+        self.xyzr_file = "%s.xyzr" % utils.path.stem( self.pdb_file )
         self.cmd = [ 
             BABEL_CMD, '-i', 'pdb', self.pdb_prep_file,
             '-o', 'msms', self.xyzr_file 

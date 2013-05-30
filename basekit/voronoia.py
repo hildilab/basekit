@@ -6,6 +6,7 @@ from __future__ import division
 import os
 import json
 
+import utils.path
 from utils import copy_dict
 from utils.tool import CmdTool
 
@@ -28,9 +29,8 @@ class Voronoia( CmdTool ):
 
     ]
     def _init( self, pdb_file, ex=0.1, radii="protor", **kwargs ):
-    	self.pdb_file = os.path.abspath( pdb_file )
-    	stem = os.path.splitext( os.path.split( self.pdb_file )[-1] )[0]
-        self.vol_file = "%s.vol" % stem
+    	self.pdb_file = self.abspath( pdb_file )
+        self.vol_file = "%s.vol" % utils.path.stem( self.pdb_file )
         self.provi_file = "vol.provi"
         self.cmd = [ 
             "wine", VOLUME_CMD, "ex:%0.1f"%float(ex), "rad:%s"%radii,
@@ -45,11 +45,11 @@ class Voronoia( CmdTool ):
     def _make_provi( self ):
         provi_json = [
             { 
-                "filename": os.path.basename( self.pdb_file )
+                "filename": self.relpath( self.pdb_file )
             },
             { 
                 "name": "vol_atomsele",
-                "filename": self.vol_file + '.atmsele'
+                "filename": self.relpath( self.vol_file ) + '.atmsele'
             },
             {
                 "name": "vol_datalist",
@@ -67,7 +67,6 @@ class Voronoia( CmdTool ):
                 }
             }
         ]
-        print provi_json
         with open( self.provi_file, "w" ) as fp:
             json.dump( provi_json, fp, indent=4 )
 

@@ -11,8 +11,12 @@ FI [x8],[x9],[x10]
 1,2,12
 ;anzahl der linker??
 [nl]=${max_loops}
-;Loops zu maps machen
 
+;delete existing crosscorrelation file
+de
+crosscorrelation
+
+;Loops zu maps machen
 DO  [y]=1,[nl]
  [filename]='${loop_dir}{***[y]}_bb.pdb' 
 ;Dichten aus PDB erstellen
