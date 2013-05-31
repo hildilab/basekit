@@ -7,7 +7,7 @@ import itertools
 from string import Template
 
 from utils import copy_dict
-from utils.tool import PyTool, CmdTool, ScriptMixin
+from utils.tool import PyTool, CmdTool, ScriptMixin, ProviMixin
 from utils.numpdb import NumPdb, numsele
 
 from pdb import PdbSplit
@@ -26,11 +26,11 @@ class Spider( CmdTool, ScriptMixin ):
     args = [
         { "name": "script_file", "type": "file", "ext": "spi" }
     ]
-    spi_tmpl_file = None
+    script_tmpl = None
     tmpl_dir = TMPL_DIR
     def _init( self, script_file, script_ext="spi", data_ext="cpv", **kwargs ):
         if script_file=="__tmpl__":
-            script_file = self.outpath( self.tmpl_file )
+            script_file = self.outpath( self.script_tmpl )
         self.script_file = self.abspath( script_file )
         # spider spi/cpv @box
         self.cmd = [
@@ -46,7 +46,7 @@ class SpiderConvert( Spider ):
     args = [
         { "name": "mrc_file", "type": "file", "ext": "mrc" }
     ]
-    tmpl_file = "convert.spi"
+    script_tmpl = "convert.spi"
     def _init( self, mrc_file, **kwargs ):
         self.mrc_file = self.abspath( mrc_file )
         self.map_file = self.outpath( "mapupload.cpv" )
@@ -65,7 +65,7 @@ class SpiderDeleteFilledDensities( Spider ):
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
         { "name": "pixelsize", "type": "slider", "range": [1, 10], "fixed": True }
     ]
-    tmpl_file = "delete_filled_densities.spi"
+    script_tmpl = "delete_filled_densities.spi"
     def _init( self, map_file, pdb_file, pixelsize, **kwargs ):
         self.map_file = self.abspath( map_file )
         self.pdb_file = self.abspath( pdb_file )
@@ -93,7 +93,7 @@ class SpiderBox( Spider ):
         { "name": "pixelsize", "type": "slider", "range": [1, 10], "fixed": True },
         { "name": "resolution", "type": "slider", "range": [1, 10], "fixed": True, "help": "of the map_file" }
     ]
-    tmpl_file = "box.spi"
+    script_tmpl = "box.spi"
     def _init( self, map_file, pdb_file, res1, res2, length, pixelsize, resolution, **kwargs ):
         self.map_file = self.abspath( map_file )
         self.pdb_file = self.abspath( pdb_file )
@@ -137,7 +137,7 @@ class SpiderReConvert( Spider ):
         { "name": "map_file", "type": "file", "ext": "cpv" },
         { "name": "box_map_file", "type": "file", "ext": "cpv" },
     ]
-    tmpl_file = "recon.spi"
+    script_tmpl = "recon.spi"
     def _init( self, box_file, map_file, box_map_file, **kwargs ):
         self.box_file = self.abspath( box_file )
         self.map_file = self.abspath( map_file )
@@ -161,7 +161,7 @@ class SpiderCrosscorrelation( Spider ):
         { "name": "loop_file", "type": "file", "ext": "pdb" },
         { "name": "max_loops", "type": "slider", "range": [0, 200], "default_value": 100 }
     ]
-    tmpl_file = "crosscorrelation.spi"
+    script_tmpl = "crosscorrelation.spi"
     def _init( self, map_file, box_map_file, box_file, loop_file, max_loops=100, **kwargs ):
         self.map_file = self.abspath( map_file )
         self.box_map_file = self.abspath( box_map_file )
@@ -215,6 +215,7 @@ class LoopCrosscorrel( PyTool ):
         { "name": "resolution", "type": "slider", "range": [1, 10], "fixed": True },
         { "name": "max_loops", "type": "slider", "range": [0, 200], "default_value": 100 }
     ]
+    tmpl_dir = TMPL_DIR
     def _init( self, mrc_file, pdb_file, loop_file, 
                res1, res2, length, pixelsize, resolution, max_loops=100, **kwargs ):
         self.mrc_file = self.abspath( mrc_file )

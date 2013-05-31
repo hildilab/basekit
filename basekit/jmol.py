@@ -20,11 +20,11 @@ class Jmol( CmdTool, ScriptMixin ):
     args = [
         { "name": "script_file", "type": "file", "ext": "jspt" }
     ]
-    jspt_tmpl_file = None
+    script_tmpl = None
     tmpl_dir = TMPL_DIR
     def _init( self, script_file, **kwargs ):
         if script_file=="__tmpl__":
-            script_file = self.outpath( self.tmpl_file )
+            script_file = self.outpath( self.script_tmpl )
         self.script_file = self.abspath( script_file )
         self.cmd = [
             JAVA_CMD, "-Xmx4096M", "-jar", JMOL_JAR, "-oxdl", "-s", self.script_file
@@ -39,7 +39,7 @@ class JmolImage( Jmol ):
         { "name": "height", "type": "slider", "range": [0, 2048], "default_value": 0 },
         { "name": "cartoon_fancy", "type": "checkbox", "default_value": True }
     ]
-    tmpl_file = "image.jspt"
+    script_tmpl = "image.jspt"
     def _init( self, jmol_file, scale="", width="", height="", cartoon_fancy=True, **kwargs ):
         self.jmol_file = self.abspath( jmol_file )
         self.width = str(width) if width else "0"
@@ -71,7 +71,7 @@ class JmolJvxl( Jmol ):
         { "name": "resolution", "type": "slider", "range": [-1, 10], "default_value": 3, 
             "fixed": True }
     ]
-    tmpl_file = "jvxl.jspt"
+    script_tmpl = "jvxl.jspt"
     def _init( self, dat_file, sigma=None, cutoff=None, resolution=None, **kwargs ):
         self.dat_file = self.abspath( dat_file )
         self.jvxl_file = self.outpath( "dat.jvxl" )

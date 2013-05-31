@@ -1,0 +1,56 @@
+[
+    {
+        "filename": "${pdb_file}"
+    },
+    {
+        "filename": "${mrc_file}",
+        "type": "mrc",
+        "params": {
+            "sigma": 0,
+            "cutoff": 5,
+            "sign": false,
+            "color": "skyblue",
+            "frontonly": true,
+            "style": "MESH NOFILL NODOTS"
+        }
+    },
+    {
+        "filename": "${box_mrc_file}",
+        "type": "mrc",
+        "params": {
+            "sigma": 0,
+            "cutoff": 1,
+            "sign": false,
+            "color": "tomato",
+            "frontonly": true,
+            "style": "MESH NOFILL NODOTS"
+        }
+    },
+    {
+        "name": "linker_pdb",
+        "filename": "${pdb_linker_file3}",
+        "params": {
+            "load_as": "trajectory+append"
+        }
+    },
+    { 
+        "name": "linker_json",
+        "filename": "${link_it_json_file}"
+    },
+    {
+        "name": "linker_datalist",
+        "datalist": "Provi.Bio.Linker.LinkerDatalist", 
+        "params": {
+            "linker_ds": "DATASET_linker_json",
+            "pdb_ds": "DATASET_linker_pdb"
+        }
+    },
+    {
+        "widget": "Provi.Widget.Grid.GridWidget",
+        "params": {
+            "heading": "Linker",
+            "parent_id": "tab_widgets",
+            "datalist": "DATALIST_linker_datalist"
+        }
+    }
+]

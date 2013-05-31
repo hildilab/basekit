@@ -191,15 +191,26 @@ class CmdTool( Tool ):
 
 
 
-class ScriptMixin( object ):
-    def _make_script_file( self, **values_dict ):
-        tmpl_file = os.path.join( self.tmpl_dir, self.tmpl_file )
+class TmplMixin( object ):
+    def _make_file_from_tmpl( self, tmpl_name, **values_dict ):
+        tmpl_file = os.path.join( self.tmpl_dir, tmpl_name )
         with open( tmpl_file, "r" ) as fp:
             tmpl_str = fp.read()
-        script_file = os.path.join( self.output_dir, self.tmpl_file )
-        with open( script_file, "w" ) as fp:
+        out_file = os.path.join( self.output_dir, tmpl_name )
+        with open( out_file, "w" ) as fp:
             fp.write( string.Template( tmpl_str ).substitute( **values_dict ) )
-        return script_file
+        return out_file
+
+
+class ScriptMixin( TmplMixin ):
+    def _make_script_file( self, **values_dict ):
+        return self._make_file_from_tmpl( self.script_tmpl, **values_dict )
+
+
+class ProviMixin( TmplMixin ):
+    def _make_provi_file( self, provi_tmpl=None, **values_dict ):
+        provi_tmpl = provi_tmpl or self.provi_tmpl
+        return self._make_file_from_tmpl( provi_tmpl, **values_dict )
 
 
 

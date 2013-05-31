@@ -10,7 +10,7 @@ import json
 
 import utils.path
 from utils import copy_dict, iter_stride
-from utils.tool import CmdTool, PyTool
+from utils.tool import CmdTool, PyTool, ProviMixin
 from utils.numpdb import NumPdb, numsele
 
 import provi_prep as provi
@@ -20,6 +20,7 @@ from spider import LoopCrosscorrel
 
 DIR = os.path.split( os.path.abspath(__file__) )[0]
 PARENT_DIR = os.path.split( DIR )[0]
+TMPL_DIR = os.path.join( PARENT_DIR, "data", "linker" )
 
 try:
     LINKIT_DIR = os.environ["LINKIT_DIR"]
@@ -53,13 +54,15 @@ class LinkerTest( PyTool ):
                 json.dump( linker_dict, fp, indent=4 )
 
 
-class LinkIt( CmdTool ):
+class LinkIt( CmdTool, ProviMixin ):
     args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
         { "name": "res1", "type": "text" },
         { "name": "res2", "type": "text" },
         { "name": "seq", "type": "text" }
     ]
+    tmpl_dir = TMPL_DIR
+    provi_tmpl = "link_it.provi"
     def _init( self, pdb_file, res1, res2, seq, **kwargs ):
         self.pdb_file = os.path.abspath( pdb_file )
         stem = utils.path.stem( self.pdb_file )
@@ -73,7 +76,6 @@ class LinkIt( CmdTool ):
         self.res2 = res2
         self.seq = seq
         self.json_file = self.outpath( "%s.json" % utils.path.stem( self.txt_file ) )
-        self.provi_file = "linkit.provi"
         self.cmd = [ "wine", LINKIT_CMD, self.kos_file, self.bin_file, "t" ]
         self.output_files = [ 
             self.bin_file, self.txt_file, self.pdb_linker_file, self.pdb_linker_file2
@@ -84,7 +86,11 @@ class LinkIt( CmdTool ):
         self._fix_linker_pdb( self.pdb_linker_file2 )
         self._fix_linker_pdb( self.pdb_linker_file3, atoms_only=True )
         self._make_linker_json( compact=True )
-        self._make_provi()
+        self._make_provi_file(
+            pdb_file=self.relpath( self.pdb_file ),
+            pdb_linker_file3=self.relpath( self.pdb_linker_file3 ),
+            json_file=self.relpath( self.json_file )
+        )
     def _make_kos_file( self ):
         npdb = NumPdb( self.pdb_file, features={ 
             "phi_psi": False, "sstruc": False, "backbone_only": True
@@ -133,45 +139,10 @@ class LinkIt( CmdTool ):
                 json.dump( linker_dict, fp, separators=(',',':') )
             else:
                 json.dump( linker_dict, fp, indent=4 )
-    def _make_provi( self ):
-        provi_json = [
-            {
-                "filename": self.relpath( self.pdb_file ),
-            },
-            {
-                "name": "linker_pdb",
-                "filename": self.relpath( self.pdb_linker_file3 ),
-                "params": {
-                    "load_as": "trajectory+append"
-                }
-            },
-            { 
-                "name": "linker_json",
-                "filename": self.relpath( self.json_file )
-            },
-            {
-                "name": "linker_datalist",
-                "datalist": "Provi.Bio.Linker.LinkerDatalist", 
-                "params": {
-                    "linker_ds": "DATASET_linker_json",
-                    "pdb_ds": "DATASET_linker_pdb"
-                }
-            },
-            {
-                "widget": "Provi.Widget.Grid.GridWidget",
-                "params": {
-                    "heading": "Linker",
-                    "parent_id": "tab_widgets",
-                    "datalist": "DATALIST_linker_datalist"
-                }
-            }
-        ]
-        with open( self.provi_file, "w" ) as fp:
-            json.dump( provi_json, fp, indent=4 )
 
     
 
-class LinkItDensity( PyTool ):
+class LinkItDensity( PyTool, ProviMixin ):
     args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
         { "name": "mrc_file", "type": "file", "ext": "mrc" },
@@ -182,6 +153,8 @@ class LinkItDensity( PyTool ):
         { "name": "resolution", "type": "slider", "range": [1, 10], "fixed": True },
         { "name": "max_loops", "type": "slider", "range": [0, 200], "default_value": 100 }
     ]
+    tmpl_dir = TMPL_DIR
+    provi_tmpl = "link_it_density.provi"
     def _init( self, pdb_file, mrc_file, res1, res2, seq, 
                pixelsize, resolution, max_loops=100, **kwargs ):
         self.pdb_file = self.abspath( pdb_file )
@@ -195,17 +168,21 @@ class LinkItDensity( PyTool ):
             res1, res2, len(seq), pixelsize, resolution, max_loops=max_loops,
             **copy_dict( kwargs, run=False, output_dir=self.subdir("loop_correl") )
         )
-        self.provi_file = "linkit.provi"
         self.output_files = list( itertools.chain(
             self.link_it.output_files, 
             self.loop_correl.output_files,
-            [ self.provi_file ]
         ))
     def func( self ):
         self.link_it()
         self.loop_correl()
     def _post_exec( self ):
-        self._make_provi()
+        self._make_provi_file(
+            pdb_file=self.relpath( self.pdb_file ),
+            mrc_file=self.relpath( self.mrc_file ),
+            box_mrc_file=self.relpath( self.loop_correl.spider_reconvert.mrc_file ),
+            pdb_linker_file3=self.relpath( self.link_it.pdb_linker_file3 ),
+            link_it_json_file=self.relpath( self.link_it.json_file )
+        )
     def _make_correl_json( self, compact=False ):
         linker_dict = {}
         with open( self.txt_file, "r" ) as fp:
@@ -218,65 +195,6 @@ class LinkItDensity( PyTool ):
                 json.dump( linker_dict, fp, separators=(',',':') )
             else:
                 json.dump( linker_dict, fp, indent=4 )
-    def _make_provi( self ):
-        provi_json = [
-            {
-                "filename": self.relpath( self.pdb_file ),
-            },
-            {
-                "filename": self.relpath( self.mrc_file ),
-                "type": "mrc",
-                "params": {
-                    "sigma": 0,
-                    "cutoff": 5,
-                    "sign": False,
-                    "color": "skyblue",
-                    "frontonly": True,
-                    "style": "MESH NOFILL NODOTS"
-                }
-            },
-            {
-                "filename": self.relpath( self.loop_correl.spider_reconvert.mrc_file ),
-                "type": "mrc",
-                "params": {
-                    "sigma": 0,
-                    "cutoff": 1,
-                    "sign": False,
-                    "color": "tomato",
-                    "frontonly": True,
-                    "style": "MESH NOFILL NODOTS"
-                }
-            },
-            {
-                "name": "linker_pdb",
-                "filename": self.relpath( self.link_it.pdb_linker_file3 ),
-                "params": {
-                    "load_as": "trajectory+append"
-                }
-            },
-            { 
-                "name": "linker_json",
-                "filename": self.relpath( self.link_it.json_file )
-            },
-            {
-                "name": "linker_datalist",
-                "datalist": "Provi.Bio.Linker.LinkerDatalist", 
-                "params": {
-                    "linker_ds": "DATASET_linker_json",
-                    "pdb_ds": "DATASET_linker_pdb"
-                }
-            },
-            {
-                "widget": "Provi.Widget.Grid.GridWidget",
-                "params": {
-                    "heading": "Linker",
-                    "parent_id": "tab_widgets",
-                    "datalist": "DATALIST_linker_datalist"
-                }
-            }
-        ]
-        with open( self.provi_file, "w" ) as fp:
-            json.dump( provi_json, fp, indent=4 )
 
 
 
