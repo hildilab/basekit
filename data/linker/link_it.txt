@@ -1,0 +1,47 @@
+
+# 1. File analog dem angehaengten schreiben (KOS.txt):
+# 12 Zeilen Koordinaten, gewuenschte Sequenz, gewuenschte
+# Aminosaeure-Numerierung (erste/letzte)
+# 2. dos.exe aufrufen: 'Link_it_dos.exe KOS.txt MyLinker.bin t'
+# (t steht fuer txt-Variante, also nicht binaer)
+# 3. 'Link_it_dos.exe rechnet, schreibt das Ausgabefile, und hinterher ein
+# File 'Ready.bin', deshalb:
+# Warten, bis ready.bin aufgetaucht ist, danach linkerfile lesen
+
+# KO_TxtFile := ExtractFilePath(ParamStr(0))+'KOS.txt';
+# Linker_Antwort := ExtractFilePath(ParamStr(0))+'MyLinker.bin';
+# Ready_File := ExtractFilePath(ParamStr(0))+'Ready.bin';
+# Link_It_Dos_Path := ExtractFilePath(ParamStr(0));
+# Link_it_Web_Ini_File:=ExtractFilePath(ParamStr(0))+'link_it_web.ini';
+# Linker_Antwort := ThePath+'MyLinker.bin';
+
+
+# Aufruf:='Link_it_dos.exe '+KO_TxtFile+' '+Linker_Antwort+' t';
+# GotLinker:=False;
+# WinExecAndWait_32(Aufruf,Link_It_Dos_Path, SW_SHOW, True);
+
+# while not(FileExists(Ready_File)) do Application.HandleMessage;
+# while not(FileExists(Linker_Antwort)) do Application.ProcessMessages;
+
+
+
+
+# Link_it.ini: Pfade zu db setzen
+
+
+
+# kos.txt:
+# 12 Zeilen Koordinaten
+# 1-3 CA 1.AS
+# 4-6 C   1.AS
+# 7-9 N    2.AS
+# 10-12 CA 2.AS
+# Sequenz des Linkers
+# Stem1  Stem2 (mit Kette)
+
+
+# wine Link_It_dos2.exe KOS.txt mylinker.bin t
+
+
+# mylinker.bin => output
+# t => output additionally as text

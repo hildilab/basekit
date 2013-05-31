@@ -24,33 +24,34 @@ TIMEOUT_CMD = "timeout"
 
 
 
-def get_type( params ):
+def get_argument( params ):
+    kwargs = {
+        "default": params.get( "default_value", None ),
+        "help": params.get( "help" )
+    }
     if params.get('fixed'):
-        return float
+        kwargs["type"] = float
     elif params["type"]=="slider":
-        return int
+        kwargs["type"] = int
     elif params["type"] in [ "file", "text", "select" ]:
-        return str
+        kwargs["type"] = str
     elif params["type"]=="checkbox":
-        return boolean
-    else:
-        return str
+        kwargs["action"] = "store_true"
+    return kwargs
 
 def make_parser( Tool, parser=None ):
     if not parser:
         parser = argparse.ArgumentParser( description=Tool.__doc__, epilog="basekit", add_help=False )
     for name, params in Tool.args.iteritems():
         option = '--%s'%name if "default_value" in params else name
-        default = params.get( "default_value", None )
-        type = get_type( params )
-        parser.add_argument( option, type=type, default=default, help=params.get("help") )
+        parser.add_argument( option, **get_argument( params ) )
+    group = parser.add_argument_group( title="general arguments" )
     if not Tool.no_output:
-        group = parser.add_argument_group( title="general arguments" )
         group.add_argument( '-o', dest="output_dir", metavar='OUTPUT_DIR', type=str, default="./" )
         group.add_argument( '-t', dest="timeout", metavar='TIMEOUT', type=int, default=0 )
         group.add_argument( '-v', '--verbose', action='store_true' )
         group.add_argument( '-c', '--check', action='store_true' )
-        group.add_argument( '-h', '--help', action="help", help="show this help message and exit" )
+    group.add_argument( '-h', '--help', action="help", help="show this help message and exit" )
     return parser
 
 def parse_args( Tool, kwargs=None ):
@@ -187,6 +188,15 @@ class CmdTool( Tool ):
         log_file = "%s_cmd.log" % self.name
         ret = run_command( cmd, log=log_file, verbose=self.verbose )
         return ret
+
+
+class DbTool( Tool ):
+    def __init__( self, cmd=None, *args, **kwargs ):
+        super(DbTool, self).__init__( *args, **kwargs )
+        if not hasattr( self, "schema" ):
+            raise Exception("A DbTool needs a 'schema' attribute")
+    def _run( self ):
+        pass
 
 
 
