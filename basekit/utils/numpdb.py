@@ -6,7 +6,6 @@ import functools
 import itertools
 import collections
 import logging
-from cStringIO import StringIO
 
 import numpy as np
 
@@ -119,8 +118,8 @@ class SimpleParser():
 
 
 
-pdb_delimiter=(6,5,1,4,1,3,1,1,4,1,3,8,8,8,6,6)
-pdb_dtype=[
+PDB_DELIMITER=(6,5,1,4,1,3,1,1,4,1,3,8,8,8,6,6,6,4,2,2)
+PDB_DTYPE=[
     ('record', '|S6'),          # 0
     ('atomno', np.int),         # 1
     ('empty1', '|S1'),          # 2
@@ -136,14 +135,58 @@ pdb_dtype=[
     ('y', np.float),            # 12
     ('z', np.float),            # 13
     ('occupancy', np.float),    # 14
-    ('bfac', np.float)          # 15
+    ('bfac', np.float),         # 15
+    ('empty4', '|S6'),          # 16
+    ('segment', '|S4'),         # 17
+    ('element', '|S2'),         # 18
+    ('charge', '|S2'),          # 19
 ]
-# pdb_usecols=(3,4,5,7,8,11,12,13)
-pdb_usecols=(3,4,5,7,8,9,11,12,13)
-pdb_cols=( 
-    (0,6), (6,11), (11,12), (12,16), (16,17), (17,20), (20,21), (21,22), 
-    (22,26), (26,27), (27,30), (30,38), (38,46), (46,54), (54,60), (60,66)
+PDB_USECOLS=(1,3,4,5,7,8,9,11,12,13,14,15)
+PDB_COLS=( 
+#   0        1        2        3        4        5        6        7
+    ( 0, 6), ( 6,11), (11,12), (12,16), (16,17), (17,20), (20,21), (21,22),
+#   8        9        10       11       12       13       14       15
+    (22,26), (26,27), (27,30), (30,38), (38,46), (46,54), (54,60), (60,66),
+#   16       17       18       19
+    (66,72), (72,76), (76,78), (78,80)
 )
+PDB_DEFAULTS = {
+    "record": "ATOM",
+    "atomno": 1,
+    "atomname": " C  ",
+    "altloc": "",
+    "resname": "GLY",
+    "chain": "",
+    "resno": 1,
+    "insertion": "",
+    "x": 0.0, "y": 0.0, "z": 0.0,
+    "occupancy": 1.0,
+    "bfac": 0.0,
+    "segment": "",
+    "element": "",
+    "charge": ""
+}
+PDB_ATOM_TMPL = "{record:<6}{atomno:>5} {atomname:>4}{altloc:>1}{resname:>3} " \
+                "{chain:>1}{resno:>4}{insertion:>1}   {x:8.3f}{y:8.3f}{z:8.3f}" \
+                "{occupancy:6.2f}{bfac:6.2f}      {segment:<4}{element:>2}{charge:>2}\n"
+
+def numdefaults( natom, defaults ):
+    d = {}
+    for k, v in defaults.iteritems():
+        try:
+            d[k] = natom[k]
+        except:
+            d[k] = v
+    return d
+
+def pdb_line( natom ):
+    return PDB_ATOM_TMPL.format( 
+        **numdefaults( natom, PDB_DEFAULTS )
+    )
+
+def xyzr_line( natom ):
+    pass
+
 
 
 
@@ -220,7 +263,7 @@ class NumAtoms:
             self._coords = value
         else:
             self._atoms[ key ] = value
-    def sele( self, chain=None, resno=None, atomname=None, sele=None ):
+    def sele( self, chain=None, resno=None, atomname=None, sele=None, invert=None ):
         atoms = self._atoms
         if sele==None:
             sele = np.ones( self.length, bool )
@@ -245,6 +288,8 @@ class NumAtoms:
             else:
                 atomname = ATOMS.get( atomname, atomname )
                 sele &= atoms['atomname']==atomname
+        if invert:
+            np.logical_not( sele, sele )
         return sele
     def slice( self, begin, end, flag=None ):
         return NumAtoms( self._atoms[begin:end], self._coords[begin:end], flag=flag )
@@ -358,6 +403,13 @@ class NumAtoms:
         return np.sum( coords, axis=0 ) / len(coords)
     def dist( self, sele1, sele2 ):
         return mag( self.center( **sele1 ) - self.center( **sele2 ) )
+    def write( self, file_name, **sele ):
+        coords, atoms = self._select( **sele )
+        with open( file_name, "w" ) as fp:
+            for natom in atoms:
+                fp.write( pdb_line( natom ) )
+
+
 
 
 
@@ -378,9 +430,9 @@ class NumPdb:
     def _parse( self ):
         cols = []
         types = []
-        for j, c in enumerate(pdb_usecols):
-            cols.append( pdb_cols[c] )
-            types.append( pdb_dtype[c] )
+        for c in PDB_USECOLS:
+            cols.append( PDB_COLS[c] )
+            types.append( PDB_DTYPE[c] )
 
         extra = []
         parsers = {}

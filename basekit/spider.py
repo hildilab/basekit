@@ -220,17 +220,20 @@ class LoopCrosscorrel( PyTool ):
                res1, res2, length, pixelsize, resolution, max_loops=100, **kwargs ):
         self.mrc_file = self.abspath( mrc_file )
         self.pdb_file = self.abspath( pdb_file )
+        self.res1 = res1
+        self.res2 = res2
+        self.cropped_pdb = self.outpath( "cropped.pdb" )
         self.loop_file = self.abspath( loop_file )
         self.spider_convert = SpiderConvert( 
             self.mrc_file, **copy_dict( kwargs, run=False, output_dir=self.subdir("convert") )
         )
         self.spider_delete_filled_densities = SpiderDeleteFilledDensities( 
-            self.spider_convert.map_file, self.pdb_file, pixelsize,
+            self.spider_convert.map_file, self.cropped_pdb, pixelsize,
             **copy_dict( kwargs, run=False, output_dir=self.subdir("delete_filled_densities") )
         )
         self.spider_box = SpiderBox(
             self.spider_delete_filled_densities.empty_map_file, 
-            self.pdb_file, res1, res2, length, pixelsize, resolution,
+            self.cropped_pdb, res1, res2, length, pixelsize, resolution,
             **copy_dict( kwargs, run=False, output_dir=self.subdir("box") )
         )
         self.spider_reconvert = SpiderReConvert(
@@ -252,14 +255,26 @@ class LoopCrosscorrel( PyTool ):
             self.spider_delete_filled_densities.output_files,
             self.spider_box.output_files,
             self.spider_reconvert.output_files,
-            self.spider_crosscorrelation.output_files
+            self.spider_crosscorrelation.output_files,
+            [ self.cropped_pdb ]
         ))
     def func( self ):
+        self._crop_pdb()
         self.spider_convert()
         self.spider_delete_filled_densities()
         self.spider_box()
         self.spider_reconvert()
         self.spider_crosscorrelation()
+    def _crop_pdb( self ):
+        npdb = NumPdb( self.pdb_file )
+        sele1 = numsele( self.res1 )
+        sele2 = numsele( self.res2 )
+        npdb.write( 
+            self.cropped_pdb, 
+            chain=sele1["chain"], 
+            resno=[ sele1["resno"]+1, sele2["resno"]-1 ],
+            invert=True
+        )
 
 
 

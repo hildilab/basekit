@@ -9,7 +9,7 @@ import numpy as np
 import utils.path
 from utils.tool import PyTool
 from utils.timer import Timer
-from utils.numpdb import NumPdb, numdist
+from utils.numpdb import NumPdb, numdist, pdb_line
 
 
 
@@ -144,6 +144,8 @@ def numpdb_test( pdb_file ):
     # with Timer("sequence"):
     #     first_chain = npdb["chain"][0]
     #     print npdb.sequence( chain=first_chain )
+    with Timer("write pdb"):
+        npdb.write( "test.pdb", resno=[1,10], invert=True )
 
 
 class NumpdbTest( PyTool ):
