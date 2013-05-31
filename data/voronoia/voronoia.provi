@@ -1,0 +1,24 @@
+[
+    { 
+        "filename": "${pdb_file}"
+    },
+    { 
+        "name": "vol_atomsele",
+        "filename":  "${vol_file}.atmsele"
+    },
+    {
+        "name": "vol_datalist",
+        "datalist": "Provi.Bio.Voronoia.VoronoiaDatalist", 
+        "params": {
+            "holes_ds": "DATASET_vol_atomsele"
+        }
+    },
+    {
+        "widget": "Provi.Widget.Grid.GridWidget",
+        "params": {
+            "heading": "Cavities",
+            "parent_id": "tab_widgets",
+            "datalist": "DATALIST_vol_datalist"
+        }
+    }
+]

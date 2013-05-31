@@ -12,8 +12,8 @@ import functools
 import itertools
 import inspect
 import json
-from string import Template
-from collections import OrderedDict
+import string
+import collections
 
 from basekit.utils import try_int, get_index, boolean, working_directory
 from basekit.utils.timer import Timer
@@ -38,17 +38,19 @@ def get_type( params ):
 
 def make_parser( Tool, parser=None ):
     if not parser:
-        parser = argparse.ArgumentParser()
+        parser = argparse.ArgumentParser( description=Tool.__doc__, epilog="basekit", add_help=False )
     for name, params in Tool.args.iteritems():
         option = '--%s'%name if "default_value" in params else name
         default = params.get( "default_value", None )
         type = get_type( params )
-        parser.add_argument( option, type=type, default=default)
+        parser.add_argument( option, type=type, default=default, help=params.get("help") )
     if not Tool.no_output:
-        parser.add_argument( '-o', '--output_dir', type=str, default="./" )
-        parser.add_argument( '-t', '--timeout', type=int, default=0 )
-        parser.add_argument( '-v', '--verbose', action='store_true' )
-        parser.add_argument( '-c', '--check', action='store_true' )
+        group = parser.add_argument_group( title="general arguments" )
+        group.add_argument( '-o', dest="output_dir", metavar='OUTPUT_DIR', type=str, default="./" )
+        group.add_argument( '-t', dest="timeout", metavar='TIMEOUT', type=int, default=0 )
+        group.add_argument( '-v', '--verbose', action='store_true' )
+        group.add_argument( '-c', '--check', action='store_true' )
+        group.add_argument( '-h', '--help', action="help", help="show this help message and exit" )
     return parser
 
 def parse_args( Tool, kwargs=None ):
@@ -61,11 +63,15 @@ def parse_args( Tool, kwargs=None ):
             args.append( kwargs.pop( name ) )
     return args, kwargs
 
-def parse_subargs( tools ):
-    parser = argparse.ArgumentParser()
+def parse_subargs( tools, description=None ):
+    if description:
+        description += " The tools are accessible by the subcommands given below."
+    else:
+        description = "A collection of tools, accessible by the subcommands given below."
+    parser = argparse.ArgumentParser( description=description )
     subparsers = parser.add_subparsers( title='subcommands' )
     for name, Tool in tools.iteritems():
-        subp = subparsers.add_parser( name )
+        subp = subparsers.add_parser( name, description=Tool.__doc__, epilog="basekit", add_help=False )
         make_parser( Tool, subp )
         subp.set_defaults(Tool=Tool)
     pargs = vars( parser.parse_args() )
@@ -80,7 +86,7 @@ class ToolMetaclass(type):
         if not "no_output" in dct:
             cls.no_output = False
 
-        args = OrderedDict()
+        args = collections.OrderedDict()
         for a in dct.get( "args", [] ):
             args[ a.pop("name") ] = a
         cls.args = args
@@ -146,6 +152,16 @@ class Tool( object ):
     def __str__( self ):
         status = "ok" if self.check() else "failed"
         return "%s status: %s" % ( self.name, status )
+    def relpath( self, path, no_ext=False ):
+        if no_ext:
+            path = os.path.splitext( path )[0]
+        return os.path.relpath( path, self.output_dir )
+    def outpath( self, file_name ):
+        return os.path.join( self.output_dir, file_name )
+    def abspath( self, path ):
+        return os.path.abspath( path )
+    def subdir( self, directory ):
+        return os.path.join( self.output_dir, directory )
 
 
 
@@ -156,7 +172,7 @@ class PyTool( Tool ):
         if not hasattr( self, "func" ):
             raise Exception("A PyTool needs a 'func' attribute")
     def _run( self ):
-        self.func()
+        return self.func()
 
 
 class CmdTool( Tool ):
@@ -169,20 +185,32 @@ class CmdTool( Tool ):
         if self.timeout:
             cmd = [ TIMEOUT_CMD, self.timeout ] + cmd
         log_file = "%s_cmd.log" % self.name
-        run_command( cmd, log=log_file, verbose=self.verbose )
+        ret = run_command( cmd, log=log_file, verbose=self.verbose )
+        return ret
 
 
 
 
-class ScriptMixin( object ):
-    def _make_script_file( self, **values_dict ):
-        tmpl_file = os.path.join( self.tmpl_dir, self.tmpl_file )
+class TmplMixin( object ):
+    def _make_file_from_tmpl( self, tmpl_name, **values_dict ):
+        tmpl_file = os.path.join( self.tmpl_dir, tmpl_name )
         with open( tmpl_file, "r" ) as fp:
             tmpl_str = fp.read()
-        script_file = os.path.join( self.output_dir, self.tmpl_file )
-        with open( script_file, "w" ) as fp:
-            fp.write( Template( tmpl_str ).substitute( **values_dict ) )
-        return script_file
+        out_file = os.path.join( self.output_dir, tmpl_name )
+        with open( out_file, "w" ) as fp:
+            fp.write( string.Template( tmpl_str ).substitute( **values_dict ) )
+        return out_file
+
+
+class ScriptMixin( TmplMixin ):
+    def _make_script_file( self, **values_dict ):
+        return self._make_file_from_tmpl( self.script_tmpl, **values_dict )
+
+
+class ProviMixin( TmplMixin ):
+    def _make_provi_file( self, provi_tmpl=None, **values_dict ):
+        provi_tmpl = provi_tmpl or self.provi_tmpl
+        return self._make_file_from_tmpl( provi_tmpl, **values_dict )
 
 
 

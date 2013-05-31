@@ -11,7 +11,7 @@ def main():
         "info": Sstruc, 
         "find": SstrucFinder
     }
-    Tool, args, kwargs = parse_subargs( tools )
+    Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )
 
 

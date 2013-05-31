@@ -1,0 +1,23 @@
+; author: jochen ismer
+
+;das ergebnisse file einlesen weil wir die obere linke Ecke brauchen
+UD IC 1,[bs],[obenlinks1],[obenlinks2],[obenlinks3],[ps], [rs]
+${box_name}
+;die boxgrösse der originalen usermap herausfinden weil wir die brauchen um die kleine an die richtige Stelle zu bekommen
+;Groesse Usermap
+FI [x8],[x9],[x10]
+${map_name}
+1,2,12
+[x100]=([obenlinks1]-([x8]/2))
+[x101]=([obenlinks2]-([x9]/2))
+[x102]=([obenlinks3]-([x10]/2))
+
+;convertieren der ausgeschnittenen box
+cp to mrc
+${box_map_name}
+reconvert.mrc
+32 0
+*
+[ps] [ps] [ps]
+[x100] [x101] [x102]
+en

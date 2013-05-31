@@ -8,6 +8,7 @@ import os
 import shutil
 import argparse
 
+import utils.path
 from utils.tool import CmdTool
 
 
@@ -40,8 +41,8 @@ class Dssp( CmdTool ):
         { "name": "pdb_file", "type": "file", "ext": "pdb" }
     ]
     def _init( self, pdb_file, **kwargs ):
-    	self.pdb_file = os.path.abspath( pdb_file )
-    	stem = os.path.splitext( os.path.split( self.pdb_file )[-1] )[0]
+    	self.pdb_file = self.abspath( pdb_file )
+    	stem = utils.path.stem( self.pdb_file )
         self.dssp_file = "%s.dssp" % stem
         self.cmd = [ 
             DSSP_CMD, self.pdb_file, self.dssp_file

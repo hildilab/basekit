@@ -1,5 +1,7 @@
 #! /usr/bin/env python
 
+"""A wrapper around the 'msms' programm"""
+
 from basekit.utils.tool import parse_args
 from basekit.msms import Msms
 

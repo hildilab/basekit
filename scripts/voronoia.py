@@ -1,5 +1,7 @@
 #! /usr/bin/env python
 
+"""A wrapper around the 'voronoia' aka 'get_volume' programm."""
+
 from basekit.utils.tool import parse_args
 from basekit.voronoia import Voronoia
 

@@ -139,7 +139,7 @@ pdb_dtype=[
     ('bfac', np.float)          # 15
 ]
 # pdb_usecols=(3,4,5,7,8,11,12,13)
-pdb_usecols=(3,4,5,7,8,11,12,13)
+pdb_usecols=(3,4,5,7,8,9,11,12,13)
 pdb_cols=( 
     (0,6), (6,11), (11,12), (12,16), (16,17), (17,20), (20,21), (21,22), 
     (22,26), (26,27), (27,30), (30,38), (38,46), (46,54), (54,60), (60,66)
@@ -237,7 +237,7 @@ class NumAtoms:
             else:
                 sele &= atoms['resno']==resno
         if atomname!=None:
-            if isinstance( atomname, collections.Iterable ):
+            if isinstance( atomname, collections.Iterable ) and not isinstance( atomname, basestring ):
                 atomname = [ ATOMS.get( a, a ) for a in atomname ]
                 tmps = atoms['atomname']==atomname[0]
                 for an in atomname[1:]: tmps |= atoms['atomname']==an
@@ -301,22 +301,36 @@ class NumAtoms:
             yield numatoms.slice( k, l )
     def iter_resno( self, **sele ):
         for numatoms in self.iter_chain( **sele ):
-            resno = numatoms['resno'][0]
+            
+            def get_slice( k, l, numa_prev ):
+                numa = numatoms.slice( k, l, flag=True )
+                if numa_prev:
+                    if numa_prev['resno'][0]==numa['resno'][0]-1:
+                        flag = False
+                    elif numdist( numa_prev.copy( atomname="C" ), numa.copy( atomname="N" ) ) > 1.4:
+                        flag = True
+                    else:
+                        flag = False
+                    numa.flag = flag
+                return numa
+
+            res = ( numatoms['resno'][0], numatoms['insertion'][0] )
+            numa_prev = None
             atoms = numatoms._atoms
             k = 0
             l = 0
-            flag = True
+
             for a in atoms:
-                if resno!=a['resno']:
-                    yield numatoms.slice( k, l, flag=flag )
+                if res!=( a['resno'], a['insertion'] ):
+                    numa = get_slice( k, l, numa_prev )
+                    yield numa
                     k = l
-                    # detect chain breaks
-                    flag = True if (resno!=a['resno']-1) else False
-                    resno = a['resno']
+                    res = ( a['resno'], a['insertion'] )
+                    numa_prev = numa
                 l += 1
-            yield numatoms.slice( k, l, flag=flag )
+            yield get_slice( k, l, numa_prev )
     def iter_resno2( self, window, **sele ):
-        # TODO assumes the first a has a.flag==True
+        # (TODO) assumes the first a has a.flag==True
         it = self.iter_resno( **sele )
         for a in it:
             if a.flag:
@@ -382,20 +396,34 @@ class NumPdb:
             parsers[ "sstruc" ] = SstrucParser()
 
         atoms = []
+        atoms_append = atoms.append
         header = []
+        header_append = header.append
 
         with open( self.pdb_path, "r" ) as fp:
             backbone = ATOMS['backbone']
             nbo = not self.features["backbone_only"]
             altloc = (' ', 'A', '1')
-            for line in fp:
-                if line[0:4]=="ATOM" and line[16] in altloc and ( nbo or line[12:16] in backbone ):
-                    atoms.append( tuple([ line[ c[0]:c[1] ] for c in cols ] + extra) )
-                else:
-                    header.append( line )
-                    for p in parsers.values():
-                        p( line )
+            keys = ('ATOM  ', 'HETATM', 'MODEL ')
+            parsrs = parsers.values()
+            tupl = tuple
 
+            for line in fp:
+                if line[0:6] in keys:
+                    break
+                header_append( line )
+                for p in parsrs:
+                    p( line )
+            
+            for line in itertools.chain( [line], fp ):
+                if line[0:4]=="ATOM":
+                    if ( nbo or line[12:16] in backbone ) and line[16] in altloc:
+                        atoms_append( tupl( [ line[ c[0]:c[1] ] for c in cols ] + extra ) )
+                elif line[0:5]=="MODEL":
+                    pass
+                elif line[0:6]=="CONECT":
+                    break
+                    
         for name in parsers.keys():
             p=parsers.get( name )
             if p:
@@ -419,9 +447,9 @@ class NumPdb:
         if self.features["sstruc"]:
             self.__calc_sstruc()
     def __calc_incomplete( self ):
-        backbone = ATOMS['backbone']
+        bb_subset = ATOMS['backbone'].issubset
         for numa in self.iter_resno():
-            if not backbone.issubset( numa["atomname"] ):
+            if not bb_subset( numa["atomname"] ):
                 numa['incomplete'] = True
                 # print numa._atoms
         sele = self._atoms["incomplete"]==False
@@ -439,7 +467,7 @@ class NumPdb:
                     self.slice( idx_beg, idx_end )['sstruc'] = "E"
             except Exception as e:
                 LOG.error( "calc sstruc (%s) => %s" % ( e, ss ) )
-    def __calc_phi_psi( self ):
+    def __calc_phi_psi( self, dihedral=dihedral ):
         mainchain = ATOMS['mainchain']
         for na_curr, na_next in self.iter_resno2( 2 ):
             try:
@@ -451,7 +479,7 @@ class NumPdb:
                 LOG.error( "calc phi/psi (%s) => %s, %s" % (
                     e, na_curr['atomname'], na_next['atomname']
                 ))
-        #for a in self.iter_resno(): print a._atoms[0]
+        # for a in self.iter_resno(): print a._atoms[0], a.flag
 
 
 

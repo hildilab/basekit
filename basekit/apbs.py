@@ -5,6 +5,7 @@ from __future__ import division
 
 import os
 
+import utils.path
 from utils import copy_dict
 from utils.tool import CmdTool
 
@@ -21,8 +22,8 @@ class Pdb2pqr( CmdTool ):
         { "name": "pdb_file", "type": "file", "ext": "pdb" }
     ]
     def _init( self, pdb_file, **kwargs ):
-    	self.pdb_file = os.path.abspath( pdb_file )
-    	stem = os.path.splitext( os.path.split( self.pdb_file )[-1] )[0]
+    	self.pdb_file = self.abspath( pdb_file )
+    	stem = utils.path.stem( self.pdb_file )
         self.pqr_file = "%s.pqr" % stem
         self.apbsin_file = "%s.in" % stem
         self.apbsin_pickle = "%s-input.p" % stem
