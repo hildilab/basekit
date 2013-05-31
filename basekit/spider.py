@@ -7,7 +7,7 @@ import itertools
 from string import Template
 
 from utils import copy_dict
-from utils.tool import Tool, CmdTool, ScriptMixin
+from utils.tool import PyTool, CmdTool, ScriptMixin
 from utils.numpdb import NumPdb, numsele
 
 from pdb import PdbSplit
@@ -203,7 +203,7 @@ class SpiderCrosscorrelation( Spider ):
                 json.dump( crosscorrel_dict, fp, indent=4 )
 
 
-class LoopCrosscorrel( Tool ):
+class LoopCrosscorrel( PyTool ):
     args = [
         { "name": "mrc_file", "type": "file", "ext": "mrc" },
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
@@ -253,7 +253,7 @@ class LoopCrosscorrel( Tool ):
             self.spider_reconvert.output_files,
             self.spider_crosscorrelation.output_files
         ))
-    def _pre_exec( self ):
+    def func( self ):
         self.spider_convert()
         self.spider_delete_filled_densities()
         self.spider_box()

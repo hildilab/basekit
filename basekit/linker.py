@@ -10,7 +10,7 @@ import json
 
 import utils.path
 from utils import copy_dict, iter_stride
-from utils.tool import Tool, CmdTool, PyTool
+from utils.tool import CmdTool, PyTool
 from utils.numpdb import NumPdb, numsele
 
 import provi_prep as provi
@@ -171,7 +171,7 @@ class LinkIt( CmdTool ):
 
     
 
-class LinkItDensity( Tool ):
+class LinkItDensity( PyTool ):
     args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
         { "name": "mrc_file", "type": "file", "ext": "mrc" },
@@ -201,7 +201,7 @@ class LinkItDensity( Tool ):
             self.loop_correl.output_files,
             [ self.provi_file ]
         ))
-    def _pre_exec( self ):
+    def func( self ):
         self.link_it()
         self.loop_correl()
     def _post_exec( self ):
