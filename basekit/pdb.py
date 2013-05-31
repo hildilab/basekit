@@ -145,7 +145,7 @@ def numpdb_test( pdb_file ):
     #     first_chain = npdb["chain"][0]
     #     print npdb.sequence( chain=first_chain )
     with Timer("write pdb"):
-        npdb.write( "test.pdb", resno=[1,10] )
+        npdb.write( "test.pdb", resno=[1,10], invert=True )
 
 
 class NumpdbTest( PyTool ):

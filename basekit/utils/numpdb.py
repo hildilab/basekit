@@ -263,7 +263,7 @@ class NumAtoms:
             self._coords = value
         else:
             self._atoms[ key ] = value
-    def sele( self, chain=None, resno=None, atomname=None, sele=None ):
+    def sele( self, chain=None, resno=None, atomname=None, sele=None, invert=None ):
         atoms = self._atoms
         if sele==None:
             sele = np.ones( self.length, bool )
@@ -288,6 +288,8 @@ class NumAtoms:
             else:
                 atomname = ATOMS.get( atomname, atomname )
                 sele &= atoms['atomname']==atomname
+        if invert:
+            np.logical_not( sele, sele )
         return sele
     def slice( self, begin, end, flag=None ):
         return NumAtoms( self._atoms[begin:end], self._coords[begin:end], flag=flag )
@@ -428,7 +430,7 @@ class NumPdb:
     def _parse( self ):
         cols = []
         types = []
-        for j, c in enumerate(PDB_USECOLS):
+        for c in PDB_USECOLS:
             cols.append( PDB_COLS[c] )
             types.append( PDB_DTYPE[c] )
 
