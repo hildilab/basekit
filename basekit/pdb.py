@@ -3,6 +3,7 @@ from __future__ import with_statement
 import os
 import re
 import urllib2
+import gzip
 
 import numpy as np
 
@@ -10,6 +11,30 @@ import utils.path
 from utils.tool import PyTool
 from utils.timer import Timer
 from utils.numpdb import NumPdb, numdist, pdb_line
+from utils.db import get_pdb_files
+
+
+
+
+def unzip_pdb( fpath ):
+    fdir, fname = os.path.split( fpath )
+    fpdb = os.path.join( fdir, fname[3:7]+".pdb" )
+    with open( fpdb, "w" ) as f:
+        with gzip.open( fpath, "rb" ) as z:
+            f.write( z.read() )
+    return True
+
+class PdbUnzip( PyTool ):
+    args = [
+        { "name": "pdb_archive", "type": "text" }
+    ]
+    no_output = True
+    def _init( self, pdb_archive, **kwargs ):
+        self.pdb_archive = self.abspath( pdb_archive )
+    def func( self ):
+        pdb_file_list = get_pdb_files( self.pdb_archive, pattern="ent.gz" )
+        for pdb_file in pdb_file_list:
+            unzip_pdb( pdb_file )
 
 
 
