@@ -7,4 +7,4 @@ NUMPDB
 	=> name "detect_incomplete" [done for backbone]
 * http://docs.python.org/2/library/itertools.html#itertools.groupby
 * write XYZR
-* write PDB
+* write PDB (done, optimize: http://docs.scipy.org/doc/numpy/reference/generated/numpy.savetxt.html ???)
