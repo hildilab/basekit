@@ -1,15 +1,17 @@
 #! /usr/bin/env python
 
 from basekit.utils.tool import parse_subargs
-from basekit.sstruc import Sstruc, SstrucFinder
+from basekit.sstruc import Sstruc, SstrucFinder, SstrucTest, SstrucParallel
 
 
 
 
 def main():
     tools = {
-        "info": Sstruc, 
-        "find": SstrucFinder
+    	"test": SstrucTest,
+        "pdb": Sstruc,
+        "find": SstrucFinder,
+        "parallel": SstrucParallel
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )

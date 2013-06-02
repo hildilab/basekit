@@ -10,7 +10,7 @@ import logging
 import numpy as np
 
 from basekit.utils import try_int, get_index
-from math import dihedral, vec_dihedral, mag
+from math import dihedral, vec_dihedral, mag, axis
 
 
 logging.basicConfig()
@@ -18,7 +18,6 @@ LOG = logging.getLogger('numpdb')
 # LOG.setLevel( logging.ERROR )
 LOG.setLevel( logging.WARNING )
 # LOG.setLevel( logging.DEBUG )
-
 
 
 
@@ -46,6 +45,13 @@ LOG.setLevel( logging.WARNING )
 HELIX = 1
 SHEET = 2
 
+
+RESIDUES = {
+    'nucleotides': frozenset([ 
+        "  C", "  U", "  G", "  A",
+        " DC", " DT", " DG", " DA"
+    ])
+}
 
 AA1 = {
     'HIS': 'H',
@@ -189,7 +195,12 @@ def xyzr_line( natom ):
 
 
 
-
+SstrucRecord = collections.namedtuple( 'SstrucRecord', [
+    'type', 'subtype',
+    'chain1', 'resno1',
+    'chain2', 'resno2',
+    'hbond'
+])
 
 class SstrucParser( SimpleParser ):
     def __init__( self ):
@@ -198,53 +209,32 @@ class SstrucParser( SimpleParser ):
         return line.startswith("HELIX") or line.startswith("SHEET")
     def _parse_line( self, line ):
             if line.startswith("HELIX"):
-                return [
+                return SstrucRecord(
                     HELIX,
+                    try_int( line[38:40] ),     # subtype
                     line[19],                   # chain 1
                     try_int( line[21:25] ),     # resno 1
                     line[31],                   # chain 2
                     try_int( line[33:37] ),     # resno 2
-                    try_int( line[38:40] ),     # subtype
                     None                        # padding...
-                ]
+                )
             elif line.startswith("SHEET"):
-                return [
+                return SstrucRecord(
                     SHEET,
+                    try_int( line[38:40] ),     # strand sense (subtype)
                     line[21],                   # chain 1
                     try_int( line[22:26] ),     # resno 1
                     line[32],                   # chain 2
                     try_int( line[33:37] ),     # resno 2
-                    try_int( line[38:40] ),     # strand sense (subtype)
-                    try_int( line[65:69] ),     # resno hbond prev strand
-                ]
+                    try_int( line[65:69], False ),     # resno hbond prev strand
+                )
     def get( self ):
-        self._list.sort( key=operator.itemgetter(1,2) )
+        self._list.sort( key=operator.attrgetter("chain1", "resno1") )
         return self._list
 
 
 
-def sstruc2jmol( sstruc ):
-    ret = ""
-    for i, ss in enumerate( sstruc ):
-        ret += "draw ID 'v%i' vector {%s} {%s};" % (
-            i,
-            "%0.2f %0.2f %0.2f" % tuple(ss[8]),
-            "%0.2f %0.2f %0.2f" % tuple(ss[7])
-        )
-    return ret
 
-def lsq(y):
-    # y = mx + c
-    x = np.arange( len(y) )
-    A = np.vstack([x, np.ones(len(x))]).T
-    m, c = np.linalg.lstsq( A, y )[0]
-    return [ m*x[0]+c, m*x[-1]+c ]
-
-def axis( coords ):
-    return np.array([ lsq(coords[...,i]) for i in range(3) ]).T
-
-
-        
 
 
 class NumAtoms:
@@ -420,6 +410,7 @@ class NumPdb:
             "phi_psi": True,
             "sstruc": True,
             "backbone_only": False,
+            "protein_only": True,
             "detect_incomplete": True
         }
         if features: self.features.update( features )
@@ -454,7 +445,9 @@ class NumPdb:
 
         with open( self.pdb_path, "r" ) as fp:
             backbone = ATOMS['backbone']
+            nucleotides = RESIDUES['nucleotides']
             nbo = not self.features["backbone_only"]
+            po = self.features["protein_only"]
             altloc = (' ', 'A', '1')
             keys = ('ATOM  ', 'HETATM', 'MODEL ')
             parsrs = parsers.values()
@@ -469,17 +462,21 @@ class NumPdb:
             
             for line in itertools.chain( [line], fp ):
                 if line[0:4]=="ATOM":
+                    if po and line[17:20] in nucleotides:
+                        continue
                     if ( nbo or line[12:16] in backbone ) and line[16] in altloc:
                         atoms_append( tupl( [ line[ c[0]:c[1] ] for c in cols ] + extra ) )
                 elif line[0:5]=="MODEL":
+                    # TODO add model field
                     pass
                 elif line[0:6]=="CONECT":
+                    # stop condition
                     break
                     
         for name in parsers.keys():
             p=parsers.get( name )
             if p:
-                self.__dict__[ "_"+name ] = p.get()
+                self.__dict__[ "_%s" % name ] = p.get()
 
         atoms = np.array(atoms, dtype=types)
         coords = np.vstack(( atoms['x'], atoms['y'], atoms['z'] )).T
@@ -505,17 +502,18 @@ class NumPdb:
                 numa['incomplete'] = True
                 # print numa._atoms
         sele = self._atoms["incomplete"]==False
-        self._atoms = self._atoms[ sele ]
-        self._coords = self._coords[ sele ]
-        self.numatoms = NumAtoms( self._atoms, self._coords )
+        if sele!=[]:
+            self._atoms = self._atoms[ sele ]
+            self._coords = self._coords[ sele ]
+            self.numatoms = NumAtoms( self._atoms, self._coords )
     def __calc_sstruc( self ):
         for ss in self._sstruc:
             try:
-                idx_beg = self.index( chain=ss[1], resno=ss[2], first=True )
-                idx_end = self.index( chain=ss[3], resno=ss[4], last=True )
-                if ss[0]==HELIX:
+                idx_beg = self.index( chain=ss.chain1, resno=ss.resno1, first=True )
+                idx_end = self.index( chain=ss.chain2, resno=ss.resno2, last=True )
+                if ss.type==HELIX:
                     self.slice( idx_beg, idx_end )['sstruc'] = "H"
-                elif ss[0]==SHEET:
+                elif ss.type==SHEET:
                     self.slice( idx_beg, idx_end )['sstruc'] = "E"
             except Exception as e:
                 LOG.error( "calc sstruc (%s) => %s" % ( e, ss ) )

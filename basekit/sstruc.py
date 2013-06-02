@@ -8,24 +8,163 @@ import argparse
 import operator
 import sqlite3
 import functools
+import collections
+import string
+import textwrap
+import multiprocessing
+import signal
+import logging
 
-from collections import defaultdict
-from string import Template
 
 import numpy as np
 
-from utils import try_int, get_index, boolean
+import utils.math
+import utils.path
+from utils import try_int, get_index, boolean, iter_window, memoize, copy_dict
 from utils.timer import Timer
 from utils.db import get_pdb_files, create_table
 from utils.job import do_parallel
-from utils.math import vec_angle
-from utils.tool import PyTool
+from utils.tool import PyTool, DbTool, RecordsMixin
 
 import utils.numpdb as numpdb
 
 
+# http://docs.python.org/2/library/collections.html#collections.namedtuple
 
-class Sstruc( PyTool ):
+
+SstrucDbRecord = collections.namedtuple( 'SstrucDbRecord', [
+    'pdb_id', 'type', 'subtype', 'length',
+    'chain1', 'resno1', 'chain2', 'resno2',
+    'prev_type', 'prev_dist', 'next_type', 'next_dist',
+    'hbond_cur_prev', 'hbond_next_cur', 'hbond_next_prev',
+    'angle_cur_prev', 'angle_next_cur', 'angle_next_prev',
+    'no'
+])
+
+
+class BuildSstrucDbRecords( object ):
+    def __init__( self, npdb, pdb_id=None ):
+        self.npdb = npdb
+        self.pdb_id = pdb_id
+    def _sheet_hbond( self, x, y ):
+        if not x or not y:
+            return None
+        if x.type!=numpdb.SHEET or y.type!=numpdb.SHEET:
+            return None
+        return y.resno1 <= x.hbond <= y.resno2
+    @memoize
+    def _axis( self, sstruc ):
+        beg, end = self.npdb.axis(
+            chain=sstruc.chain1, 
+            resno=[ sstruc.resno1, sstruc.resno2 ],
+            atomname="CA"
+        )
+        return end - beg
+    def _sstruc_angle( self, x, y ):
+        if not x or not y:
+            return None
+        return utils.math.angle( self._axis( x ), self._axis( y ) )
+    def _make_record( self, i, cur, prev, next ):
+        return SstrucDbRecord(
+            self.pdb_id, cur.type, cur.subtype,
+            cur.resno2 - cur.resno1 + 1,
+            cur.chain1, cur.resno1,
+            cur.chain2, cur.resno2,
+            prev and prev.type,
+            prev and cur.resno1 - prev.resno2,
+            next and next.type,
+            next and next.resno1 - cur.resno2,
+            self._sheet_hbond( cur, prev ),
+            self._sheet_hbond( next, cur ),
+            self._sheet_hbond( next, prev ),
+            self._sstruc_angle( cur, prev ),
+            self._sstruc_angle( next, cur ),
+            self._sstruc_angle( next, prev ),
+            i
+        )
+    def get( self ):
+        records = []
+        it = iter_window( self.npdb._sstruc, 3, boundary_overlap=1 )
+        for i, d in enumerate( it, start=1 ):
+            prev, cur, next = d
+            records.append( self._make_record( i, cur, prev, next ) )
+        return records
+
+
+
+class Sstruc( PyTool, RecordsMixin ):
+    args = [
+        { "name": "pdb_file", "type": "file", "ext": "pdb" },
+        { "name": "pdb_id", "type": "text", "default_value": None }
+    ]
+    RecordsClass = SstrucDbRecord
+    def _init( self, pdb_file, pdb_id=None, **kwargs ):
+        self.pdb_file = self.abspath( pdb_file )
+        self.pdb_id = pdb_id
+        self.output_files = []
+        self._init_records( utils.path.stem( pdb_file ), **kwargs )
+        #print self.records[0] if self.records else None
+    def func( self ):
+        npdb = numpdb.NumPdb( self.pdb_file )
+        self.records = BuildSstrucDbRecords( npdb, pdb_id=self.pdb_id ).get()
+        # with Timer( "write sstruc: %s" % self.output_type ):
+        #     self.write()
+        # print self.records[0]
+        # self.records = None
+        # with Timer( "read sstruc: %s" % self.output_type ):
+        #     self.read()
+        # print self.records[0]
+
+
+def call( x ):
+    print x.pdb_id
+    try:
+        return x()
+    except Exception as e:
+        print e
+        return None
+
+
+class SstrucParallel( PyTool ):
+    args = [
+        { "name": "pdb_path", "type": "directory" },
+        { "name": "sample", "type": "slider", "range": [0, 100], "default_value": None }
+    ]
+    ToolClass = Sstruc
+    def _init( self, pdb_path, sample=None, **kwargs ):
+        self.pdb_path = self.abspath( pdb_path )
+        self.sample = sample or -1
+    def func( self ):
+        pdb_file_list = get_pdb_files( self.pdb_path, pattern=".pdb" )[0:self.sample]
+        self.tool_list = []
+        kwargs = { 
+            "run": False
+        }
+        for pdb_file in pdb_file_list:
+            stem = utils.path.stem( pdb_file )
+            output_dir = self.outpath( stem )
+            self.tool_list.append( self.ToolClass(
+                pdb_file, pdb_id=stem, **copy_dict( kwargs, output_dir=output_dir )
+            ))
+        print self.tool_list
+        self._func_parallel()
+    def _func_parallel( self, nworkers=1 ):
+        # !important - allows one to abort via CTRL-C
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        multiprocessing.log_to_stderr( logging.ERROR )
+        
+        if not nworkers: nworkers = multiprocessing.cpu_count()
+        p = multiprocessing.Pool( nworkers )
+
+        data = p.map( call, self.tool_list )
+        p.close()
+        p.join()
+
+        return data
+
+
+
+class SstrucDb( DbTool ):
     pass
 
 
@@ -33,6 +172,39 @@ class SstrucFinder( PyTool ):
     pass
 
 
+class SstrucPlot( PyTool ):
+    pass
+
+
+
+
+
+def sstruc_test( pdb_file ):
+    pass
+
+class SstrucTest( PyTool ):
+    args = [
+        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+    ]
+    no_output = True
+    def _init( self, pdb_file, **kwargs ):
+        self.pdb_file = self.abspath( pdb_file )
+    def func( self ):
+        sstruc_test( self.pdb_file )
+
+
+
+
+
+def sstruc2jmol( sstruc ):
+    ret = ""
+    for i, ss in enumerate( sstruc ):
+        ret += "draw ID 'v%i' vector {%s} {%s};" % (
+            i,
+            "%0.2f %0.2f %0.2f" % tuple(ss[8]),
+            "%0.2f %0.2f %0.2f" % tuple(ss[7])
+        )
+    return ret
 
 
 def _sstruc_pdb( fpath ):
@@ -42,58 +214,18 @@ def _sstruc_pdb( fpath ):
 def sstruc_pdb( pdb_files, nworkers=None ):
     return do_parallel( _sstruc_pdb, pdb_files, nworkers )
 
-def _sheet_test( x, y ):
-    if x[0]!=numpdb.SHEET or y[0]!=numpdb.SHEET:
-        return None
-    return y[2] <= x[6] <= y[4]
-
-
-def make_struc_record( cur, prev, next ):
-    return [
-        cur[0],                 # type
-        cur[4] - cur[2] + 1,    # length
-        cur[1],                 # chain 1
-        cur[2],                 # resno 1
-        cur[3],                 # chain 2
-        cur[4],                 # resno 2
-        cur[5],                 # subtype
-        prev and prev[0],           # prev type
-        prev and cur[2] - prev[4],  # prev dist
-        next and next[0],           # next type
-        next and next[2] - cur[4],  # next dist
-        prev and _sheet_test( cur, prev ),              # hbond cur prev
-        next and _sheet_test( next, cur ),              # hbond next cur
-        prev and next and _sheet_test( next, prev ),    # hbond next prev
-        prev and vec_angle( cur[7], prev[7] ),              # angle cur prev
-        next and vec_angle( next[7], cur[7] ),              # angle next cur
-        prev and next and vec_angle( next[7], prev[7] ),    # angle next prev
-        cur[10]                 # running number
-    ]
-
-
-def _sstruc_get( x, j, sstruc ):
-    if j<0 or j>=len(sstruc): return None
-    y = sstruc[j]
-    if x[1]==y[1]:
-        return y
-    else:
-        return None
-
-def get_sstruc_records( npdb ):
-    ss = npdb.sstruc
-    r = []
-    for i in range(len(ss)):
-        cur = ss[i]
-        prev = _sstruc_get( cur, i-1, ss )
-        next = _sstruc_get( cur, i+1, ss )
-        r.append( make_struc_record( cur, prev, next ) )
-    return r
-
-
-
 
 def create_sstruc_db( db_path, data, overwrite=False ):
-    schema = "CREATE TABLE sstruc (pdb_path text, type int, length int, chain1 text, resno1 int, chain2 text, resno2 int, subtype int, prev_type int, prev_dist int, next_type int, next_dist int, cur_prev_hbond boolean, cur_next_hbond boolean, prev_next_hbond boolean, cur_prev_angle real, cur_next_angle real, prev_next_angle real, no int)"
+    schema = textwrap.dedent("""
+        CREATE TABLE sstruc (
+            pdb_id text, type int, subtype int, 
+            length int, chain1 text, resno1 int, chain2 text, resno2 int,
+            prev_type int, prev_dist int, next_type int, next_dist int,
+            cur_prev_hbond boolean, cur_next_hbond boolean, prev_next_hbond boolean,
+            cur_prev_angle real, cur_next_angle real, prev_next_angle real,
+            no int
+        )"""
+    )
     name = "sstruc"
 
     all_data = []
@@ -103,12 +235,6 @@ def create_sstruc_db( db_path, data, overwrite=False ):
 
     return create_table( db_path, schema, name, all_data, overwrite=overwrite )
 
-
-def create_json( values_dict, out, tpl ):
-    with open( tpl, "r" ) as fp:
-        tpl_str = fp.read()
-    with open( out, "w" ) as fp:
-        fp.write( Template( tpl_str ).substitute( **values_dict ) )
 
 
 def query_sstruc_db( db_path, query, func=None ):

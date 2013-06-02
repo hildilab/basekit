@@ -97,3 +97,18 @@ def dihedral( v1, v2, v3, v4 ):
 
 
 
+
+def lsq(y):
+    # y = mx + c
+    x = np.arange( len(y) )
+    A = np.vstack([x, np.ones(len(x))]).T
+    m, c = np.linalg.lstsq( A, y )[0]
+    return [ m*x[0]+c, m*x[-1]+c ]
+
+def axis( coords ):
+    return np.array([ lsq(coords[...,i]) for i in range(3) ]).T
+
+
+
+
+
