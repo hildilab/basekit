@@ -9,9 +9,12 @@ import sys
 import os
 import argparse
 import functools
+import operator
 import itertools
 import inspect
 import json
+import cPickle as pickle
+import csv
 import string
 import collections
 
@@ -36,7 +39,10 @@ def get_argument( params ):
     elif params["type"] in [ "file", "text", "select" ]:
         kwargs["type"] = str
     elif params["type"]=="checkbox":
-        kwargs["action"] = "store_true"
+        if kwargs["default"]==False:
+            kwargs["action"] = "store_true"
+        else:
+            kwargs["type"] = boolean
     return kwargs
 
 def make_parser( Tool, parser=None ):
@@ -51,6 +57,7 @@ def make_parser( Tool, parser=None ):
         group.add_argument( '-t', dest="timeout", metavar='TIMEOUT', type=int, default=0 )
         group.add_argument( '-v', '--verbose', action='store_true' )
         group.add_argument( '-c', '--check', action='store_true' )
+        group.add_argument( '-f', '--fileargs', action='store_true' )
     group.add_argument( '-h', '--help', action="help", help="show this help message and exit" )
     return parser
 
@@ -82,14 +89,89 @@ def parse_subargs( tools, description=None ):
 
 
 
+
+
+class TmplMixin( object ):
+    def _make_file_from_tmpl( self, tmpl_name, **values_dict ):
+        tmpl_file = os.path.join( self.tmpl_dir, tmpl_name )
+        with open( tmpl_file, "r" ) as fp:
+            tmpl_str = fp.read()
+        out_file = os.path.join( self.output_dir, tmpl_name )
+        with open( out_file, "w" ) as fp:
+            fp.write( string.Template( tmpl_str ).substitute( **values_dict ) )
+        return out_file
+
+
+class ScriptMixin( TmplMixin ):
+    def _make_script_file( self, **values_dict ):
+        return self._make_file_from_tmpl( self.script_tmpl, **values_dict )
+
+
+class ProviMixin( TmplMixin ):
+    def _make_provi_file( self, provi_tmpl=None, **values_dict ):
+        provi_tmpl = provi_tmpl or self.provi_tmpl
+        return self._make_file_from_tmpl( provi_tmpl, **values_dict )
+
+
+class RecordsMixin( object ):
+    args = [
+        { "name": "output_type", "type": "select", "options": [ "json", "csv", "pickle" ], 
+          "default_value": "json" }
+    ]
+    def _init_records( self, stem, output_type="json", **kwargs ):
+        if not hasattr( self, "RecordsClass" ):
+            raise Exception("A RecordsMixin needs a 'RecordsClass' attribute")
+        self.records = None
+        self.output_type = output_type
+        out_var = "%s_file" % self.output_type
+        self.__dict__[ out_var ] = self.outpath( "%s.%s" % (stem, self.output_type) )
+        self.output_files.append( self.__dict__[ out_var ] )
+        if self.fileargs:
+            self.read()
+    def write_csv( self ):
+        with open( self.csv_file, "w" ) as fp:
+            cw = csv.writer( fp, delimiter=',')
+            for r in self.records:
+                cw.writerow( r )
+    def write_json( self ):
+        records_list = map( operator.methodcaller( "_asdict" ), self.records )
+        with open( self.json_file, "w" ) as fp:
+            json.dump( records_list, fp, indent=4 )
+    def write_pickle( self ):
+        with open( self.pickle_file, "w" ) as fp:
+            pickle.dump( self.records, fp )
+    def write( self ):
+        getattr( self, "write_%s" % self.output_type )()
+    def read_csv( self ):
+        with open( self.csv_file, "r" ) as fp:
+            self.records = map( self.RecordsClass._make, csv.reader( fp, delimiter=',') )
+    def read_json( self ):
+        with open( self.json_file, "r" ) as fp:
+            records_list = json.load( fp, object_pairs_hook=collections.OrderedDict )
+        self.records = map( lambda x: self.RecordsClass._make( x.itervalues() ), records_list )
+    def read_pickle( self ):
+        with open( self.pickle_file, "r" ) as fp:
+            self.records = pickle.load( fp )
+    def read( self ):
+        getattr( self, "read_%s" % self.output_type )()
+
+
+
+
+
 class ToolMetaclass(type):
     def __init__(cls, name, bases, dct):
+        #print cls, name, bases, dct
         if not "no_output" in dct:
             cls.no_output = False
 
         args = collections.OrderedDict()
         for a in dct.get( "args", [] ):
             args[ a.pop("name") ] = a
+
+        if RecordsMixin in bases:
+            for a in RecordsMixin.__dict__.get( "args", [] ):
+                args[ a.pop("name") ] = a
         cls.args = args
 
 
@@ -103,7 +185,7 @@ class Tool( object ):
         self.fileargs = kwargs.get("fileargs", False)
         self.verbose = kwargs.get("verbose", False)
         self.output_dir = os.path.abspath( kwargs.get("output_dir", ".") ) + os.sep
-
+        
         if not self.no_output:
             if not os.path.exists( self.output_dir ):
                 os.makedirs( self.output_dir )
@@ -117,8 +199,8 @@ class Tool( object ):
                     json.dump( ( args, kwargs ), fp, indent=4 )
         
         self._init( *args, **kwargs )
-
-        if kwargs.get("run", True) and not kwargs.get("check", False):
+        
+        if kwargs.get("run", True) and not kwargs.get("check", False) and not self.fileargs:
             self.__run()
     def __run( self ):
         with working_directory( self.output_dir ):
@@ -201,46 +283,6 @@ class DbTool( Tool ):
 
 
 
-class TmplMixin( object ):
-    def _make_file_from_tmpl( self, tmpl_name, **values_dict ):
-        tmpl_file = os.path.join( self.tmpl_dir, tmpl_name )
-        with open( tmpl_file, "r" ) as fp:
-            tmpl_str = fp.read()
-        out_file = os.path.join( self.output_dir, tmpl_name )
-        with open( out_file, "w" ) as fp:
-            fp.write( string.Template( tmpl_str ).substitute( **values_dict ) )
-        return out_file
-
-
-class ScriptMixin( TmplMixin ):
-    def _make_script_file( self, **values_dict ):
-        return self._make_file_from_tmpl( self.script_tmpl, **values_dict )
-
-
-class ProviMixin( TmplMixin ):
-    def _make_provi_file( self, provi_tmpl=None, **values_dict ):
-        provi_tmpl = provi_tmpl or self.provi_tmpl
-        return self._make_file_from_tmpl( provi_tmpl, **values_dict )
-
-
-
-
-def do_parallel( tool, files, args=None, kwargs=None, nworkers=None, run=True ):
-    # !important - allows one to abort via CTRL-C
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-    multiprocessing.log_to_stderr( logging.ERROR )
-    
-    if not nworkers: nworkers = multiprocessing.cpu_count()
-    p = multiprocessing.Pool( nworkers )
-
-    if not kwargs: kwargs = {}
-    kwargs["run"] = run
-    if not args: args = []
-    data = p.map( functools.partial( tool, *args, **kwargs ), files ) # does partial work with a functor?
-    p.close()
-    p.join()
-
-    return data
 
 
 
