@@ -141,6 +141,7 @@ class RecordsMixin( Mixin ):
             raise Exception("A RecordsMixin needs a 'RecordsClass' attribute")
         self.records = None
         self.output_type = output_type
+        stem = stem or "%s_records" % self.name
         out_var = "%s_file" % self.output_type
         self.__dict__[ out_var ] = self.outpath( "%s.%s" % (stem, self.output_type) )
         self.output_files.append( self.__dict__[ out_var ] )
@@ -208,12 +209,12 @@ class ParallelMixin( Mixin ):
         }
         for input_file in file_list:
             stem = utils.path.stem( input_file )
-            output_dir = self.outpath( stem )
+            output_dir = self.outpath( os.path.join( "parallel", stem ) )
             tool_list.append( self.ParallelClass(
                 input_file, pdb_id=stem, **copy_dict( kwargs, output_dir=output_dir )
             ))
         self.tool_list = tool_list
-    def _func_parallel( self, nworkers=1 ):
+    def _func_parallel( self, nworkers=None ):
         # !important - allows one to abort via CTRL-C
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         multiprocessing.log_to_stderr( logging.ERROR )

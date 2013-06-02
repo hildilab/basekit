@@ -117,11 +117,15 @@ class Sstruc( PyTool, RecordsMixin, ParallelMixin ):
         if self.parallel:
             self._make_tool_list()
             tool_results = self._func_parallel()
-            self.records = itertools.chain.from_iterable(
+            self.records = list(itertools.chain.from_iterable(
                 map( operator.attrgetter( "records" ), tool_results )
-            )
+            ))
+            # print self.pdb_file, utils.path.stem( self.pdb_file )
+            # print list(self.records)[0] if self.records else None
         else:
-            self.records = BuildSstrucDbRecords( pdb_file, pdb_id=self.pdb_id ).get()
+            self.records = BuildSstrucDbRecords( self.pdb_file, pdb_id=self.pdb_id ).get()
+            # print self.records[0] if self.records else None
+        self.write()
         # for r in self.records:
         #     print r
         # with Timer( "write sstruc: %s" % self.output_type ):
