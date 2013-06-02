@@ -8,6 +8,7 @@ import collections
 import logging
 
 import numpy as np
+np.seterr( all="raise" )
 
 from basekit.utils import try_int, get_index
 from math import dihedral, vec_dihedral, mag, axis
@@ -49,7 +50,7 @@ SHEET = 2
 RESIDUES = {
     'nucleotides': frozenset([ 
         "  C", "  U", "  G", "  A",
-        " DC", " DT", " DG", " DA"
+        " DC", " DT", " DG", " DA", " DI"
     ])
 }
 

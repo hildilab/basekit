@@ -6,6 +6,7 @@ import urllib2
 import gzip
 
 import numpy as np
+np.seterr( all="raise" )
 
 import utils.path
 from utils.tool import PyTool

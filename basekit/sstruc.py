@@ -8,6 +8,7 @@ import argparse
 import operator
 import sqlite3
 import functools
+import itertools
 import collections
 import string
 import textwrap
@@ -20,13 +21,19 @@ import numpy as np
 
 import utils.math
 import utils.path
-from utils import try_int, get_index, boolean, iter_window, memoize, copy_dict
+from utils import try_int, get_index, boolean, iter_window, memoize, copy_dict, dir_walker
 from utils.timer import Timer
 from utils.db import get_pdb_files, create_table
-from utils.job import do_parallel
-from utils.tool import PyTool, DbTool, RecordsMixin
+from utils.tool import PyTool, DbTool, RecordsMixin, ParallelMixin
 
 import utils.numpdb as numpdb
+
+
+logging.basicConfig()
+LOG = logging.getLogger('sstruc')
+# LOG.setLevel( logging.ERROR )
+LOG.setLevel( logging.WARNING )
+# LOG.setLevel( logging.DEBUG )
 
 
 # http://docs.python.org/2/library/collections.html#collections.namedtuple
@@ -43,8 +50,8 @@ SstrucDbRecord = collections.namedtuple( 'SstrucDbRecord', [
 
 
 class BuildSstrucDbRecords( object ):
-    def __init__( self, npdb, pdb_id=None ):
-        self.npdb = npdb
+    def __init__( self, pdb_file, pdb_id=None ):
+        self.npdb = numpdb.NumPdb( pdb_file )
         self.pdb_id = pdb_id
     def _sheet_hbond( self, x, y ):
         if not x or not y:
@@ -92,7 +99,7 @@ class BuildSstrucDbRecords( object ):
 
 
 
-class Sstruc( PyTool, RecordsMixin ):
+class Sstruc( PyTool, RecordsMixin, ParallelMixin ):
     args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
         { "name": "pdb_id", "type": "text", "default_value": None }
@@ -101,12 +108,22 @@ class Sstruc( PyTool, RecordsMixin ):
     def _init( self, pdb_file, pdb_id=None, **kwargs ):
         self.pdb_file = self.abspath( pdb_file )
         self.pdb_id = pdb_id
+        self.id = pdb_id
         self.output_files = []
         self._init_records( utils.path.stem( pdb_file ), **kwargs )
+        self._init_parallel( self.pdb_file, **kwargs )
         #print self.records[0] if self.records else None
     def func( self ):
-        npdb = numpdb.NumPdb( self.pdb_file )
-        self.records = BuildSstrucDbRecords( npdb, pdb_id=self.pdb_id ).get()
+        if self.parallel:
+            self._make_tool_list()
+            tool_results = self._func_parallel()
+            self.records = itertools.chain.from_iterable(
+                map( operator.attrgetter( "records" ), tool_results )
+            )
+        else:
+            self.records = BuildSstrucDbRecords( pdb_file, pdb_id=self.pdb_id ).get()
+        # for r in self.records:
+        #     print r
         # with Timer( "write sstruc: %s" % self.output_type ):
         #     self.write()
         # print self.records[0]
@@ -114,53 +131,6 @@ class Sstruc( PyTool, RecordsMixin ):
         # with Timer( "read sstruc: %s" % self.output_type ):
         #     self.read()
         # print self.records[0]
-
-
-def call( x ):
-    print x.pdb_id
-    try:
-        return x()
-    except Exception as e:
-        print e
-        return None
-
-
-class SstrucParallel( PyTool ):
-    args = [
-        { "name": "pdb_path", "type": "directory" },
-        { "name": "sample", "type": "slider", "range": [0, 100], "default_value": None }
-    ]
-    ToolClass = Sstruc
-    def _init( self, pdb_path, sample=None, **kwargs ):
-        self.pdb_path = self.abspath( pdb_path )
-        self.sample = sample or -1
-    def func( self ):
-        pdb_file_list = get_pdb_files( self.pdb_path, pattern=".pdb" )[0:self.sample]
-        self.tool_list = []
-        kwargs = { 
-            "run": False
-        }
-        for pdb_file in pdb_file_list:
-            stem = utils.path.stem( pdb_file )
-            output_dir = self.outpath( stem )
-            self.tool_list.append( self.ToolClass(
-                pdb_file, pdb_id=stem, **copy_dict( kwargs, output_dir=output_dir )
-            ))
-        print self.tool_list
-        self._func_parallel()
-    def _func_parallel( self, nworkers=1 ):
-        # !important - allows one to abort via CTRL-C
-        signal.signal(signal.SIGINT, signal.SIG_DFL)
-        multiprocessing.log_to_stderr( logging.ERROR )
-        
-        if not nworkers: nworkers = multiprocessing.cpu_count()
-        p = multiprocessing.Pool( nworkers )
-
-        data = p.map( call, self.tool_list )
-        p.close()
-        p.join()
-
-        return data
 
 
 
@@ -174,7 +144,6 @@ class SstrucFinder( PyTool ):
 
 class SstrucPlot( PyTool ):
     pass
-
 
 
 

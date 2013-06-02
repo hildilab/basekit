@@ -17,13 +17,26 @@ import cPickle as pickle
 import csv
 import string
 import collections
+import logging
+import signal
+import multiprocessing
 
-from basekit.utils import try_int, get_index, boolean, working_directory
+import basekit.utils as utils
+from basekit.utils import try_int, get_index, boolean, working_directory, dir_walker, copy_dict
 from basekit.utils.timer import Timer
 from basekit.utils.job import run_command
+from basekit.utils.db import get_pdb_files
 
 
 TIMEOUT_CMD = "timeout"
+
+
+logging.basicConfig()
+LOG = logging.getLogger('tool')
+# LOG.setLevel( logging.ERROR )
+LOG.setLevel( logging.WARNING )
+# LOG.setLevel( logging.DEBUG )
+
 
 
 
@@ -91,7 +104,12 @@ def parse_subargs( tools, description=None ):
 
 
 
-class TmplMixin( object ):
+
+class Mixin( object ):
+    pass
+
+
+class TmplMixin( Mixin ):
     def _make_file_from_tmpl( self, tmpl_name, **values_dict ):
         tmpl_file = os.path.join( self.tmpl_dir, tmpl_name )
         with open( tmpl_file, "r" ) as fp:
@@ -113,7 +131,7 @@ class ProviMixin( TmplMixin ):
         return self._make_file_from_tmpl( provi_tmpl, **values_dict )
 
 
-class RecordsMixin( object ):
+class RecordsMixin( Mixin ):
     args = [
         { "name": "output_type", "type": "select", "options": [ "json", "csv", "pickle" ], 
           "default_value": "json" }
@@ -156,12 +174,65 @@ class RecordsMixin( object ):
         getattr( self, "read_%s" % self.output_type )()
 
 
+def call( x ):
+    try:
+        return x()
+    except Exception as e:
+        LOG.error( "[%s] %s" % ( x.id, e ) )
+    return None
+
+
+class ParallelMixin( Mixin ):
+    args = [
+        { "name": "parallel", "type": "select", "default_value": False,
+          "options": [ "directory", "pdb_archive", "list" ] },
+        { "name": "sample", "type": "slider", "range": [0, 100], "default_value": None }
+    ]
+    def _init_parallel( self, file_path, sample=None, parallel=None, **kwargs ):
+        self.file_path = self.abspath( file_path )
+        self.sample = sample or -1
+        self.parallel = parallel
+    def _make_tool_list( self ):
+        if self.parallel=="pdb_archive":
+            file_list = get_pdb_files( self.file_path, pattern=".pdb" )
+        elif self.parallel=="directory":
+            file_list = map( operator.itemgetter(1), dir_walker( self.file_path, pattern=".+\.pdb" ) )
+        elif self.parallel=="list":
+            file_list = self.file_path.split()
+        else:
+            raise Exception( "unknown value '%s' for 'parallel'" % self.parallel )
+        file_list = itertools.islice( file_list, self.sample )
+        tool_list = []
+        kwargs = { 
+            "run": False
+        }
+        for input_file in file_list:
+            stem = utils.path.stem( input_file )
+            output_dir = self.outpath( stem )
+            tool_list.append( self.ParallelClass(
+                input_file, pdb_id=stem, **copy_dict( kwargs, output_dir=output_dir )
+            ))
+        self.tool_list = tool_list
+    def _func_parallel( self, nworkers=1 ):
+        # !important - allows one to abort via CTRL-C
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        multiprocessing.log_to_stderr( logging.ERROR )
+        
+        if not nworkers: nworkers = multiprocessing.cpu_count()
+        p = multiprocessing.Pool( nworkers )
+
+        data = p.map( call, self.tool_list )
+        p.close()
+        p.join()
+
+        return data
+
 
 
 
 class ToolMetaclass(type):
     def __init__(cls, name, bases, dct):
-        #print cls, name, bases, dct
+        # print cls, name, bases, dct
         if not "no_output" in dct:
             cls.no_output = False
 
@@ -171,7 +242,16 @@ class ToolMetaclass(type):
 
         if RecordsMixin in bases:
             for a in RecordsMixin.__dict__.get( "args", [] ):
+                a = a.copy()
                 args[ a.pop("name") ] = a
+
+        if ParallelMixin in bases:
+            for a in ParallelMixin.__dict__.get( "args", [] ):
+                a = a.copy()
+                args[ a.pop("name") ] = a
+            if not "ParallelClass" in dct:
+                cls.ParallelClass = cls
+
         cls.args = args
 
 

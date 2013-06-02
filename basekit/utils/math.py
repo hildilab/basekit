@@ -1,6 +1,7 @@
 from __future__ import division
 
 import numpy as np
+np.seterr( all="raise" )
 
 
 # https://github.com/pycogent/pycogent/blob/master/cogent/struct/dihedral.py
