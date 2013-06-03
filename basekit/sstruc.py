@@ -51,7 +51,7 @@ SstrucDbRecord = collections.namedtuple( 'SstrucDbRecord', [
 
 class BuildSstrucDbRecords( object ):
     def __init__( self, pdb_file, pdb_id=None ):
-        self.npdb = numpdb.NumPdb( pdb_file )
+        self.npdb = numpdb.NumPdb( pdb_file, features={ "phi_psi": False } )
         self.pdb_id = pdb_id
     def _sheet_hbond( self, x, y ):
         if not x or not y:
@@ -61,14 +61,21 @@ class BuildSstrucDbRecords( object ):
         return y.resno1 <= x.hbond <= y.resno2
     @memoize
     def _axis( self, sstruc ):
-        beg, end = self.npdb.axis(
-            chain=sstruc.chain1, 
-            resno=[ sstruc.resno1, sstruc.resno2 ],
-            atomname="CA"
-        )
+        if sstruc.chain1!=sstruc.chain2:
+            LOG.error( "[%s] TODO inter-chain sheet" % self.pdb_id )
+            return None
+        else:
+            beg, end = self.npdb.axis(
+                chain=sstruc.chain1, 
+                resno=[ sstruc.resno1, sstruc.resno2 ],
+                atomname="CA"
+            )
         return end - beg
     def _sstruc_angle( self, x, y ):
         if not x or not y:
+            return None
+        if x.chain1!=x.chain2 or y.chain1!=y.chain2:
+            LOG.error( "[%s] TODO inter-chain sheet" % self.pdb_id )
             return None
         return utils.math.angle( self._axis( x ), self._axis( y ) )
     def _make_record( self, i, cur, prev, next ):

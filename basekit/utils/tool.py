@@ -175,12 +175,12 @@ class RecordsMixin( Mixin ):
         getattr( self, "read_%s" % self.output_type )()
 
 
-def call( x ):
+def call( tool ):
     try:
-        return x()
+        return tool()
     except Exception as e:
-        LOG.error( "[%s] %s" % ( x.id, e ) )
-    return None
+        LOG.error( "[%s] %s" % ( tool.id, e ) )
+    return tool
 
 
 class ParallelMixin( Mixin ):

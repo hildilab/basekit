@@ -54,7 +54,7 @@ RESIDUES = {
         " DC", " DT", " DG", " DA", " DI", " DU"
     ]),
     'aminoacids': frozenset([
-        "TPO", "MSE", "HYP", "SMF", "ALC", "KCX"
+        "TPO", "MSE", "HYP", "SMF", "ALC", "KCX", "MHO", "MLY", "CXM", "YCM"
     ])
 }
 
@@ -240,6 +240,9 @@ class SstrucParser( SimpleParser ):
 
 
 
+_BORDER = [{ 'resno': None, 'insertion': None, 'chain': None, 'sstruc': None }]
+def BORDER( _atoms ):
+    return itertools.chain( _atoms, _BORDER )
 
 
 class NumAtoms:
@@ -319,69 +322,59 @@ class NumAtoms:
         chain = atoms['chain'][0]
         k = 0
         l = 0
-        for a in atoms:
+        for a in BORDER( atoms ):
             if chain!=a['chain']:
                 yield self.slice( k, l )
                 chain = a['chain']
                 k = l
             l += 1
-        yield self.slice( k, l )
     def iter_sstruc( self, **sele ):
         for numatoms in self.iter_chain( **sele ):
             sstruc = numatoms['sstruc'][0]
             atoms = numatoms._atoms
             k = 0
             l = 0
-            for a in atoms:
+            for a in BORDER( atoms ):
                 if sstruc!=a['sstruc']:
                     yield numatoms.slice( k, l )
                     k = l
                     sstruc = a['sstruc']
                 l += 1
-            yield numatoms.slice( k, l )
     def _iter_resno( self, **sele ):
         for numatoms in self.iter_chain( **sele ):
             res = ( numatoms['resno'][0], numatoms['insertion'][0] )
             k = 0
             l = 0
-            for a in numatoms._atoms:
+            for a in BORDER( numatoms._atoms ):
                 if res!=( a['resno'], a['insertion'] ):
                     numa = numatoms.slice( k, l )
                     yield numa
                     k = l
                     res = ( a['resno'], a['insertion'] )
                 l += 1
-            yield numatoms.slice( k, l )
     def iter_resno( self, **sele ):
         for numatoms in self.iter_chain( **sele ):
-            
-            def get_slice( k, l, numa_prev ):
-                numa = numatoms.slice( k, l, flag=True )
-                if numa_prev:
-                    if numa_prev['resno'][0]==numa['resno'][0]-1:
-                        flag = False
-                    elif numdist( numa_prev.copy( atomname="C" ), numa.copy( atomname="N" ) ) > 1.4:
-                        flag = True
-                    else:
-                        flag = False
-                    numa.flag = flag
-                return numa
-
             res = ( numatoms['resno'][0], numatoms['insertion'][0] )
             numa_prev = None
-            # atoms = numatoms._atoms
             k = 0
             l = 0
-
-            for a in numatoms._atoms:
+            for a in BORDER( numatoms._atoms ):
                 if res!=( a['resno'], a['insertion'] ):
-                    numa = get_slice( k, l, numa_prev )
-                    yield numa
+                    if not numatoms['incomplete'][k]:
+                        numa = numatoms.slice( k, l, flag=True )
+                        if numa_prev:
+                            if numa_prev['resno'][0]==numa['resno'][0]-1:
+                                flag = False
+                            elif numdist( numa_prev.copy( atomname="C" ), numa.copy( atomname="N" ) ) > 1.4:
+                                flag = True
+                            else:
+                                flag = False
+                            numa.flag = flag
+                        yield numa
+                        numa_prev = numa
                     k = l
                     res = ( a['resno'], a['insertion'] )
-                    numa_prev = numa
                 l += 1
-            yield get_slice( k, l, numa_prev )
     def iter_resno2( self, window, **sele ):
         # (TODO) assumes the first a has a.flag==True
         it = self.iter_resno( **sele )
@@ -403,7 +396,11 @@ class NumAtoms:
                 result = result[1:] + (a,)
             yield result
     def axis( self, **sele ):
-        return axis( self.get( 'xyz', **sele ) )
+        try:
+            return axis( self.get( 'xyz', **sele ) )
+        except Exception as e:
+            LOG.error( "axis (%s) => %s" % ( e, sele ) )
+            raise e
     def sequence( self, **sele ):
         return "".join([ AA1.get( a['resname'][0], "?" ) for a in self.iter_resno( **sele ) ])
     def center( self, **sele ):
@@ -524,11 +521,6 @@ class NumPdb:
                     # print numa._atoms
         except Exception as e:
             LOG.error( "[%s] calc incomplete (%s) => %s" % ( self.pdb_id, e, numa['atomno'][0] ) )
-        sele = self._atoms["incomplete"]==False
-        if sele!=[]:
-            self._atoms = self._atoms[ sele ]
-            self._coords = self._coords[ sele ]
-            self.numatoms = NumAtoms( self._atoms, self._coords )
     def __calc_sstruc( self ):
         for ss in self._sstruc:
             try:
