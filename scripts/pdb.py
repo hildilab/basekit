@@ -3,7 +3,10 @@
 """A collection of pdb related tools."""
 
 from basekit.utils.tool import parse_subargs
-from basekit.pdb import PdbDownload, PdbSplit, PdbUnzip, NumpdbTest
+from basekit.pdb import (
+	PdbDownload, PdbSplit, PdbUnzip, PdbHetDictionary, 
+	NumpdbTest
+)
 
 
 
@@ -13,7 +16,8 @@ def main():
         "get": PdbDownload, 
         "split": PdbSplit,
         "unzip": PdbUnzip,
-        "test": NumpdbTest
+        "test": NumpdbTest,
+        "het": PdbHetDictionary
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )

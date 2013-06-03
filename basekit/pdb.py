@@ -4,6 +4,8 @@ import os
 import re
 import urllib2
 import gzip
+import collections
+import json
 
 import numpy as np
 np.seterr( all="raise" )
@@ -11,8 +13,46 @@ np.seterr( all="raise" )
 import utils.path
 from utils.tool import PyTool
 from utils.timer import Timer
-from utils.numpdb import NumPdb, numdist, pdb_line
+from utils.numpdb import NumPdb, numdist, ATOMS
 from utils.db import get_pdb_files
+
+
+
+# RESIDUE   TPO     22
+# CONECT      CG2    4 CB   HG21 HG22 HG23
+def parse_het_dictionary( het_file ):
+    het_dict = collections.defaultdict( list )
+    key = None
+    with open( het_file, "r" ) as fp:
+        for line in fp:
+            if line.startswith("RESIDUE"):
+                key = line[10:13]
+            if line.startswith("CONECT"):
+                het_dict[ key ].append( line[11:15] )
+    print len(het_dict)
+    aminoacid_list = []
+    for key, atom_list in het_dict.iteritems():
+        if ATOMS['backbone'].issubset( atom_list ):
+            aminoacid_list.append( key )
+    print len(aminoacid_list)
+    return aminoacid_list
+    
+
+class PdbHetDictionary( PyTool ):
+    """
+    Tool to extract the names of (non-standard) amino acids from
+    ftp://ftp.rcsb.org/pub/pdb/data/monomers/het_dictionary.txt
+    """
+    args = [
+        { "name": "het_file", "type": "file", "ext": "txt", "help": "hetero dictionary" }
+    ]
+    def _init( self, het_file, **kwargs ):
+        self.het_file = self.abspath( het_file )
+        self.aa_file = self.outpath( "aa.json" )
+    def func( self ):
+        aminoacid_list = parse_het_dictionary( self.het_file )
+        with open( self.aa_file, "w" ) as fp:
+            json.dump( aminoacid_list, fp )
 
 
 
@@ -20,9 +60,9 @@ from utils.db import get_pdb_files
 def unzip_pdb( fpath ):
     fdir, fname = os.path.split( fpath )
     fpdb = os.path.join( fdir, fname[3:7]+".pdb" )
-    with open( fpdb, "w" ) as f:
-        with gzip.open( fpath, "rb" ) as z:
-            f.write( z.read() )
+    with open( fpdb, "w" ) as fp:
+        with gzip.open( fpath, "rb" ) as zp:
+            fp.write( zp.read() )
     return True
 
 class PdbUnzip( PyTool ):
