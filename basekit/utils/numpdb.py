@@ -6,6 +6,7 @@ import functools
 import itertools
 import collections
 import logging
+import json
 
 import numpy as np
 np.seterr( all="raise" )
@@ -20,6 +21,12 @@ LOG = logging.getLogger('numpdb')
 # LOG.setLevel( logging.ERROR )
 LOG.setLevel( logging.WARNING )
 # LOG.setLevel( logging.DEBUG )
+
+
+DIR = os.path.split( os.path.abspath(__file__) )[0]
+PARENT_DIR = os.path.split( DIR )[0]
+BASEKIT_DIR = os.path.split( PARENT_DIR )[0]
+DATA_DIR = os.path.join( BASEKIT_DIR, "data", "pdb" )
 
 
 
@@ -53,10 +60,15 @@ RESIDUES = {
         "  C", "  U", "  G", "  A",
         " DC", " DT", " DG", " DA", " DI", " DU"
     ]),
-    'aminoacids': frozenset([
-        "TPO", "MSE", "HYP", "SMF", "ALC", "KCX", "MHO", "MLY", "CXM", "YCM"
-    ])
+    'aminoacids': frozenset([  ]) # read from file, see below
 }
+try:
+    additional_aminoacids = [ 'MPR', 'PSU', 'PYR', '4AF' ]
+    with open( os.path.join( DATA_DIR, "aa.json" ), "r" ) as fp:
+        RESIDUES['aminoacids'] = frozenset( json.load( fp ) + additional_aminoacids )
+except:
+    LOG.warning( 'Aminoacid list could not be loaded.' )
+
 
 AA1 = {
     'HIS': 'H',
@@ -202,11 +214,11 @@ def xyzr_line( natom ):
 
 SstrucRecord = collections.namedtuple( 'SstrucRecord', [
     'type', 'subtype',
-    'chain1', 'resno1',
-    'chain2', 'resno2',
+    'chain1', 'resno1', 'resname1',
+    'chain2', 'resno2', 'resname2',
     'hbond'
 ])
-
+       
 class SstrucParser( SimpleParser ):
     def __init__( self ):
         self._list = []
@@ -219,8 +231,10 @@ class SstrucParser( SimpleParser ):
                     try_int( line[38:40] ),     # subtype
                     line[19],                   # chain 1
                     try_int( line[21:25] ),     # resno 1
+                    line[15:18],                # resname 1
                     line[31],                   # chain 2
                     try_int( line[33:37] ),     # resno 2
+                    line[27:30],                # resname 2
                     None                        # padding...
                 )
             elif line.startswith("SHEET"):
@@ -229,8 +243,10 @@ class SstrucParser( SimpleParser ):
                     try_int( line[38:40] ),     # strand sense (subtype)
                     line[21],                   # chain 1
                     try_int( line[22:26] ),     # resno 1
+                    line[17:20],                # resname 1
                     line[32],                   # chain 2
                     try_int( line[33:37] ),     # resno 2
+                    line[28:31],                # resname 2
                     try_int( line[65:69], False ),     # resno hbond prev strand
                 )
     def get( self ):
