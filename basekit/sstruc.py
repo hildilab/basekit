@@ -60,22 +60,13 @@ class BuildSstrucDbRecords( object ):
             return None
         return y.resno1 <= x.hbond <= y.resno2
     @memoize
-    def _axis( self, sstruc ):
-        if sstruc.chain1!=sstruc.chain2:
-            LOG.error( "[%s] TODO inter-chain sheet" % self.pdb_id )
-            return None
-        else:
-            beg, end = self.npdb.axis(
-                chain=sstruc.chain1, 
-                resno=[ sstruc.resno1, sstruc.resno2 ],
-                atomname="CA"
-            )
-        return end - beg
+    def _axis( self, ss ):
+        idx_beg = self.npdb.index( chain=ss.chain1, resno=ss.resno1, first=True )
+        idx_end = self.npdb.index( chain=ss.chain2, resno=ss.resno2, last=True )
+        beg, end = self.npdb.slice( idx_beg, idx_end ).axis()
+        return end-beg
     def _sstruc_angle( self, x, y ):
         if not x or not y:
-            return None
-        if x.chain1!=x.chain2 or y.chain1!=y.chain2:
-            LOG.error( "[%s] TODO inter-chain sheet" % self.pdb_id )
             return None
         return utils.math.angle( self._axis( x ), self._axis( y ) )
     def _make_record( self, i, cur, prev, next ):
