@@ -187,12 +187,14 @@ class ParallelMixin( Mixin ):
     args = [
         { "name": "parallel", "type": "select", "default_value": False,
           "options": [ "directory", "pdb_archive", "list" ] },
-        { "name": "sample", "type": "slider", "range": [0, 100], "default_value": None }
+        { "name": "sample", "type": "slider", "range": [0, 100], "default_value": None },
+        { "name": "sample_start", "type": "slider", "range": [0, 100], "default_value": 0 }
     ]
-    def _init_parallel( self, file_path, sample=None, parallel=None, **kwargs ):
+    def _init_parallel( self, file_path, parallel=None, sample=None, sample_start=0, **kwargs ):
         self.file_path = self.abspath( file_path )
-        self.sample = sample or -1
         self.parallel = parallel
+        self.sample = sample or -1
+        self.sample_start = sample_start or 0
     def _make_tool_list( self ):
         if self.parallel=="pdb_archive":
             file_list = get_pdb_files( self.file_path, pattern=".pdb" )
@@ -202,7 +204,7 @@ class ParallelMixin( Mixin ):
             file_list = self.file_path.split()
         else:
             raise Exception( "unknown value '%s' for 'parallel'" % self.parallel )
-        file_list = itertools.islice( file_list, self.sample )
+        file_list = itertools.islice( file_list, self.sample_start, self.sample+self.sample_start )
         tool_list = []
         kwargs = { 
             "run": False
@@ -220,9 +222,10 @@ class ParallelMixin( Mixin ):
         multiprocessing.log_to_stderr( logging.ERROR )
         
         if not nworkers: nworkers = multiprocessing.cpu_count()
-        p = multiprocessing.Pool( nworkers )
+        p = multiprocessing.Pool( nworkers, maxtasksperchild=50 )
 
-        data = p.map( call, self.tool_list )
+        data = p.imap( call, self.tool_list )
+
         p.close()
         p.join()
 
