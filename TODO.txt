@@ -7,3 +7,18 @@ NUMPDB
 	=> name "detect_incomplete" [done for backbone]
 * http://docs.python.org/2/library/itertools.html#itertools.groupby
 * write XYZR
+
+PROBLEMATIC PDBs (first 50k)
+=> sstruc.py pdb ~/projects/pdb_structures/pdb/ -o sstruc_test/ --parallel pdb_archive --sample 10000 --sample_start 40000
+* 3aeq: sstruc only in altloc=B
+* 3arc: sstruc only in altloc=B,C
+* nucleotides?: 1c2x, 1c2w
+* ???: 1bgt, 1bgu, 1c4o, 3cyp, 4db5, 4dwo, 3e4c, 4en8, 4en9, 1etn, 1etl, 1etm,
+	4ffh, 4flg, 4fl8, 4fus, 1g65, 3g7z, 2g82, 4gjv, 4hcq, 3h87, 3hwl, 1hq6,
+	1hpb, 1ibu, 1ibt, 3isi, 3j1a, 1m3u, 1mab
+
+TOOL
+* PyTool timeout: 
+	http://stackoverflow.com/questions/492519/timeout-on-a-python-function-call/494273#494273
+	http://stackoverflow.com/questions/2281850/timeout-function-if-it-takes-too-long-to-finish
+
