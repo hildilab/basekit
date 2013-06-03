@@ -10,6 +10,7 @@ import logging
 import numpy as np
 np.seterr( all="raise" )
 
+import basekit.utils.path
 from basekit.utils import try_int, get_index
 from math import dihedral, vec_dihedral, mag, axis
 
@@ -50,7 +51,10 @@ SHEET = 2
 RESIDUES = {
     'nucleotides': frozenset([ 
         "  C", "  U", "  G", "  A",
-        " DC", " DT", " DG", " DA", " DI"
+        " DC", " DT", " DG", " DA", " DI", " DU"
+    ]),
+    'aminoacids': frozenset([
+        "TPO", "MSE", "HYP", "SMF", "ALC", "KCX"
     ])
 }
 
@@ -335,6 +339,19 @@ class NumAtoms:
                     sstruc = a['sstruc']
                 l += 1
             yield numatoms.slice( k, l )
+    def _iter_resno( self, **sele ):
+        for numatoms in self.iter_chain( **sele ):
+            res = ( numatoms['resno'][0], numatoms['insertion'][0] )
+            k = 0
+            l = 0
+            for a in numatoms._atoms:
+                if res!=( a['resno'], a['insertion'] ):
+                    numa = numatoms.slice( k, l )
+                    yield numa
+                    k = l
+                    res = ( a['resno'], a['insertion'] )
+                l += 1
+            yield numatoms.slice( k, l )
     def iter_resno( self, **sele ):
         for numatoms in self.iter_chain( **sele ):
             
@@ -352,11 +369,11 @@ class NumAtoms:
 
             res = ( numatoms['resno'][0], numatoms['insertion'][0] )
             numa_prev = None
-            atoms = numatoms._atoms
+            # atoms = numatoms._atoms
             k = 0
             l = 0
 
-            for a in atoms:
+            for a in numatoms._atoms:
                 if res!=( a['resno'], a['insertion'] ):
                     numa = get_slice( k, l, numa_prev )
                     yield numa
@@ -407,6 +424,7 @@ class NumAtoms:
 class NumPdb:
     def __init__( self, pdb_path, features=None ):
         self.pdb_path = pdb_path
+        self.pdb_id = basekit.utils.path.stem( pdb_path )
         self.features = {
             "phi_psi": True,
             "sstruc": True,
@@ -447,6 +465,7 @@ class NumPdb:
         with open( self.pdb_path, "r" ) as fp:
             backbone = ATOMS['backbone']
             nucleotides = RESIDUES['nucleotides']
+            aminoacids = RESIDUES['aminoacids']
             nbo = not self.features["backbone_only"]
             po = self.features["protein_only"]
             altloc = (' ', 'A', '1')
@@ -462,7 +481,7 @@ class NumPdb:
                     p( line )
             
             for line in itertools.chain( [line], fp ):
-                if line[0:4]=="ATOM":
+                if line[0:4]=="ATOM" or ( line[0:6]=="HETATM" and line[17:20] in aminoacids ):
                     if po and line[17:20] in nucleotides:
                         continue
                     if ( nbo or line[12:16] in backbone ) and line[16] in altloc:
@@ -498,10 +517,13 @@ class NumPdb:
             self.__calc_sstruc()
     def __calc_incomplete( self ):
         bb_subset = ATOMS['backbone'].issubset
-        for numa in self.iter_resno():
-            if not bb_subset( numa["atomname"] ):
-                numa['incomplete'] = True
-                # print numa._atoms
+        try:
+            for numa in self._iter_resno():
+                if not bb_subset( numa["atomname"] ):
+                    numa['incomplete'] = True
+                    # print numa._atoms
+        except Exception as e:
+            LOG.error( "[%s] calc incomplete (%s) => %s" % ( self.pdb_id, e, numa['atomno'][0] ) )
         sele = self._atoms["incomplete"]==False
         if sele!=[]:
             self._atoms = self._atoms[ sele ]
@@ -517,7 +539,7 @@ class NumPdb:
                 elif ss.type==SHEET:
                     self.slice( idx_beg, idx_end )['sstruc'] = "E"
             except Exception as e:
-                LOG.error( "calc sstruc (%s) => %s" % ( e, ss ) )
+                LOG.error( "[%s] calc sstruc (%s) => %s" % ( self.pdb_id, e, ss ) )
     def __calc_phi_psi( self, dihedral=dihedral ):
         mainchain = ATOMS['mainchain']
         for na_curr, na_next in self.iter_resno2( 2 ):
@@ -527,8 +549,8 @@ class NumPdb:
                 na_curr['psi'] = dihedral( xyz_n, xyz_ca, xyz_c, xyz_n_next )
                 na_next['phi'] = dihedral( xyz_c, xyz_n_next, xyz_ca_next, xyz_c_next )
             except Exception as e:
-                LOG.error( "calc phi/psi (%s) => %s, %s" % (
-                    e, na_curr['atomname'], na_next['atomname']
+                LOG.error( "[%s] calc phi/psi (%s) => %s, %s" % (
+                    self.pdb_id, e, na_curr['atomname'], na_next['atomname']
                 ))
         # for a in self.iter_resno(): print a._atoms[0], a.flag
 
