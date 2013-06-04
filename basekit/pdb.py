@@ -100,14 +100,19 @@ def pdb_download( pdb_id, output_file ):
 
 class PdbDownload( PyTool ):
     args = [
-        { "name": "pdb_id", "type": "text" }
+        { "name": "pdb_id", "type": "text", 
+          "help": "single id or multiple, seperated by spaces or commas" }
     ]
     def _init( self, pdb_id, **kwargs ):
-        self.pdb_id = pdb_id.strip()[0:4]
-        self.pdb_file = self.outpath( "%s.pdb" % self.pdb_id )
-        self.output_files = [ self.pdb_file ]
+        self.pdb_id_list = map( lambda x: x[0:4], re.split("[\s,]+", pdb_id.strip() ) )
+        self.pdb_file_list = map(
+            lambda x: self.outpath( "%s.pdb" % x ),
+            self.pdb_id_list
+        )    
+        self.output_files = [] + self.pdb_file_list
     def func( self ):
-        pdb_download( self.pdb_id, self.pdb_file )
+        for pdb_id, pdb_file in zip( self.pdb_id_list, self.pdb_file_list ):
+            pdb_download( pdb_id, pdb_file )
 
 
 
