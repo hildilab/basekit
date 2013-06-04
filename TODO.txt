@@ -7,6 +7,11 @@ NUMPDB
 	=> name "detect_incomplete" [done for backbone]
 * http://docs.python.org/2/library/itertools.html#itertools.groupby
 * write XYZR
+* altloc handling ideas... 
+	- read all atoms; sort by (chain, resno, insertion, altloc, atomname) to group residues
+	- jump over 'duplicate' (resno, insertion) when altloc changes
+
+
 
 PROBLEMATIC PDBs (first 90k)
 => sstruc.py pdb ~/projects/pdb_structures/pdb/ -o sstruc_test/ --parallel pdb_archive --sample 10000 --sample_start 40000

@@ -37,6 +37,8 @@ DATA_DIR = os.path.join( BASEKIT_DIR, "data", "pdb" )
 # http://sourceforge.net/p/pymmlib/code/HEAD/tree/trunk/pymmlib/mmLib/Superposition.py
 # https://github.com/bryan-lunt/pdb_tools
 # https://github.com/biopython/biopython/tree/master/Bio/PDB
+# http://cci.lbl.gov/~rwgk/tmp/pdb-v3.2/2009_04_14/news.html
+# http://www.csb.pitt.edu/ProDy/_modules/prody/proteins/pdbfile.html
 
 
 # http://docs.scipy.org/doc/numpy/user/basics.io.genfromtxt.html

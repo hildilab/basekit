@@ -54,7 +54,7 @@ class BuildSstrucDbRecords( object ):
         self.npdb = numpdb.NumPdb( pdb_file, features={ "phi_psi": False } )
         self.pdb_id = pdb_id
         # for a in self.npdb._atoms: print a
-        # for a in self.npdb._iter_resno(): print a._atoms
+        for a in self.npdb._iter_resno(): print a._atoms
     def _sheet_hbond( self, x, y ):
         if not x or not y:
             return None
