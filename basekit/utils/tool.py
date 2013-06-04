@@ -222,18 +222,18 @@ class ParallelMixin( Mixin ):
     def _init_parallel( self, file_path, parallel=None, sample=None, sample_start=0, **kwargs ):
         self.file_path = self.abspath( file_path )
         self.parallel = parallel
-        self.sample = sample or -1
         self.sample_start = sample_start or 0
+        self.sample_end = None if not sample else self.sample_start+sample
     def _make_tool_list( self ):
         if self.parallel=="pdb_archive":
             file_list = get_pdb_files( self.file_path, pattern=".pdb" )
-        elif self.parallel=="directory":
+        elif self.parallel in [ "directory", "dir" ]:
             file_list = map( operator.itemgetter(1), dir_walker( self.file_path, pattern=".+\.pdb" ) )
         elif self.parallel=="list":
             file_list = self.file_path.split()
         else:
             raise Exception( "unknown value '%s' for 'parallel'" % self.parallel )
-        file_list = itertools.islice( file_list, self.sample_start, self.sample+self.sample_start )
+        file_list = itertools.islice( file_list, self.sample_start, self.sample_end )
         tool_list = []
         kwargs = { 
             "run": False
