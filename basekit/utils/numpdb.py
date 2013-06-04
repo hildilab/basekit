@@ -543,9 +543,9 @@ class NumPdb:
                 idx_beg = self.index( chain=ss.chain1, resno=ss.resno1, first=True )
                 idx_end = self.index( chain=ss.chain2, resno=ss.resno2, last=True )
                 if ss.type==HELIX:
-                    self.slice( idx_beg, idx_end )['sstruc'] = "H"
+                    self.slice( idx_beg, idx_end+1 )['sstruc'] = "H"
                 elif ss.type==SHEET:
-                    self.slice( idx_beg, idx_end )['sstruc'] = "E"
+                    self.slice( idx_beg, idx_end+1 )['sstruc'] = "E"
             except Exception as e:
                 LOG.error( "[%s] calc sstruc (%s) => %s" % ( self.pdb_id, e, ss ) )
     def __calc_phi_psi( self, dihedral=dihedral ):
