@@ -22,7 +22,10 @@ import signal
 import multiprocessing
 
 import basekit.utils as utils
-from basekit.utils import try_int, get_index, boolean, working_directory, dir_walker, copy_dict
+from basekit.utils import (
+    try_int, get_index, boolean, working_directory, dir_walker, copy_dict,
+    DefaultOrderedDict
+)
 from basekit.utils.timer import Timer
 from basekit.utils.job import run_command
 from basekit.utils.db import get_pdb_files
@@ -38,6 +41,33 @@ LOG.setLevel( logging.WARNING )
 # LOG.setLevel( logging.DEBUG )
 
 
+
+class ToolParser( argparse.ArgumentParser ):
+    def __init__( self, tool_class=None, description="", **kwargs ):
+        if tool_class:
+            description = tool_class.__doc__
+            kwargs[ "add_help" ] = False
+        else:
+            if description:
+                description += " The tools are accessible by the subcommands given below."
+            else:
+                description = "A collection of tools, accessible by the subcommands given below."
+        super(ToolParser, self).__init__(
+            description=description, epilog="basekit", **kwargs
+        )
+        if tool_class:
+            group = self.add_argument_group( title="general arguments" )
+            if not tool_class.no_output:
+                group.add_argument( '-o', dest="output_dir", metavar='OUTPUT_DIR', type=str, default="./" )
+                group.add_argument( '-t', dest="timeout", metavar='TIMEOUT', type=int, default=0 )
+                group.add_argument( '-v', '--verbose', action='store_true' )
+                group.add_argument( '-c', '--check', action='store_true' )
+                group.add_argument( '-f', '--fileargs', action='store_true' )
+            group.add_argument( '-h', '--help', action="help", help="show this help message and exit" )
+    def error(self, message):
+        sys.stderr.write('error: %s\n\n' % message)
+        self.print_help()
+        sys.exit(2)
 
 
 def get_argument( params ):
@@ -58,21 +88,23 @@ def get_argument( params ):
             kwargs["type"] = boolean
     return kwargs
 
+
 def make_parser( Tool, parser=None ):
     if not parser:
-        parser = argparse.ArgumentParser( description=Tool.__doc__, epilog="basekit", add_help=False )
+        parser = ToolParser( description=Tool.__doc__ )
+    arg_groups = DefaultOrderedDict( collections.OrderedDict )
     for name, params in Tool.args.iteritems():
-        option = '--%s'%name if "default_value" in params else name
-        parser.add_argument( option, **get_argument( params ) )
-    group = parser.add_argument_group( title="general arguments" )
-    if not Tool.no_output:
-        group.add_argument( '-o', dest="output_dir", metavar='OUTPUT_DIR', type=str, default="./" )
-        group.add_argument( '-t', dest="timeout", metavar='TIMEOUT', type=int, default=0 )
-        group.add_argument( '-v', '--verbose', action='store_true' )
-        group.add_argument( '-c', '--check', action='store_true' )
-        group.add_argument( '-f', '--fileargs', action='store_true' )
-    group.add_argument( '-h', '--help', action="help", help="show this help message and exit" )
+        arg_groups[ params.get( "group" ) ][ name ] = params
+    for group_name, args in arg_groups.iteritems():
+        if group_name:
+            group = parser.add_argument_group( title="%s arguments" % group_name )
+        else:
+            group = parser
+        for name, params in args.iteritems():
+            option = '--%s'%name if "default_value" in params else name
+            group.add_argument( option, **get_argument( params ) )
     return parser
+
 
 def parse_args( Tool, kwargs=None ):
     if not kwargs:
@@ -84,15 +116,12 @@ def parse_args( Tool, kwargs=None ):
             args.append( kwargs.pop( name ) )
     return args, kwargs
 
+
 def parse_subargs( tools, description=None ):
-    if description:
-        description += " The tools are accessible by the subcommands given below."
-    else:
-        description = "A collection of tools, accessible by the subcommands given below."
-    parser = argparse.ArgumentParser( description=description )
+    parser = ToolParser( description=description )
     subparsers = parser.add_subparsers( title='subcommands' )
     for name, Tool in tools.iteritems():
-        subp = subparsers.add_parser( name, description=Tool.__doc__, epilog="basekit", add_help=False )
+        subp = subparsers.add_parser( name, tool_class=Tool )
         make_parser( Tool, subp )
         subp.set_defaults(Tool=Tool)
     pargs = vars( parser.parse_args() )
@@ -133,17 +162,17 @@ class ProviMixin( TmplMixin ):
 
 class RecordsMixin( Mixin ):
     args = [
-        { "name": "output_type", "type": "select", "options": [ "json", "csv", "pickle" ], 
+        { "name": "out_type", "type": "select", "options": [ "json", "csv", "pickle" ], 
           "default_value": "json" }
     ]
-    def _init_records( self, stem, output_type="json", **kwargs ):
+    def _init_records( self, stem, out_type="json", **kwargs ):
         if not hasattr( self, "RecordsClass" ):
             raise Exception("A RecordsMixin needs a 'RecordsClass' attribute")
         self.records = None
-        self.output_type = output_type
+        self.out_type = out_type
         stem = stem or "%s_records" % self.name
-        out_var = "%s_file" % self.output_type
-        self.__dict__[ out_var ] = self.outpath( "%s.%s" % (stem, self.output_type) )
+        out_var = "%s_file" % self.out_type
+        self.__dict__[ out_var ] = self.outpath( "%s.%s" % (stem, self.out_type) )
         self.output_files.append( self.__dict__[ out_var ] )
         if self.fileargs:
             self.read()
@@ -160,7 +189,7 @@ class RecordsMixin( Mixin ):
         with open( self.pickle_file, "w" ) as fp:
             pickle.dump( self.records, fp )
     def write( self ):
-        getattr( self, "write_%s" % self.output_type )()
+        getattr( self, "write_%s" % self.out_type )()
     def read_csv( self ):
         with open( self.csv_file, "r" ) as fp:
             self.records = map( self.RecordsClass._make, csv.reader( fp, delimiter=',') )
@@ -172,7 +201,7 @@ class RecordsMixin( Mixin ):
         with open( self.pickle_file, "r" ) as fp:
             self.records = pickle.load( fp )
     def read( self ):
-        getattr( self, "read_%s" % self.output_type )()
+        getattr( self, "read_%s" % self.out_type )()
 
 
 def call( tool ):
@@ -247,11 +276,13 @@ class ToolMetaclass(type):
         if RecordsMixin in bases:
             for a in RecordsMixin.__dict__.get( "args", [] ):
                 a = a.copy()
+                a["group"] = "records"
                 args[ a.pop("name") ] = a
 
         if ParallelMixin in bases:
             for a in ParallelMixin.__dict__.get( "args", [] ):
                 a = a.copy()
+                a["group"] = "parallel"
                 args[ a.pop("name") ] = a
             if not "ParallelClass" in dct:
                 cls.ParallelClass = cls
