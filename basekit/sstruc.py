@@ -21,7 +21,10 @@ import numpy as np
 
 import utils.math
 import utils.path
-from utils import try_int, get_index, boolean, iter_window, memoize, copy_dict, dir_walker
+from utils import (
+    try_int, get_index, boolean, iter_window, memoize, 
+    copy_dict, dir_walker
+)
 from utils.timer import Timer
 from utils.db import get_pdb_files, create_table
 from utils.tool import PyTool, DbTool, RecordsMixin, ParallelMixin
@@ -51,10 +54,10 @@ SstrucDbRecord = collections.namedtuple( 'SstrucDbRecord', [
 
 class BuildSstrucDbRecords( object ):
     def __init__( self, pdb_file, pdb_id=None ):
-        self.npdb = numpdb.NumPdb( pdb_file, features={ "phi_psi": False } )
+        self.npdb = numpdb.NumPdb( pdb_file, features={ "phi_psi": True } )
         self.pdb_id = pdb_id
         # for a in self.npdb._atoms: print a
-        for a in self.npdb._iter_resno(): print a._atoms
+        # for a in self.npdb._iter_resno(): print a._atoms
     def _sheet_hbond( self, x, y ):
         if not x or not y:
             return None
@@ -63,26 +66,31 @@ class BuildSstrucDbRecords( object ):
         return y.resno1 <= x.hbond <= y.resno2
     @memoize
     def _axis( self, ss ):
-        idx_beg = self.npdb.index( atomname="CA", chain=ss.chain1, resno=ss.resno1, first=True )
-        idx_end = self.npdb.index( atomname="CA", chain=ss.chain2, resno=ss.resno2, last=True )
+        idx_beg = self.npdb.index(
+            chain=ss.chain1, resno=ss.resno1, first=True 
+        )
+        idx_end = self.npdb.index( 
+            chain=ss.chain2, resno=ss.resno2, last=True
+        )
         if idx_beg==idx_end:
             # no axis for a point
             return None
         else:
-            beg, end = self.npdb.slice( idx_beg, idx_end+1 ).axis()
+            if idx_beg>idx_end:
+                idx_beg, idx_end = idx_end, idx_beg
+            beg, end = self.npdb.slice( idx_beg, idx_end+1 ).axis(
+                atomname=numpdb.ATOMS["backbone"]
+            )
             return end-beg
     def _sstruc_angle( self, x, y ):
         if not x or not y:
             return None
-        try:
-            ax = self._axis( x )
-            ay = self._axis( y )
-            if ax==None or ay==None:
-                return None
-            else:
-                return utils.math.angle( ax, ay )
-        except Exception as e:
-            LOG.error( "[%s] axis (%s) => %s, %s" % ( self.pdb_id, e, x, y ) )
+        ax = self._axis( x )
+        ay = self._axis( y )
+        if ax==None or ay==None:
+            return None
+        else:
+            return utils.math.angle( ax, ay )
     def _make_record( self, i, cur, prev, next ):
         return SstrucDbRecord(
             self.pdb_id, cur.type, cur.subtype,
@@ -135,7 +143,9 @@ class Sstruc( PyTool, RecordsMixin, ParallelMixin ):
             # print self.pdb_input, utils.path.stem( self.pdb_input )
             # print list(self.records)[0] if self.records else None
         else:
-            self.records = BuildSstrucDbRecords( self.pdb_input, pdb_id=self.pdb_id ).get()
+            self.records = BuildSstrucDbRecords( 
+                self.pdb_input, pdb_id=self.pdb_id 
+            ).get()
             # print self.records[0] if self.records else None
         self.write()
         # for r in self.records:
