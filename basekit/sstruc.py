@@ -127,9 +127,11 @@ class Sstruc( PyTool, RecordsMixin, ParallelMixin ):
         self.pdb_id = pdb_id
         self.id = pdb_id
         self.output_files = []
-        self._init_records( utils.path.stem( pdb_input ), **kwargs )
-        self._init_parallel( self.pdb_input, **kwargs )
-        #print self.records[0] if self.records else None
+        self._init_records( 
+            utils.path.stem( pdb_input ),
+            **kwargs 
+        )
+        self._init_parallel( pdb_input, **kwargs )
     def func( self ):
         if self.parallel:
             self._make_tool_list()

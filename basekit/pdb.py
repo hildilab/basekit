@@ -194,7 +194,7 @@ def numpdb_test( pdb_file ):
             "detect_incomplete": False
         })
     with Timer("read/parse pdb incomplete"):
-        NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone_only": False} )
+        NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone_only": False, "detect_incomplete": False} )
     with Timer("read/parse pdb phi/psi"):
         NumPdb( pdb_file, features={"sstruc": False} )
     with Timer("read/parse pdb"):
@@ -211,9 +211,12 @@ def numpdb_test( pdb_file ):
     with Timer("sstruc iter"):
         for numa in npdb.iter_sstruc():
             pass
-    # with Timer("resno iter"):
-    #     for numa in npdb.iter_resno( chain="A" ):
-    #         pass
+    with Timer("resno iter"):
+        for numa in npdb.iter_resno():
+            pass
+    with Timer("plain resno iter"):
+        for numa in npdb._iter_resno():
+            pass
     # with Timer("sequence"):
     #     first_chain = npdb["chain"][0]
     #     print npdb.sequence( chain=first_chain )
