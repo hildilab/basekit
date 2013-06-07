@@ -5,14 +5,13 @@
 
 
 from basekit.utils.tool import parse_subargs
-from basekit.motif import CapsMotifFinder, CapsMotifPlotter
+from basekit.motif import CapsMotifFinder
 
 
 
 def main():
     tools = {
-        "finder": CapsMotifFinder,
-        "plotter": CapsMotifPlotter
+        "finder": CapsMotifFinder
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )
