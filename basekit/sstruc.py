@@ -21,7 +21,10 @@ import numpy as np
 
 import utils.math
 import utils.path
-from utils import try_int, get_index, boolean, iter_window, memoize, copy_dict, dir_walker
+from utils import (
+    try_int, get_index, boolean, iter_window, memoize, 
+    copy_dict, dir_walker
+)
 from utils.timer import Timer
 from utils.db import get_pdb_files, create_table
 from utils.tool import PyTool, DbTool, RecordsMixin, ParallelMixin
@@ -53,6 +56,8 @@ class BuildSstrucDbRecords( object ):
     def __init__( self, pdb_file, pdb_id=None ):
         self.npdb = numpdb.NumPdb( pdb_file, features={ "phi_psi": False } )
         self.pdb_id = pdb_id
+        # for a in self.npdb._atoms: print a
+        # for a in self.npdb._iter_resno(): print a._atoms
     def _sheet_hbond( self, x, y ):
         if not x or not y:
             return None
@@ -60,24 +65,29 @@ class BuildSstrucDbRecords( object ):
             return None
         return y.resno1 <= x.hbond <= y.resno2
     @memoize
-    def _axis( self, sstruc ):
-        if sstruc.chain1!=sstruc.chain2:
-            LOG.error( "[%s] TODO inter-chain sheet" % self.pdb_id )
+    def _axis( self, ss ):
+        idx_beg = self.npdb.index(
+            chain=ss.chain1, resno=ss.resno1, first=True 
+        )
+        idx_end = self.npdb.index( 
+            chain=ss.chain2, resno=ss.resno2, last=True
+        )
+        if idx_beg>idx_end:
+            idx_beg, idx_end = idx_end, idx_beg
+        numa = self.npdb.slice( idx_beg, idx_end+1 ).copy( atomname="CA" )
+        if numa.length<3:
             return None
-        else:
-            beg, end = self.npdb.axis(
-                chain=sstruc.chain1, 
-                resno=[ sstruc.resno1, sstruc.resno2 ],
-                atomname="CA"
-            )
-        return end - beg
+        beg, end = numa.axis()
+        return end-beg
     def _sstruc_angle( self, x, y ):
         if not x or not y:
             return None
-        if x.chain1!=x.chain2 or y.chain1!=y.chain2:
-            LOG.error( "[%s] TODO inter-chain sheet" % self.pdb_id )
+        ax = self._axis( x )
+        ay = self._axis( y )
+        if ax==None or ay==None:
             return None
-        return utils.math.angle( self._axis( x ), self._axis( y ) )
+        else:
+            return utils.math.angle( ax, ay )
     def _make_record( self, i, cur, prev, next ):
         return SstrucDbRecord(
             self.pdb_id, cur.type, cur.subtype,
@@ -108,17 +118,17 @@ class BuildSstrucDbRecords( object ):
 
 class Sstruc( PyTool, RecordsMixin, ParallelMixin ):
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" },
+        { "name": "pdb_input", "type": "file", "ext": "pdb" },
         { "name": "pdb_id", "type": "text", "default_value": None }
     ]
     RecordsClass = SstrucDbRecord
-    def _init( self, pdb_file, pdb_id=None, **kwargs ):
-        self.pdb_file = self.abspath( pdb_file )
+    def _init( self, pdb_input, pdb_id=None, **kwargs ):
+        self.pdb_input = self.abspath( pdb_input )
         self.pdb_id = pdb_id
         self.id = pdb_id
         self.output_files = []
-        self._init_records( utils.path.stem( pdb_file ), **kwargs )
-        self._init_parallel( self.pdb_file, **kwargs )
+        self._init_records( utils.path.stem( pdb_input ), **kwargs )
+        self._init_parallel( self.pdb_input, **kwargs )
         #print self.records[0] if self.records else None
     def func( self ):
         if self.parallel:
@@ -127,10 +137,12 @@ class Sstruc( PyTool, RecordsMixin, ParallelMixin ):
             self.records = list(itertools.chain.from_iterable(
                 map( operator.attrgetter( "records" ), tool_results )
             ))
-            # print self.pdb_file, utils.path.stem( self.pdb_file )
+            # print self.pdb_input, utils.path.stem( self.pdb_input )
             # print list(self.records)[0] if self.records else None
         else:
-            self.records = BuildSstrucDbRecords( self.pdb_file, pdb_id=self.pdb_id ).get()
+            self.records = BuildSstrucDbRecords( 
+                self.pdb_input, pdb_id=self.pdb_id 
+            ).get()
             # print self.records[0] if self.records else None
         self.write()
         # for r in self.records:

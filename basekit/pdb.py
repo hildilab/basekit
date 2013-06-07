@@ -4,6 +4,8 @@ import os
 import re
 import urllib2
 import gzip
+import collections
+import json
 
 import numpy as np
 np.seterr( all="raise" )
@@ -11,8 +13,46 @@ np.seterr( all="raise" )
 import utils.path
 from utils.tool import PyTool
 from utils.timer import Timer
-from utils.numpdb import NumPdb, numdist, pdb_line
+from utils.numpdb import NumPdb, numdist, ATOMS
 from utils.db import get_pdb_files
+
+
+
+# RESIDUE   TPO     22
+# CONECT      CG2    4 CB   HG21 HG22 HG23
+def parse_het_dictionary( het_file ):
+    het_dict = collections.defaultdict( list )
+    key = None
+    with open( het_file, "r" ) as fp:
+        for line in fp:
+            if line.startswith("RESIDUE"):
+                key = line[10:13]
+            if line.startswith("CONECT"):
+                het_dict[ key ].append( line[11:15] )
+    print len(het_dict)
+    aminoacid_list = []
+    for key, atom_list in het_dict.iteritems():
+        if ATOMS['backbone'].issubset( atom_list ):
+            aminoacid_list.append( key )
+    print len(aminoacid_list)
+    return aminoacid_list
+    
+
+class PdbHetDictionary( PyTool ):
+    """
+    Tool to extract the names of (non-standard) amino acids from
+    ftp://ftp.rcsb.org/pub/pdb/data/monomers/het_dictionary.txt
+    """
+    args = [
+        { "name": "het_file", "type": "file", "ext": "txt", "help": "hetero dictionary" }
+    ]
+    def _init( self, het_file, **kwargs ):
+        self.het_file = self.abspath( het_file )
+        self.aa_file = self.outpath( "aa.json" )
+    def func( self ):
+        aminoacid_list = parse_het_dictionary( self.het_file )
+        with open( self.aa_file, "w" ) as fp:
+            json.dump( aminoacid_list, fp )
 
 
 
@@ -20,9 +60,9 @@ from utils.db import get_pdb_files
 def unzip_pdb( fpath ):
     fdir, fname = os.path.split( fpath )
     fpdb = os.path.join( fdir, fname[3:7]+".pdb" )
-    with open( fpdb, "w" ) as f:
-        with gzip.open( fpath, "rb" ) as z:
-            f.write( z.read() )
+    with open( fpdb, "w" ) as fp:
+        with gzip.open( fpath, "rb" ) as zp:
+            fp.write( zp.read() )
     return True
 
 class PdbUnzip( PyTool ):
@@ -60,14 +100,19 @@ def pdb_download( pdb_id, output_file ):
 
 class PdbDownload( PyTool ):
     args = [
-        { "name": "pdb_id", "type": "text" }
+        { "name": "pdb_id", "type": "text", 
+          "help": "single id or multiple, seperated by spaces or commas" }
     ]
     def _init( self, pdb_id, **kwargs ):
-        self.pdb_id = pdb_id.strip()[0:4]
-        self.pdb_file = self.outpath( "%s.pdb" % self.pdb_id )
-        self.output_files = [ self.pdb_file ]
+        self.pdb_id_list = map( lambda x: x[0:4], re.split("[\s,]+", pdb_id.strip() ) )
+        self.pdb_file_list = map(
+            lambda x: self.outpath( "%s.pdb" % x ),
+            self.pdb_id_list
+        )    
+        self.output_files = [] + self.pdb_file_list
     def func( self ):
-        pdb_download( self.pdb_id, self.pdb_file )
+        for pdb_id, pdb_file in zip( self.pdb_id_list, self.pdb_file_list ):
+            pdb_download( pdb_id, pdb_file )
 
 
 
@@ -149,7 +194,7 @@ def numpdb_test( pdb_file ):
             "detect_incomplete": False
         })
     with Timer("read/parse pdb incomplete"):
-        NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone_only": True} )
+        NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone_only": False} )
     with Timer("read/parse pdb phi/psi"):
         NumPdb( pdb_file, features={"sstruc": False} )
     with Timer("read/parse pdb"):
@@ -161,9 +206,11 @@ def numpdb_test( pdb_file ):
     #     print npdb.dist( {"chain":"A"}, {"chain":"B"} )
     with Timer("access phi/psi"):
         print np.nansum( npdb['phi'] )
-    # with Timer("sstruc iter"):
-    #     for numa in npdb.iter_sstruc():
-    #         pass
+    with Timer("access phi/psi, altloc"):
+        print np.nansum( npdb.get('phi', altloc=[" ", "A"] ) )
+    with Timer("sstruc iter"):
+        for numa in npdb.iter_sstruc():
+            pass
     # with Timer("resno iter"):
     #     for numa in npdb.iter_resno( chain="A" ):
     #         pass
@@ -171,7 +218,7 @@ def numpdb_test( pdb_file ):
     #     first_chain = npdb["chain"][0]
     #     print npdb.sequence( chain=first_chain )
     with Timer("write pdb"):
-        npdb.write( "test.pdb", resno=[1,10], invert=True )
+        npdb.write( "test.pdb" )
 
 
 class NumpdbTest( PyTool ):

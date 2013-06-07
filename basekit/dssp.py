@@ -12,7 +12,7 @@ import utils.path
 from utils.tool import CmdTool
 
 
-DSSP_CMD = "dssp"
+DSSP_CMD = "dsspcmbi"
 
 
 
@@ -20,20 +20,27 @@ DSSP_CMD = "dssp"
 # http://swift.cmbi.ru.nl/gv/dssp/index.html
 ##################################################
 #
-#   dssp [-na] [-v] pdb_file [dssp_file]
-#   dssp [-na] [-v] -- [dssp_file]
-#   dssp [-h] [-?] [-V]
-#
-# The possible DSSPold commandline options are:
+# COPYRIGHT
+#   W. Kabsch, C. Sander and MPI-MF, 1983, 1985, 1988, 1994 1995
+#   CMBI version by Elmar.Krieger@cmbi.kun.nl / November 18,2002
+# USAGE
+#   dsspcmbi [Options] PDB_File DSSP_File -> Read PDB_File and write DSSP_File
+#   dsspcmbi [Options] -- dssp_file       -> Read from stdin and write DSSP_File
+#   dsspcmbi -h                           -> Display this help screen
+# OPTIONS
+#   -na   Disables the calculation of accessible surface.
+#   -c    Classic (old) format.
+#   -w    Wide 2002 format (for future use,not the current standard).
+#   -v    Verbose.
+#   --    Read from standard input.
 
-# -na     Disables the calculation of accessible surface.
-# -c      Classic (pre-July 1995) format.
-# -v      Verbose.
-# --      Read from standard input.
-# -h      Prints a help message.
-# -?      Same as -h
-# -l      Prints the license information.
-# -V      Prints version, as in first line of the output.
+#   -h -? Prints a help message.
+#   -V    Prints version, as in first line of the output.
+# ADDITIONAL OPTIONS CONTRIBUTED BY DSSP USERS
+#   By Emmanuel.Courcelle@toulouse.inra.fr
+#   -ssa  Adds information about disulfide bonds to output file
+#   -x    Renames residues with incomplete sidechains to 'X'
+#   -alt2 Keeps an additional AltLoc indicator at the line ends
 
 
 class Dssp( CmdTool ):

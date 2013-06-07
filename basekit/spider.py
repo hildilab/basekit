@@ -19,7 +19,7 @@ TMPL_DIR = os.path.join( PARENT_DIR, "data", "spider" )
 SPIDER_CMD = "spider" 
 
 
-
+# 2010 Cryo-EM Modeling Challenge: http://ncmi.bcm.edu/challenge
 
 
 class Spider( CmdTool, ScriptMixin ):
