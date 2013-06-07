@@ -3,23 +3,27 @@
 NUMPDB
 * implement handling of hetero atoms
 * handling of RNA/DNA aka nukleotides
-* option to flag (or only parse) complete residues (w.r.t. sidechain/ backbone atoms)
+* option to flag (or only parse) complete residues 
+		(w.r.t. sidechain/ backbone atoms)
 	=> name "detect_incomplete" [done for backbone]
 * http://docs.python.org/2/library/itertools.html#itertools.groupby
 * write XYZR
 * altloc handling ideas... 
-	- read all atoms; sort by (chain, resno, insertion, altloc, atomname) to group residues
+	- read all atoms; sort by (chain, resno, insertion, altloc, atomname) 
+		to group residues
 	- jump over 'duplicate' (resno, insertion) when altloc changes
-
+* iter_idx() method for iterating over a list of indices
+	to cache slices calculated by e.g. iter_resno
+* devise a way to get only one configuration (altloc based)
 
 
 PROBLEMATIC PDBs (first 90k)
 => sstruc.py pdb ~/projects/pdb_structures/pdb/ -o sstruc_test/ --parallel pdb_archive --sample 10000 --sample_start 40000
-* sstruc only in altloc=B: 3aeq, 1c4o, 3cyp, 3e4c
-* sstruc only in altloc=B,C: 3arc, 4db5, 4dwo
-* nucleotides?: 1c2x, 1c2w
-* sstruc length of 1 => DONE
-* ???: 4en8, 4en9, 1etn, 1etl, 1etm,
+* OK sstruc only in altloc=B: 3aeq, 1c4o, 3cyp, 3e4c
+* OK sstruc only in altloc=B,C: 3arc, 4db5, 4dwo
+* helix records for nucleotides: 1c2x, 1c2w
+* OK sstruc length of 1 => DONE
+* OK: 4en8, 4en9, 1etn, 1etl, 1etm,
 	4ffh, 4flg, 4fl8, 4fus, 1g65, 3g7z, 2g82, 4gjv, 4hcq, 3h87, 3hwl, 1hq6,
 	1hpb, 1ibu, 1ibt, 3isi, 3j1a, 1m3u, 1mab, 3n3m, 3nir, 3nji, 1o5x, 3pga,
 	1pk3, 2plv, 2plh, 3psv, 3psw, 2pw0, 3py2, 2pyr, 1pyp, 1pya, 2qey, 3qm9,
@@ -27,6 +31,8 @@ PROBLEMATIC PDBs (first 90k)
 	2vfe, 2vfd, 2vff, 3vr3, 3vr6, 3vr5, 3vr4, 3vr2, 3vsz, 3vsf, 2vs7, 3vt0,
 	1vto, 3vt2, 2w73, 2x6w, 2xge, 2xgc, 2xlh, 2xw9, 2yjq, 2zum
 * OK: 1bgt, 1bgu, 2plv
+* ??? 2: 3vr2, 3vr3, 3vr4, 3vr5, 3vr6, 2v93
+
 
 TOOL
 * PyTool timeout: 

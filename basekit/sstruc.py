@@ -54,7 +54,7 @@ SstrucDbRecord = collections.namedtuple( 'SstrucDbRecord', [
 
 class BuildSstrucDbRecords( object ):
     def __init__( self, pdb_file, pdb_id=None ):
-        self.npdb = numpdb.NumPdb( pdb_file, features={ "phi_psi": True } )
+        self.npdb = numpdb.NumPdb( pdb_file, features={ "phi_psi": False } )
         self.pdb_id = pdb_id
         # for a in self.npdb._atoms: print a
         # for a in self.npdb._iter_resno(): print a._atoms
@@ -72,16 +72,13 @@ class BuildSstrucDbRecords( object ):
         idx_end = self.npdb.index( 
             chain=ss.chain2, resno=ss.resno2, last=True
         )
-        if idx_beg==idx_end:
-            # no axis for a point
+        if idx_beg>idx_end:
+            idx_beg, idx_end = idx_end, idx_beg
+        numa = self.npdb.slice( idx_beg, idx_end+1 ).copy( atomname="CA" )
+        if numa.length<3:
             return None
-        else:
-            if idx_beg>idx_end:
-                idx_beg, idx_end = idx_end, idx_beg
-            beg, end = self.npdb.slice( idx_beg, idx_end+1 ).axis(
-                atomname=numpdb.ATOMS["backbone"]
-            )
-            return end-beg
+        beg, end = numa.axis()
+        return end-beg
     def _sstruc_angle( self, x, y ):
         if not x or not y:
             return None

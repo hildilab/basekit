@@ -67,7 +67,9 @@ RESIDUES = {
 try:
     additional_aminoacids = [ 'MPR', 'PSU', 'PYR', '4AF' ]
     with open( os.path.join( DATA_DIR, "aa.json" ), "r" ) as fp:
-        RESIDUES['aminoacids'] = frozenset( json.load( fp ) + additional_aminoacids )
+        RESIDUES['aminoacids'] = frozenset( 
+            json.load( fp ) + additional_aminoacids
+        )
 except:
     LOG.warning( 'Aminoacid list could not be loaded.' )
 
@@ -192,8 +194,10 @@ PDB_DEFAULTS = {
     "charge": ""
 }
 PDB_ATOM_TMPL = "{record:<6}{atomno:>5} {atomname:>4}{altloc:>1}{resname:>3} " \
-                "{chain:>1}{resno:>4}{insertion:>1}   {x:8.3f}{y:8.3f}{z:8.3f}" \
-                "{occupancy:6.2f}{bfac:6.2f}      {segment:<4}{element:>2}{charge:>2}\n"
+                "{chain:>1}{resno:>4}{insertion:>1}   " \
+                "{x:8.3f}{y:8.3f}{z:8.3f}" \
+                "{occupancy:6.2f}{bfac:6.2f}      " \
+                "{segment:<4}{element:>2}{charge:>2}\n"
 
 def numdefaults( natom, defaults ):
     d = {}
@@ -258,7 +262,10 @@ class SstrucParser( SimpleParser ):
 
 
 
-_BORDER = [{ 'resno': None, 'insertion': None, 'chain': None, 'sstruc': None }]
+_BORDER = [{ 
+    'resno': None, 'insertion': None, 'chain': None, 
+    'sstruc': None, 'altloc': None
+}]
 def BORDER( _atoms ):
     return itertools.chain( _atoms, _BORDER )
 
@@ -279,7 +286,8 @@ class NumAtoms:
             self._coords = value
         else:
             self._atoms[ key ] = value
-    def sele( self, chain=None, resno=None, atomname=None, sele=None, invert=None ):
+    def sele( self, chain=None, resno=None, atomname=None, 
+              altloc=None, sele=None, invert=None ):
         atoms = self._atoms
         if sele==None:
             sele = np.ones( self.length, bool )
@@ -296,7 +304,8 @@ class NumAtoms:
             else:
                 sele &= atoms['resno']==resno
         if atomname!=None:
-            if isinstance( atomname, collections.Iterable ) and not isinstance( atomname, basestring ):
+            if isinstance( atomname, collections.Iterable ) \
+                    and not isinstance( atomname, basestring ):
                 atomname = [ ATOMS.get( a, a ) for a in atomname ]
                 tmps = atoms['atomname']==atomname[0]
                 for an in atomname[1:]: tmps |= atoms['atomname']==an
@@ -304,11 +313,21 @@ class NumAtoms:
             else:
                 atomname = ATOMS.get( atomname, atomname )
                 sele &= atoms['atomname']==atomname
+        if altloc!=None:
+            if isinstance( altloc, collections.Iterable ):
+                tmps = atoms['altloc']==altloc[0]
+                for an in altloc[1:]: tmps |= atoms['altloc']==an
+                sele &= tmps
+            else:
+                sele &= atoms['altloc']==altloc
         if invert:
             np.logical_not( sele, sele )
         return sele
     def slice( self, begin, end, flag=None ):
-        return NumAtoms( self._atoms[begin:end], self._coords[begin:end], flag=flag )
+        return NumAtoms( 
+            self._atoms[begin:end], 
+            self._coords[begin:end], flag=flag 
+        )
     def copy( self, **sele ):
         _sele = self.sele( **sele )
         return NumAtoms( self._atoms[ _sele ], self._coords[ _sele ] )
@@ -360,38 +379,58 @@ class NumAtoms:
                 l += 1
     def _iter_resno( self, **sele ):
         for numatoms in self.iter_chain( **sele ):
-            res = ( numatoms['resno'][0], numatoms['insertion'][0] )
+            res = ( 
+                numatoms['resno'][0], 
+                numatoms['insertion'][0],
+                numatoms['altloc'][0]
+            )
             k = 0
             l = 0
             for a in BORDER( numatoms._atoms ):
-                if res!=( a['resno'], a['insertion'] ):
+                if res!=( a['resno'], a['insertion'], a['altloc'] ):
                     numa = numatoms.slice( k, l )
                     yield numa
                     k = l
-                    res = ( a['resno'], a['insertion'] )
+                    res = ( a['resno'], a['insertion'], a['altloc'] )
                 l += 1
     def iter_resno( self, **sele ):
         for numatoms in self.iter_chain( **sele ):
-            res = ( numatoms['resno'][0], numatoms['insertion'][0] )
+            res = ( 
+                numatoms['resno'][0], 
+                numatoms['insertion'][0],
+                numatoms['altloc'][0]
+            )
             numa_prev = None
             k = 0
             l = 0
-            for a in BORDER( numatoms._atoms ):
-                if res!=( a['resno'], a['insertion'] ):
+            it = BORDER( numatoms._atoms )
+            for a in it:
+                if res!=( a['resno'], a['insertion'], a['altloc'] ):
                     if not numatoms['incomplete'][k]:
                         numa = numatoms.slice( k, l, flag=True )
                         if numa_prev:
                             if numa_prev['resno'][0]==numa['resno'][0]-1:
                                 flag = False
-                            elif numdist( numa_prev.copy( atomname="C" ), numa.copy( atomname="N" ) ) > 1.4:
+                            elif numdist( 
+                                    numa_prev.copy( atomname="C" ), 
+                                    numa.copy( atomname="N" ) ) > 1.4:
                                 flag = True
                             else:
                                 flag = False
                             numa.flag = flag
                         yield numa
                         numa_prev = numa
+                    # skip any additional altloc
+                    if res[0]==a['resno'] and \
+                            res[1]==a['insertion'] and \
+                            res[2]!=a['altloc']:
+                        res = ( a['resno'], a['insertion'], a['altloc'] )
+                        for a in it:
+                            l += 1
+                            if res!=( a['resno'], a['insertion'], a['altloc'] ):
+                                break
                     k = l
-                    res = ( a['resno'], a['insertion'] )
+                    res = ( a['resno'], a['insertion'], a['altloc'] )
                 l += 1
     def iter_resno2( self, window, **sele ):
         # (TODO) assumes the first a has a.flag==True
@@ -417,20 +456,28 @@ class NumAtoms:
         try:
             return axis( self.get( 'xyz', **sele ) )
         except Exception as e:
-            LOG.error( "axis (%s) => %s" % ( e, sele ) )
+            LOG.error( "axis (%s) => %s, %s" % ( e, sele, self._atoms ) )
             raise e
     def sequence( self, **sele ):
-        return "".join([ AA1.get( a['resname'][0], "?" ) for a in self.iter_resno( **sele ) ])
+        return "".join([ 
+            AA1.get( a['resname'][0], "?" ) for a in self.iter_resno( **sele ) 
+        ])
     def center( self, **sele ):
         coords = self.get( 'xyz', **sele )
         return np.sum( coords, axis=0 ) / len(coords)
     def dist( self, sele1, sele2 ):
         return mag( self.center( **sele1 ) - self.center( **sele2 ) )
-    def write( self, file_name, **sele ):
+    def write( self, file_name, order='original', **sele ):
         coords, atoms = self._select( **sele )
+        if order=='original':
+            atoms = np.sort( atoms, order='atomno' )
         with open( file_name, "w" ) as fp:
             for natom in atoms:
                 fp.write( pdb_line( natom ) )
+            # for numa in self.iter_resno( **sele ):
+            #     for a in numa._atoms:
+            #         fp.write( pdb_line( a ) )
+
 
 
 
@@ -496,14 +543,20 @@ class NumPdb:
                     p( line )
             
             for line in itertools.chain( [line], fp ):
-                if line[0:4]=="ATOM" or ( line[0:6]=="HETATM" and line[17:20] in aminoacids ):
+                if line[0:4]=="ATOM" or \
+                        ( line[0:6]=="HETATM" and line[17:20] in aminoacids ):
                     if po and line[17:20] in nucleotides:
                         continue
-                    if ( nbo or line[12:16] in backbone ) and line[16] in altloc:
-                        atoms_append( tupl( [ line[ c[0]:c[1] ] for c in cols ] + extra ) )
+                    if ( nbo or line[12:16] in backbone ):# and line[16] in altloc:
+                        atoms_append( tupl( 
+                            [ line[ c[0]:c[1] ] for c in cols ] + extra
+                        ))
                 elif line[0:5]=="MODEL":
                     # TODO add model field
                     pass
+                elif line[0:6]=="ENDMDL":
+                    # stop condition - for now
+                    break
                 elif line[0:6]=="CONECT":
                     # stop condition
                     break
@@ -514,6 +567,9 @@ class NumPdb:
                 self.__dict__[ "_%s" % name ] = p.get()
 
         atoms = np.array(atoms, dtype=types)
+        atoms.sort( order=[ 
+            'chain', 'resno', 'insertion', 'altloc', 'atomno' 
+        ])
         coords = np.vstack(( atoms['x'], atoms['y'], atoms['z'] )).T
         # print np.may_share_memory( self.atoms, self.coords )
         # print self.atoms.flags.owndata, self.coords.flags.owndata
@@ -538,29 +594,48 @@ class NumPdb:
                     numa['incomplete'] = True
                     # print numa._atoms
         except Exception as e:
-            LOG.error( "[%s] calc incomplete (%s) => %s" % ( self.pdb_id, e, numa['atomno'][0] ) )
+            LOG.error( "[%s] calc incomplete (%s) => %s" % ( 
+                self.pdb_id, e, numa['atomno'][0] 
+            ))
     def __calc_sstruc( self ):
         for ss in self._sstruc:
             try:
-                idx_beg = self.index( chain=ss.chain1, resno=ss.resno1, first=True )
-                idx_end = self.index( chain=ss.chain2, resno=ss.resno2, last=True )
+                idx_beg = self.index( 
+                    chain=ss.chain1, resno=ss.resno1, first=True 
+                )
+                idx_end = self.index( 
+                    chain=ss.chain2, resno=ss.resno2, last=True
+                )
                 if ss.type==HELIX:
                     self.slice( idx_beg, idx_end+1 )['sstruc'] = "H"
                 elif ss.type==SHEET:
                     self.slice( idx_beg, idx_end+1 )['sstruc'] = "E"
             except Exception as e:
-                LOG.error( "[%s] calc sstruc (%s) => %s" % ( self.pdb_id, e, ss ) )
+                LOG.error( "[%s] calc sstruc (%s) => %s" % ( 
+                    self.pdb_id, e, ss 
+                ))
     def __calc_phi_psi( self, dihedral=dihedral ):
         mainchain = ATOMS['mainchain']
         for na_curr, na_next in self.iter_resno2( 2 ):
             try:
-                xyz_n, xyz_ca, xyz_c = na_curr.get( 'xyz', atomname=mainchain )
-                xyz_n_next, xyz_ca_next, xyz_c_next = na_next.get( 'xyz', atomname=mainchain )
-                na_curr['psi'] = dihedral( xyz_n, xyz_ca, xyz_c, xyz_n_next )
-                na_next['phi'] = dihedral( xyz_c, xyz_n_next, xyz_ca_next, xyz_c_next )
+                xyz_n, xyz_ca, xyz_c = na_curr.get( 
+                    'xyz', atomname=mainchain 
+                )
+                xyz_n_next, xyz_ca_next, xyz_c_next = na_next.get( 
+                    'xyz', atomname=mainchain
+                )
+                na_curr['psi'] = dihedral( 
+                    xyz_n, xyz_ca, xyz_c, xyz_n_next 
+                )
+                na_next['phi'] = dihedral( 
+                    xyz_c, xyz_n_next, xyz_ca_next, xyz_c_next
+                )
             except Exception as e:
-                LOG.error( "[%s] calc phi/psi (%s) => %s, %s" % (
-                    self.pdb_id, e, na_curr['atomname'], na_next['atomname']
+                LOG.error( "[%s] calc phi/psi (%s) => %s, %s, %s, %s, %s, %s" % (
+                    self.pdb_id, e, 
+                    na_curr['resno'], na_curr['chain'], 
+                    na_next['resno'], na_next['chain'],
+                    na_curr['atomname'], na_next['atomname']
                 ))
         # for a in self.iter_resno(): print a._atoms[0], a.flag
 

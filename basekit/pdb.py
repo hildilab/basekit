@@ -194,7 +194,7 @@ def numpdb_test( pdb_file ):
             "detect_incomplete": False
         })
     with Timer("read/parse pdb incomplete"):
-        NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone_only": True} )
+        NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone_only": False} )
     with Timer("read/parse pdb phi/psi"):
         NumPdb( pdb_file, features={"sstruc": False} )
     with Timer("read/parse pdb"):
@@ -206,9 +206,11 @@ def numpdb_test( pdb_file ):
     #     print npdb.dist( {"chain":"A"}, {"chain":"B"} )
     with Timer("access phi/psi"):
         print np.nansum( npdb['phi'] )
-    # with Timer("sstruc iter"):
-    #     for numa in npdb.iter_sstruc():
-    #         pass
+    with Timer("access phi/psi, altloc"):
+        print np.nansum( npdb.get('phi', altloc=[" ", "A"] ) )
+    with Timer("sstruc iter"):
+        for numa in npdb.iter_sstruc():
+            pass
     # with Timer("resno iter"):
     #     for numa in npdb.iter_resno( chain="A" ):
     #         pass
@@ -216,7 +218,7 @@ def numpdb_test( pdb_file ):
     #     first_chain = npdb["chain"][0]
     #     print npdb.sequence( chain=first_chain )
     with Timer("write pdb"):
-        npdb.write( "test.pdb", resno=[1,10], invert=True )
+        npdb.write( "test.pdb" )
 
 
 class NumpdbTest( PyTool ):
