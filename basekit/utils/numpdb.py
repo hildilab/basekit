@@ -492,7 +492,8 @@ class NumPdb:
             "sstruc": True,
             "backbone_only": False,
             "protein_only": True,
-            "detect_incomplete": True
+            "detect_incomplete": True,
+            "configuration": True
         }
         if features: self.features.update( features )
         self._parse()
@@ -508,6 +509,9 @@ class NumPdb:
 
         extra = []
         parsers = {}
+        if self.features["configuration"]:
+            types += [ ( 'configuration', np.bool ) ]
+            extra += [ False ]
         if self.features["detect_incomplete"]:
             types += [ ( 'incomplete', np.bool ) ]
             extra += [ False ]
@@ -580,12 +584,16 @@ class NumPdb:
         self.numatoms = NumAtoms( self._atoms, self._coords )
 
         self.length = len( atoms )
+        if self.features["configuration"]:
+            self.__calc_configuration()
         if self.features["detect_incomplete"]:
             self.__calc_incomplete()
         if self.features["phi_psi"]:
             self.__calc_phi_psi()
         if self.features["sstruc"]:
             self.__calc_sstruc()
+    def __calc_configuration( self ):
+        pass
     def __calc_incomplete( self ):
         bb_subset = ATOMS['backbone'].issubset
         try:
