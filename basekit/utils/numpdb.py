@@ -12,8 +12,8 @@ import numpy as np
 np.seterr( all="raise" )
 
 import basekit.utils.path
-from basekit.utils import try_int, get_index
-from math import dihedral, vec_dihedral, mag, axis
+from basekit.utils import try_int, get_index, copy_dict
+from math import dihedral, vec_dihedral, mag, axis, Superposition, rmsd
 
 
 logging.basicConfig()
@@ -111,6 +111,14 @@ ATOMS = {
 
 
 def numsele( string ):
+    """ Valid string examples
+        :A
+        32
+        :A.CA
+        32:A.CA
+        32-40:A
+        32.CA
+    """
     sele = { "chain": None, "resno": None, "atomname": None }
     atomname = string.split(".")
     if len(atomname)>1 and atomname[1]:
@@ -119,13 +127,38 @@ def numsele( string ):
     if len(chain)>1 and chain[1]:
         sele["chain"] = chain[1][0]
     if chain[0]:
-        sele["resno"] = int(chain[0])
+        resno = map( int, chain[0].split("-") )
+        sele["resno"] = resno[0] if len(resno)==1 else resno
     return sele
 
 
 def numdist( numa1, numa2 ):
     return mag( numa1.center() - numa2.center() )
 
+
+def superpose( numa1, numa2, sele1, sele2, subset="CA", inplace=True,
+               rmsd_cutoff=None, max_cycles=None ):
+    coords1 = numa1.get('xyz', **copy_dict( sele1, atomname=subset ) )
+    coords2 = numa2.get('xyz', **copy_dict( sele2, atomname=subset ) )
+    if rmsd_cutoff and max_cycles:
+        for cycle in xrange( max_cycles ):
+            sp = Superposition( coords1, coords2 )
+            print "Cycle %i, #%i, RMSD %6.2f" % (cycle, sp.n, sp.rmsd)
+            if sp.rmsd <= rmsd_cutoff or sp.n <= 8:
+                break
+            coords1_trans = sp.transform( coords1, inplace=False )
+            d = coords1_trans - coords2
+            deviation = np.sqrt( np.sum( d*d, axis=1 ) )
+            deviation_idx = np.argsort( deviation )
+            coords1 = coords1[ deviation_idx[:-5] ]
+            coords2 = coords2[ deviation_idx[:-5] ]
+        print "warning: still larger than rmsd_cutoff"
+    else:
+        sp = Superposition( coords1, coords2 )
+    pos = sp.transform( numa1['xyz'], inplace=inplace )
+    numa1['xyz'] = pos
+    print "RMSD: %f" % sp.rmsd
+    return pos
 
 
 class SimpleParser():
@@ -283,7 +316,15 @@ class NumAtoms:
             return self._atoms[ key ]
     def __setitem__( self, key, value ):
         if key=='xyz':
-            self._coords = value
+            for i, d in enumerate('xyz'):
+                self._atoms[ d ] = value[ ..., i ]
+            self._coords = np.vstack(( 
+                self._atoms['x'], self._atoms['y'], self._atoms['z'] 
+            )).T
+            # print "may_share_memory: %s" % np.may_share_memory( self._atoms, self._coords )
+            # print "flags.owndata: %s, %s" % (
+            #     self._atoms.flags.owndata, self._coords.flags.owndata
+            # )
         else:
             self._atoms[ key ] = value
     def sele( self, chain=None, resno=None, atomname=None, 
@@ -575,8 +616,10 @@ class NumPdb:
             'chain', 'resno', 'insertion', 'altloc', 'atomno' 
         ])
         coords = np.vstack(( atoms['x'], atoms['y'], atoms['z'] )).T
-        # print np.may_share_memory( self.atoms, self.coords )
-        # print self.atoms.flags.owndata, self.coords.flags.owndata
+        # print "may_share_memory: %s" % np.may_share_memory( atoms, coords )
+        # print "flags.owndata: %s, %s" % (
+        #     atoms.flags.owndata, coords.flags.owndata
+        # )
 
         self._atoms = atoms
         self._coords = coords
