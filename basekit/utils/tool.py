@@ -7,6 +7,7 @@ from __future__ import division
 
 import sys
 import os
+import re
 import argparse
 import functools
 import operator
@@ -172,7 +173,9 @@ class RecordsMixin( Mixin ):
         self.out_type = out_type
         stem = stem or "%s_records" % self.name
         out_var = "%s_file" % self.out_type
-        self.__dict__[ out_var ] = self.outpath( "%s.%s" % (stem, self.out_type) )
+        self.__dict__[ out_var ] = self.outpath( 
+            "%s.%s" % (stem, self.out_type) 
+        )
         self.output_files.append( self.__dict__[ out_var ] )
         if self.fileargs:
             self.read()
@@ -219,30 +222,48 @@ class ParallelMixin( Mixin ):
         { "name": "sample", "type": "slider", "range": [0, 100], "default_value": None },
         { "name": "sample_start", "type": "slider", "range": [0, 100], "default_value": 0 }
     ]
-    def _init_parallel( self, file_path, parallel=None, sample=None, sample_start=0, **kwargs ):
-        self.file_path = self.abspath( file_path )
+    def _init_parallel( self, file_input, parallel=None, 
+                        sample=None, sample_start=0, **kwargs ):
+        if parallel in [ "pdb_archive", "directory", "dir" ]:
+            self.file_input = self.abspath( file_input )
+        elif parallel in [ "list" ]:
+            self.file_input = map(
+                self.abspath,
+                re.split( "[\s,]+", file_input.strip() )
+            )
+        else:
+            self.file_input = file_input
         self.parallel = parallel
         self.sample_start = sample_start or 0
         self.sample_end = None if not sample else self.sample_start+sample
+        self.tool_kwargs = kwargs
     def _make_tool_list( self ):
         if self.parallel=="pdb_archive":
-            file_list = get_pdb_files( self.file_path, pattern=".pdb" )
+            file_list = get_pdb_files( 
+                self.file_input, pattern=".pdb" )
         elif self.parallel in [ "directory", "dir" ]:
-            file_list = map( operator.itemgetter(1), dir_walker( self.file_path, pattern=".+\.pdb" ) )
+            file_list = map( 
+                operator.itemgetter(1), 
+                dir_walker( self.file_input, pattern=".+\.pdb" ) 
+            )
         elif self.parallel=="list":
-            file_list = self.file_path.split()
+            file_list = self.file_input
         else:
-            raise Exception( "unknown value '%s' for 'parallel'" % self.parallel )
-        file_list = itertools.islice( file_list, self.sample_start, self.sample_end )
+            raise Exception( 
+                "unknown value '%s' for 'parallel'" % self.parallel 
+            )
+        file_list = itertools.islice( 
+            file_list, self.sample_start, self.sample_end
+        )
         tool_list = []
-        kwargs = { 
-            "run": False
-        }
+        self.tool_kwargs["run"] = False
         for input_file in file_list:
+            print input_file
             stem = utils.path.stem( input_file )
             output_dir = self.outpath( os.path.join( "parallel", stem ) )
             tool_list.append( self.ParallelClass(
-                input_file, pdb_id=stem, **copy_dict( kwargs, output_dir=output_dir )
+                input_file, pdb_id=stem, 
+                **copy_dict( self.tool_kwargs, output_dir=output_dir )
             ))
         self.tool_list = tool_list
     def _func_parallel( self, nworkers=None ):

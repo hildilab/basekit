@@ -1,0 +1,17 @@
+[
+    { 
+        "filename": "${pdb_file2}"
+    },
+    { 
+        "filename": "${pdb_file1}",
+        "params": {
+            "load_as": "append"
+        }
+    },
+    { 
+        "filename": "${superposed_file}",
+        "params": {
+            "load_as": "append"
+        }
+    }
+]

@@ -11,10 +11,15 @@ import numpy as np
 np.seterr( all="raise" )
 
 import utils.path
-from utils.tool import PyTool
+import utils.numpdb as numpdb
+from utils.tool import PyTool, ProviMixin
 from utils.timer import Timer
-from utils.numpdb import NumPdb, numdist, ATOMS
 from utils.db import get_pdb_files
+
+
+DIR = os.path.split( os.path.abspath(__file__) )[0]
+PARENT_DIR = os.path.split( DIR )[0]
+TMPL_DIR = os.path.join( PARENT_DIR, "data", "pdb" )
 
 
 
@@ -37,7 +42,6 @@ def parse_het_dictionary( het_file ):
     print len(aminoacid_list)
     return aminoacid_list
     
-
 class PdbHetDictionary( PyTool ):
     """
     Tool to extract the names of (non-standard) amino acids from
@@ -97,7 +101,6 @@ def pdb_download( pdb_id, output_file ):
         except:
             pass
 
-
 class PdbDownload( PyTool ):
     args = [
         { "name": "pdb_id", "type": "text", 
@@ -150,8 +153,6 @@ def pdb_split( pdb_file, output_dir, backbone_only=False,
                             continue
                         fp_out.write( line )
                         
-
-
 class PdbSplit( PyTool ):
     args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
@@ -185,20 +186,60 @@ class PdbSplit( PyTool ):
 
 
 
+class PdbSuperpose( PyTool, ProviMixin ):
+    auto_prep = True
+    args = [
+        { "name": "pdb_file1", "type": "file", "ext": "pdb" },
+        { "name": "pdb_file2", "type": "file", "ext": "pdb" },
+        { "name": "sele1", "type": "text" },
+        { "name": "sele2", "type": "text" },
+        { "name": "subset", "type": "text", "default_value": "CA" }
+    ]
+    tmpl_dir = TMPL_DIR
+    provi_tmpl = "superpose.provi"
+    def _init( self, pdb_file1, pdb_file2, 
+               sele1, sele2, subset="CA", **kwargs ):
+        self.pdb_file1 = self.abspath( pdb_file1 )
+        self.pdb_file2 = self.abspath( pdb_file2 )
+        self.sele1 = numpdb.numsele( sele1 )
+        self.sele2 = numpdb.numsele( sele2 )
+        self.subset = subset
+        self.superposed_file = self.outpath( "superposed.pdb" )
+        self.output_files = [ self.superposed_file ]
+    def func( self ):
+        npdb1 = numpdb.NumPdb( self.pdb_file1 )
+        npdb2 = numpdb.NumPdb( self.pdb_file2 )
+        numpdb.superpose( 
+            npdb1, npdb2, self.sele1, self.sele2, 
+            subset=self.subset, inplace=True,
+            rmsd_cutoff=1.0, max_cycles=100
+        )
+        npdb1.write( self.superposed_file )
+    def _post_exec( self ):
+        self._make_provi_file(
+            pdb_file1=self.relpath( self.pdb_file1 ),
+            pdb_file2=self.relpath( self.pdb_file2 ),
+            superposed_file=self.relpath( self.superposed_file ),
+        )
+
+
+
+
+
 def numpdb_test( pdb_file ):
     with Timer("read/parse pdb plain"):
-        NumPdb( pdb_file, features={
+        numpdb.NumPdb( pdb_file, features={
             "phi_psi": False, 
             "sstruc": False, 
             "backbone_only": True,
             "detect_incomplete": False
         })
     with Timer("read/parse pdb incomplete"):
-        NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone_only": False} )
+        numpdb.NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone_only": False, "detect_incomplete": False} )
     with Timer("read/parse pdb phi/psi"):
-        NumPdb( pdb_file, features={"sstruc": False} )
+        numpdb.NumPdb( pdb_file, features={"sstruc": False} )
     with Timer("read/parse pdb"):
-        npdb = NumPdb( pdb_file )
+        npdb = numpdb.NumPdb( pdb_file )
     # with Timer("resno iter2"):
     #     for numa_list in npdb.iter_resno2( 6, chain="A", resno=[1,22] ):
     #         print [ numa["resno"][0] for numa in numa_list ]
@@ -211,15 +252,17 @@ def numpdb_test( pdb_file ):
     with Timer("sstruc iter"):
         for numa in npdb.iter_sstruc():
             pass
-    # with Timer("resno iter"):
-    #     for numa in npdb.iter_resno( chain="A" ):
-    #         pass
+    with Timer("resno iter"):
+        for numa in npdb.iter_resno():
+            pass
+    with Timer("plain resno iter"):
+        for numa in npdb._iter_resno():
+            pass
     # with Timer("sequence"):
     #     first_chain = npdb["chain"][0]
     #     print npdb.sequence( chain=first_chain )
     with Timer("write pdb"):
         npdb.write( "test.pdb" )
-
 
 class NumpdbTest( PyTool ):
     args = [
