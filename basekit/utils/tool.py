@@ -22,6 +22,7 @@ import logging
 import signal
 import multiprocessing
 
+import basekit.utils.numpdb as numpdb
 import basekit.utils as utils
 from basekit.utils import (
     try_int, get_index, boolean, working_directory, dir_walker, copy_dict,
@@ -59,12 +60,21 @@ class ToolParser( argparse.ArgumentParser ):
         if tool_class:
             group = self.add_argument_group( title="general arguments" )
             if not tool_class.no_output:
-                group.add_argument( '-o', dest="output_dir", metavar='OUTPUT_DIR', type=str, default="./" )
-                group.add_argument( '-t', dest="timeout", metavar='TIMEOUT', type=int, default=0 )
+                group.add_argument( 
+                    '-o', dest="output_dir", metavar='OUTPUT_DIR', 
+                    type=str, default="./" 
+                )
+                group.add_argument( 
+                    '-t', dest="timeout", metavar='TIMEOUT', 
+                    type=int, default=0 
+                )
                 group.add_argument( '-v', '--verbose', action='store_true' )
                 group.add_argument( '-c', '--check', action='store_true' )
                 group.add_argument( '-f', '--fileargs', action='store_true' )
-            group.add_argument( '-h', '--help', action="help", help="show this help message and exit" )
+            group.add_argument( 
+                '-h', '--help', action="help", 
+                help="show this help message and exit" 
+            )
     def error(self, message):
         sys.stderr.write('error: %s\n\n' % message)
         self.print_help()
@@ -73,37 +83,45 @@ class ToolParser( argparse.ArgumentParser ):
 
 def get_argument( params ):
     kwargs = {
-        "default": params.get( "default_value", None ),
+        "default": params.get( "default" ),
         "help": params.get( "help" )
     }
-    if params.get('fixed'):
+
+    if params.get( "nargs" ):
+        kwargs["nargs"] = params["nargs"]
+
+    if params.get('fixed') or params["type"] in [ "float" ]:
         kwargs["type"] = float
-    elif params["type"]=="slider":
+    elif params["type"] in [ "slider", "int" ]:
         kwargs["type"] = int
-    elif params["type"] in [ "file", "text", "select" ]:
+    elif params["type"] in [ "file", "dir", "text", "select" ]:
         kwargs["type"] = str
     elif params["type"]=="checkbox":
         if kwargs["default"]==False:
             kwargs["action"] = "store_true"
         else:
             kwargs["type"] = boolean
+    
     return kwargs
 
 
 def make_parser( Tool, parser=None ):
     if not parser:
-        parser = ToolParser( description=Tool.__doc__ )
+        parser = ToolParser( tool_class=Tool, description=Tool.__doc__ )
     arg_groups = DefaultOrderedDict( collections.OrderedDict )
     for name, params in Tool.args.iteritems():
         arg_groups[ params.get( "group" ) ][ name ] = params
     for group_name, args in arg_groups.iteritems():
         if group_name:
-            group = parser.add_argument_group( title="%s arguments" % group_name )
+            group = parser.add_argument_group( 
+                title="%s arguments" % group_name 
+            )
         else:
             group = parser
         for name, params in args.iteritems():
-            option = '--%s'%name if "default_value" in params else name
-            group.add_argument( option, **get_argument( params ) )
+            group.add_argument( 
+                *params["flags"], **get_argument( params ) 
+            )
     return parser
 
 
@@ -113,7 +131,7 @@ def parse_args( Tool, kwargs=None ):
         kwargs = vars( parser.parse_args() )
     args = []
     for name, params in Tool.args.iteritems():
-        if "default_value" not in params:
+        if "default" not in params:
             args.append( kwargs.pop( name ) )
     return args, kwargs
 
@@ -131,12 +149,57 @@ def parse_subargs( tools, description=None ):
     return Tool, args, kwargs
 
 
+MIXIN_REGISTER = {}
+class ToolMetaclass( type ):
+    def __init__(cls, name, bases, dct):
+        # print cls, name, bases, dct
+        if name.endswith("Mixin"):
+            MIXIN_REGISTER[ name ] = cls
+            return
 
+        def make_arg( params ):
+            flags = params["name"].split("|")
+            if "default" in params:
+                flags[0] = "--%s" % flags[0]
+                if len(flags)>1:
+                    for i in range( 1, len(flags) ):
+                        flags[i] = "-%s" % flags[i]
+            params["flags"] = flags
+            return params
+
+        args = collections.OrderedDict()
+        for p in dct.get( "args", [] ):
+            args[ p["name"] ] = make_arg( p )
+
+        for mixin_name, mixin_cls in MIXIN_REGISTER.iteritems():
+            if mixin_cls in bases:
+                for p in mixin_cls.__dict__.get( "args", [] ):
+                    p["group"] = mixin_cls.__name__[:-5].lower()
+                    args[ p["name"] ] = make_arg( p )
+
+        cls.args = args
+
+        if MIXIN_REGISTER['ParallelMixin'] in bases:
+            if not "ParallelClass" in dct:
+                cls.ParallelClass = cls
+
+        # TODO remove
+        if not "no_output" in dct:
+            cls.no_output = False
+
+        def make_out( params ):
+            return params
+
+        out = collections.OrderedDict()
+        for p in dct.get( "out", [] ):
+            out[ p["name"] ] = make_out( p )
+
+        cls.out = out
 
 
 
 class Mixin( object ):
-    pass
+    __metaclass__ = ToolMetaclass
 
 
 class TmplMixin( Mixin ):
@@ -163,48 +226,63 @@ class ProviMixin( TmplMixin ):
 
 class RecordsMixin( Mixin ):
     args = [
-        { "name": "out_type", "type": "select", "options": [ "json", "csv", "pickle" ], 
-          "default_value": "json" }
+        { "name": "records_type", "type": "select", 
+            "options": [ "json", "csv", "pickle" ], 
+            "default": "json" }
     ]
-    def _init_records( self, stem, out_type="json", **kwargs ):
+    def _init_records( self, input_file, **kwargs ):
         if not hasattr( self, "RecordsClass" ):
             raise Exception("A RecordsMixin needs a 'RecordsClass' attribute")
         self.records = None
-        self.out_type = out_type
-        stem = stem or "%s_records" % self.name
-        out_var = "%s_file" % self.out_type
+        if input_file:
+            stem = utils.path.stem( input_file ) 
+        else:
+            stem = "%s_records" % self.name
+        out_var = "records_%s" % self.records_type
         self.__dict__[ out_var ] = self.outpath( 
-            "%s.%s" % (stem, self.out_type) 
+            "%s.%s" % ( stem, self.records_type ) 
         )
         self.output_files.append( self.__dict__[ out_var ] )
         if self.fileargs:
             self.read()
     def write_csv( self ):
-        with open( self.csv_file, "w" ) as fp:
+        with open( self.records_csv, "w" ) as fp:
             cw = csv.writer( fp, delimiter=',')
             for r in self.records:
                 cw.writerow( r )
     def write_json( self ):
-        records_list = map( operator.methodcaller( "_asdict" ), self.records )
-        with open( self.json_file, "w" ) as fp:
+        records_list = map( 
+            operator.methodcaller( "_asdict" ), 
+            self.records 
+        )
+        with open( self.records_json, "w" ) as fp:
             json.dump( records_list, fp, indent=4 )
     def write_pickle( self ):
-        with open( self.pickle_file, "w" ) as fp:
+        with open( self.records_pickle, "w" ) as fp:
             pickle.dump( self.records, fp )
     def write( self ):
-        getattr( self, "write_%s" % self.out_type )()
+        getattr( self, "write_%s" % self.records_type )()
     def read_csv( self ):
-        with open( self.csv_file, "r" ) as fp:
-            self.records = map( self.RecordsClass._make, csv.reader( fp, delimiter=',') )
+        with open( self.records_csv, "r" ) as fp:
+            self.records = map( 
+                self.RecordsClass._make, 
+                csv.reader( fp, delimiter=',') 
+            )
     def read_json( self ):
-        with open( self.json_file, "r" ) as fp:
-            records_list = json.load( fp, object_pairs_hook=collections.OrderedDict )
-        self.records = map( lambda x: self.RecordsClass._make( x.itervalues() ), records_list )
+        with open( self.records_json, "r" ) as fp:
+            records_list = json.load( 
+                fp, object_pairs_hook=collections.OrderedDict
+            )
+        self.records = map( 
+            lambda x: self.RecordsClass._make( x.itervalues() ), 
+            records_list 
+        )
     def read_pickle( self ):
-        with open( self.pickle_file, "r" ) as fp:
+        with open( self.records_pickle, "r" ) as fp:
             self.records = pickle.load( fp )
     def read( self ):
-        getattr( self, "read_%s" % self.out_type )()
+        getattr( self, "read_%s" % self.records_type )()
+
 
 
 def call( tool ):
@@ -217,10 +295,12 @@ def call( tool ):
 
 class ParallelMixin( Mixin ):
     args = [
-        { "name": "parallel", "type": "select", "default_value": False,
+        { "name": "parallel", "type": "select", "default": False,
           "options": [ "directory", "pdb_archive", "list" ] },
-        { "name": "sample", "type": "slider", "range": [0, 100], "default_value": None },
-        { "name": "sample_start", "type": "slider", "range": [0, 100], "default_value": 0 }
+        { "name": "sample", "type": "slider", "range": [0, 100], 
+            "default": None },
+        { "name": "sample_start", "type": "slider", "range": [0, 100], 
+            "default": 0 }
     ]
     def _init_parallel( self, file_input, parallel=None, 
                         sample=None, sample_start=0, **kwargs ):
@@ -258,12 +338,12 @@ class ParallelMixin( Mixin ):
         tool_list = []
         self.tool_kwargs["run"] = False
         for input_file in file_list:
-            print input_file
             stem = utils.path.stem( input_file )
             output_dir = self.outpath( os.path.join( "parallel", stem ) )
             tool_list.append( self.ParallelClass(
-                input_file, pdb_id=stem, 
-                **copy_dict( self.tool_kwargs, output_dir=output_dir )
+                input_file, **copy_dict( 
+                    self.tool_kwargs, output_dir=output_dir,
+                )
             ))
         self.tool_list = tool_list
     def _func_parallel( self, nworkers=None ):
@@ -284,32 +364,6 @@ class ParallelMixin( Mixin ):
 
 
 
-class ToolMetaclass(type):
-    def __init__(cls, name, bases, dct):
-        # print cls, name, bases, dct
-        if not "no_output" in dct:
-            cls.no_output = False
-
-        args = collections.OrderedDict()
-        for a in dct.get( "args", [] ):
-            args[ a.pop("name") ] = a
-
-        if RecordsMixin in bases:
-            for a in RecordsMixin.__dict__.get( "args", [] ):
-                a = a.copy()
-                a["group"] = "records"
-                args[ a.pop("name") ] = a
-
-        if ParallelMixin in bases:
-            for a in ParallelMixin.__dict__.get( "args", [] ):
-                a = a.copy()
-                a["group"] = "parallel"
-                args[ a.pop("name") ] = a
-            if not "ParallelClass" in dct:
-                cls.ParallelClass = cls
-
-        cls.args = args
-
 
 
 class Tool( object ):
@@ -317,16 +371,33 @@ class Tool( object ):
     def __init__( self, *args, **kwargs ):
         self.name = self.__class__.__name__.lower()
 
+        self.input_files_dict = { "cls": self }
+        args_iter = iter(args)
+        for name, params in self.args.iteritems():
+            if "default" in params:
+                value = kwargs.get( name, params["default"] )
+            else:
+                value = args_iter.next()
+            # TODO check if the name already exists
+            self.__dict__[ name ] = self.__prep_arg( value, params )
+            if params["type"]=="file":
+                self.input_files_dict[ name ] = utils.Bunch(
+                    stem=utils.path.stem( value )
+                )
+
         self.timeout = kwargs.get("timeout", None)
         self.fileargs = kwargs.get("fileargs", False)
         self.verbose = kwargs.get("verbose", False)
-        self.output_dir = os.path.abspath( kwargs.get("output_dir", ".") ) + os.sep
+        self.output_dir = os.path.abspath( 
+            kwargs.get("output_dir", ".") 
+        ) + os.sep
         
         if not self.no_output:
             if not os.path.exists( self.output_dir ):
                 os.makedirs( self.output_dir )
-
-            self.args_file = os.path.join( self.output_dir, "%s.json" % self.name )
+            self.args_file = os.path.join( 
+                self.output_dir, "%s.json" % self.name 
+            )
             if self.fileargs:
                 with open( self.args_file, "r" ) as fp:
                     args, kwargs = json.load( fp )
@@ -334,10 +405,29 @@ class Tool( object ):
                 with open( self.args_file, "w" ) as fp:
                     json.dump( ( args, kwargs ), fp, indent=4 )
         
+        self.output_files = []
+        for name, params in self.out.iteritems():
+            value = self.__prep_out( params )
+            # TODO check if the name already exists
+            self.__dict__[ name ] = value
+            self.output_files.append( value )
+
         self._init( *args, **kwargs )
         
         if kwargs.get("run", True) and not kwargs.get("check", False) and not self.fileargs:
             self.__run()
+    def __prep_arg( self, value, params ):
+        if params.get("type") in [ "file", "dir" ]:
+            return self.abspath( value )
+        elif params.get("type")=="sele":
+            return numpdb.numsele( value )
+        return value
+    def __prep_out( self, params ):
+        if "file" in params:
+            return self.outpath( params["file"] )
+        elif "dir" in params:
+            return self.subdir( params["dir"] )
+        raise "do not know how to prep output"
     def __run( self ):
         with working_directory( self.output_dir ):
             self._pre_exec()
@@ -346,6 +436,8 @@ class Tool( object ):
     def __call__( self ):
         self.__run()
         return self
+    def _init( self, *args, **kwargs ):
+        pass
     def _run( self ):
         pass
     def _pre_exec( self ):
@@ -376,6 +468,7 @@ class Tool( object ):
             path = os.path.splitext( path )[0]
         return os.path.relpath( path, self.output_dir )
     def outpath( self, file_name ):
+        file_name = file_name.format( **self.input_files_dict )
         return os.path.join( self.output_dir, file_name )
     def abspath( self, path ):
         return os.path.abspath( path )

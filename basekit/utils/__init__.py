@@ -10,6 +10,9 @@ import os
 import re
 
 
+class Bunch( object ):
+    def __init__(self, **kwds):
+        self.__dict__.update(kwds)
 
 def memoize(f):
     cache = {}

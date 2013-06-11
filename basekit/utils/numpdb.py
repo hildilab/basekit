@@ -119,6 +119,8 @@ def numsele( string ):
         32-40:A
         32.CA
     """
+    if isinstance( string, dict ):
+        return string
     sele = { "chain": None, "resno": None, "atomname": None }
     atomname = string.split(".")
     if len(atomname)>1 and atomname[1]:
@@ -152,7 +154,8 @@ def superpose( numa1, numa2, sele1, sele2, subset="CA", inplace=True,
             deviation_idx = np.argsort( deviation )
             coords1 = coords1[ deviation_idx[:-5] ]
             coords2 = coords2[ deviation_idx[:-5] ]
-        print "warning: still larger than rmsd_cutoff"
+        if cycle==max_cycles-1:
+            print "warning: still larger than rmsd_cutoff"
     else:
         sp = Superposition( coords1, coords2 )
     pos = sp.transform( numa1['xyz'], inplace=inplace )
@@ -515,6 +518,7 @@ class NumAtoms:
         with open( file_name, "w" ) as fp:
             for natom in atoms:
                 fp.write( pdb_line( natom ) )
+            fp.write( "END" )
             # for numa in self.iter_resno( **sele ):
             #     for a in numa._atoms:
             #         fp.write( pdb_line( a ) )

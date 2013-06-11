@@ -48,11 +48,12 @@ class PdbHetDictionary( PyTool ):
     ftp://ftp.rcsb.org/pub/pdb/data/monomers/het_dictionary.txt
     """
     args = [
-        { "name": "het_file", "type": "file", "ext": "txt", "help": "hetero dictionary" }
+        { "name": "het_file", "type": "file", "ext": "txt", 
+            "help": "hetero dictionary" }
     ]
-    def _init( self, het_file, **kwargs ):
-        self.het_file = self.abspath( het_file )
-        self.aa_file = self.outpath( "aa.json" )
+    out = [
+        { "name": "aa_file", "file": "aa.json" }
+    ]
     def func( self ):
         aminoacid_list = parse_het_dictionary( self.het_file )
         with open( self.aa_file, "w" ) as fp:
@@ -71,11 +72,8 @@ def unzip_pdb( fpath ):
 
 class PdbUnzip( PyTool ):
     args = [
-        { "name": "pdb_archive", "type": "text" }
+        { "name": "pdb_archive", "type": "dir" }
     ]
-    no_output = True
-    def _init( self, pdb_archive, **kwargs ):
-        self.pdb_archive = self.abspath( pdb_archive )
     def func( self ):
         pdb_file_list = get_pdb_files( self.pdb_archive, pattern="ent.gz" )
         for pdb_file in pdb_file_list:
@@ -106,13 +104,16 @@ class PdbDownload( PyTool ):
         { "name": "pdb_id", "type": "text", 
           "help": "single id or multiple, seperated by spaces or commas" }
     ]
-    def _init( self, pdb_id, **kwargs ):
-        self.pdb_id_list = map( lambda x: x[0:4], re.split("[\s,]+", pdb_id.strip() ) )
+    def _init( self, *args, **kwargs ):
+        self.pdb_id_list = map( 
+            lambda x: x[0:4], 
+            re.split("[\s,]+", self.pdb_id.strip() ) 
+        )
         self.pdb_file_list = map(
             lambda x: self.outpath( "%s.pdb" % x ),
             self.pdb_id_list
         )    
-        self.output_files = [] + self.pdb_file_list
+        self.output_files.extend( self.pdb_file_list )
     def func( self ):
         for pdb_id, pdb_file in zip( self.pdb_id_list, self.pdb_file_list ):
             pdb_download( pdb_id, pdb_file )
@@ -156,23 +157,17 @@ def pdb_split( pdb_file, output_dir, backbone_only=False,
 class PdbSplit( PyTool ):
     args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
-        { "name": "backbone_only", "type": "checkbox", "default_value": False },
-        { "name": "max_models", "type": "slider", "range": [0, 100], "default_value": 0 },
-        { "name": "resno_ignore", "type": "text", "default_value": "" }
+        { "name": "backbone_only", "type": "checkbox", "default": False },
+        { "name": "max_models", "type": "slider", "range": [0, 100], 
+            "default": 0 },
+        { "name": "resno_ignore", "type": "text", "default": "" },
+        { "name": "zfill", "type": "slider", "range": [0, 8], 
+            "default": 0 }
     ]
-    def _init( self, pdb_file, backbone_only=False, max_models=False, 
-               resno_ignore=False, zfill=False, **kwargs ):
-        self.pdb_file = self.abspath( pdb_file )
-        self.backbone_only = backbone_only
-        self.max_models = int( max_models )
-        self.zfill = int( zfill )
-        self.resno_ignore = False
-        if resno_ignore:
-            if isinstance( resno_ignore, basestring ):
-                self.resno_ignore = map( int, resno_ignore.split(",") )
-            else:
-                self.resno_ignore = resno_ignore
-        self.output_files = [] # TODO doesn't work here
+    def _init( self, *args, **kwargs ):
+        if self.resno_ignore:
+            if isinstance( self.resno_ignore, basestring ):
+                self.resno_ignore = map( int, self.resno_ignore.split(",") )
     def func( self ):
         pdb_split( 
             self.pdb_file, self.output_dir, 
@@ -187,25 +182,18 @@ class PdbSplit( PyTool ):
 
 
 class PdbSuperpose( PyTool, ProviMixin ):
-    auto_prep = True
     args = [
         { "name": "pdb_file1", "type": "file", "ext": "pdb" },
         { "name": "pdb_file2", "type": "file", "ext": "pdb" },
-        { "name": "sele1", "type": "text" },
-        { "name": "sele2", "type": "text" },
-        { "name": "subset", "type": "text", "default_value": "CA" }
+        { "name": "sele1", "type": "sele" },
+        { "name": "sele2", "type": "sele" },
+        { "name": "subset", "type": "text", "default": "CA" }
+    ]
+    out = [
+        { "name": "superposed_file", "file": "superposed.pdb" }
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "superpose.provi"
-    def _init( self, pdb_file1, pdb_file2, 
-               sele1, sele2, subset="CA", **kwargs ):
-        self.pdb_file1 = self.abspath( pdb_file1 )
-        self.pdb_file2 = self.abspath( pdb_file2 )
-        self.sele1 = numpdb.numsele( sele1 )
-        self.sele2 = numpdb.numsele( sele2 )
-        self.subset = subset
-        self.superposed_file = self.outpath( "superposed.pdb" )
-        self.output_files = [ self.superposed_file ]
     def func( self ):
         npdb1 = numpdb.NumPdb( self.pdb_file1 )
         npdb2 = numpdb.NumPdb( self.pdb_file2 )
@@ -268,9 +256,6 @@ class NumpdbTest( PyTool ):
     args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" }
     ]
-    no_output = True
-    def _init( self, pdb_file, **kwargs ):
-        self.pdb_file = self.abspath( pdb_file )
     def func( self ):
         numpdb_test( self.pdb_file )
 
