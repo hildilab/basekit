@@ -22,7 +22,7 @@ DO  [y]=1,[nl]
 ;Dichten aus PDB erstellen
  CP FROM PDB
  [filename]
- 1
+ [ps]
  N
  A
  [x8] [x9] [x10]
