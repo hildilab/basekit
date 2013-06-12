@@ -70,7 +70,7 @@ class ToolParser( argparse.ArgumentParser ):
                 )
                 group.add_argument( '-v', '--verbose', action='store_true' )
                 group.add_argument( '-c', '--check', action='store_true' )
-                group.add_argument( '-f', '--fileargs', action='store_true' )
+                group.add_argument( '-a', '--fileargs', action='store_true' )
             group.add_argument( 
                 '-h', '--help', action="help", 
                 help="show this help message and exit" 
@@ -84,8 +84,16 @@ class ToolParser( argparse.ArgumentParser ):
 def get_argument( params ):
     kwargs = {
         "default": params.get( "default" ),
-        "help": params.get( "help" )
+        "help": params.get( "help" ),
+        "required": False if "default" in params else True,
     }
+
+    if "metavar" in params:
+        kwargs["metavar"] = params["metavar"]
+    if "dest" in params:
+        kwargs["dest"] = params["dest"]
+    if "action" in params:
+        kwargs["action"] = params["action"]
 
     if params.get( "nargs" ):
         kwargs["nargs"] = params["nargs"]
@@ -94,7 +102,7 @@ def get_argument( params ):
         kwargs["type"] = float
     elif params["type"] in [ "slider", "int" ]:
         kwargs["type"] = int
-    elif params["type"] in [ "file", "dir", "text", "select" ]:
+    elif params["type"] in [ "file", "dir", "text", "select", "str" ]:
         kwargs["type"] = str
     elif params["type"]=="checkbox":
         if kwargs["default"]==False:
@@ -158,24 +166,30 @@ class ToolMetaclass( type ):
             return
 
         def make_arg( params ):
-            flags = params["name"].split("|")
-            if "default" in params:
+            p = params.copy()
+            flags = p["name"].split("|")
+            p["name"] = flags[0]
+            if "default" in p:
                 flags[0] = "--%s" % flags[0]
-                if len(flags)>1:
-                    for i in range( 1, len(flags) ):
-                        flags[i] = "-%s" % flags[i]
-            params["flags"] = flags
-            return params
+            if len(flags)>1:
+                if "default" not in p:
+                    flags[0] = "--%s" % flags[0]
+                for i in range( 1, len(flags) ):
+                    flags[i] = "-%s" % flags[i]
+            p["flags"] = flags
+            return p
 
         args = collections.OrderedDict()
         for p in dct.get( "args", [] ):
-            args[ p["name"] ] = make_arg( p )
+            p = make_arg( p )
+            args[ p["name"] ] = p
 
         for mixin_name, mixin_cls in MIXIN_REGISTER.iteritems():
             if mixin_cls in bases:
                 for p in mixin_cls.__dict__.get( "args", [] ):
                     p["group"] = mixin_cls.__name__[:-5].lower()
-                    args[ p["name"] ] = make_arg( p )
+                    p = make_arg( p )
+                    args[ p["name"] ] = p
 
         cls.args = args
 

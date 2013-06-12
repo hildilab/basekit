@@ -10,9 +10,6 @@ import os
 import re
 
 
-class Bunch( object ):
-    def __init__(self, **kwds):
-        self.__dict__.update(kwds)
 
 def memoize(f):
     cache = {}
@@ -21,6 +18,15 @@ def memoize(f):
             cache[x] = f(*x)
         return cache[x]
     return memf
+
+def lazy_property(fn):
+    attr_name = '_lazy_' + fn.__name__
+    @property
+    def _lazy_property(self):
+        if not hasattr(self, attr_name):
+            setattr(self, attr_name, fn(self))
+        return getattr(self, attr_name)
+    return _lazy_property
 
 def try_int(s, default=None):
     "Convert to integer if possible."
@@ -31,7 +37,6 @@ def try_float(s, default=None):
     "Convert to float if possible."
     try: return float(s)
     except: return default if default!=None else s
-
 
 def get_index(seq, index, default=None):
     if not hasattr(seq, "__getitem__"):
@@ -50,7 +55,6 @@ def boolean(string):
     else:
         raise ValueError()
 
-
 def listify( item ):
     """
     Makes a single item a single item list, or returns a list if passed a
@@ -65,7 +69,6 @@ def listify( item ):
         return item
     else:
         return [ item ]
-
 
 def iter_overlap( iterator, n=None ):
     if n:
@@ -105,7 +108,6 @@ def iter_consume( iterator, n ):
         # advance to the empty slice starting at position n
         next( itertools.islice( iterator, n, n ), None )
 
-
 def dir_walker( directory, pattern ):
     for root, dirs, files in os.walk(directory):
         for name in files:
@@ -113,7 +115,6 @@ def dir_walker( directory, pattern ):
             m = re.match( pattern, name )
             if( m ):
                 yield (m, fpath)
-
 
 @contextlib.contextmanager 
 def working_directory(directory): 
@@ -124,13 +125,16 @@ def working_directory(directory):
     finally: 
         os.chdir(original_directory) 
 
-
 def copy_dict( dict, **kwargs ):
     dict2 = dict.copy()
     dict2.update( kwargs )
     return dict2
 
 
+
+class Bunch( object ):
+    def __init__(self, **kwds):
+        self.__dict__.update(kwds)
 
 
 class DefaultOrderedDict( collections.OrderedDict ):
