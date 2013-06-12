@@ -20,7 +20,7 @@ FI [x8],[x9],[x10]
 [y2]=[y2]*[psf]
 [z1]=[z1]*[psf]
 [z2]=[z2]*[psf]
-[ass]=3*[psf]
+[ass]=5*[psf]
 ;boxsize shift (weil der ursprung woander sitzt
 [sx]=([x8]/2)+1
 [sy]=([x9]/2)+1
