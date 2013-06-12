@@ -3,8 +3,30 @@
 ;boxgroesse etc. aus dem ergebnis von box.spi auslesen
 [usermap]='${map_name}'
 [usermapb]='${box_map_name}'
+
+
 UD IC 1,[bs],[obenlinks1],[obenlinks2],[obenlinks3],[ps], [rs]
 ${box_name}
+
+
+;grenzwerte für Filter
+[f1]=([ps]/[rs])-0.05
+[f2]=([ps]/[rs])+0.05
+
+;maske bestimmen testen!
+;min max werte
+FS [X4], [X5]
+[usermapb]
+;mitte des spektrums bestimmen
+[x6]=(X5-X4)/2
+
+;Maske erstellen noch zu testen
+TH M
+[usermapb]
+mask
+B
+[x6]
+
 ;Groesse Usermap
 FI [x8],[x9],[x10]
 [usermap]
@@ -43,25 +65,18 @@ DO  [y]=1,[nl]
  [obenlinks1] [obenlinks2] [obenlinks3]
 ;theoretische maps auf gleiche auflösung filtern wie usermap
 
-;maske bestimmen testen!
-;min max werte
-FS [X4], [X5]
-[usermapb]
-;mitte des spektrums bestimmen
-[x6]=(X5-X4)/2
+;Map auf resolution filtern
 
-;Maske erstellen noch zu testen
-TH M
-[usermapb]
-mask
-B
-[x6]
-
-
+ FQ
+ [filename]boxwi
+ [filename]boxfi
+ 7
+ [f1] [f2]
+ 
 ;cross correlation ausrechnen
  CC C [ccc]
  [usermapb]
- [filename]boxwi
+ [filename]boxfi
  mask
  1
  ;cross correlation in ein file schreiben
@@ -72,5 +87,5 @@ B
 
 ENDDO
 VM
-rm *bb.pdbbo*
+rm loops/*bb.pdbbo*
 en
