@@ -7,5 +7,5 @@ setup(
     author = 'Alexander Rose',
     author_email = 'alexander.rose@weirdbyte.de',
     packages = ['basekit', 'basekit.utils'],
-    install_requires = ['numpy']	# 2.5 => simplejson, multiprocessing
+    install_requires = ['numpy', 'matplotlib']
 )

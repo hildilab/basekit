@@ -35,9 +35,9 @@ class LinkerTest( PyTool ):
     args = [
         { "name": "linker_txt", "type": "file", "ext": "txt" }
     ]
-    def _init( self, linker_txt, **kwargs ):
-        self.linker_txt = self.abspath( linker_txt )
-        self.linker_json = self.outpath( "%s.json" % utils.path.stem( linker_txt, "json" ) )
+    out = [
+        { "name": "linker_json", "file": "{linker_txt.stem}.json" }
+    ]
     def func( self ):
         self._make_linker_json( compact=True )
     def _make_linker_json( compact=False ):
@@ -57,29 +57,23 @@ class LinkerTest( PyTool ):
 class LinkIt( CmdTool, ProviMixin ):
     args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
-        { "name": "res1", "type": "text" },
-        { "name": "res2", "type": "text" },
+        { "name": "res1", "type": "sele" },
+        { "name": "res2", "type": "sele" },
         { "name": "seq", "type": "text" }
+    ]
+    out = [
+        { "name": "bin_file", "file": "{pdb_file.stem}_linker.bin" },
+        { "name": "txt_file", "file": "{pdb_file.stem}_linker.txt" },
+        { "name": "pdb_linker_file", "file": "{pdb_file.stem}_linker.pdb" },
+        { "name": "pdb_linker_file2", "file": "{pdb_file.stem}_linker2.pdb" },
+        { "name": "pdb_linker_file3", "file": "{pdb_file.stem}_linker3.pdb" },
+        { "name": "kos_file", "file": "{pdb_file.stem}_kos.txt" },
+        { "name": "json_file", "file": "{pdb_file.stem}_linker.json" }
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "link_it.provi"
-    def _init( self, pdb_file, res1, res2, seq, **kwargs ):
-        self.pdb_file = os.path.abspath( pdb_file )
-        stem = utils.path.stem( self.pdb_file )
-        self.bin_file = os.path.join( self.output_dir, "%s_linker.bin" % stem )
-        self.txt_file = os.path.join( self.output_dir, "%s_linker.txt" % stem )
-        self.pdb_linker_file = os.path.join( self.output_dir, "%s_linker.pdb" % stem )
-        self.pdb_linker_file2 = os.path.join( self.output_dir, "%s_linker2.pdb" % stem )
-        self.pdb_linker_file3 = os.path.join( self.output_dir, "%s_linker3.pdb" % stem )
-        self.kos_file = os.path.join( self.output_dir, "%s_kos.txt" % stem )
-        self.res1 = res1
-        self.res2 = res2
-        self.seq = seq
-        self.json_file = self.outpath( "%s.json" % utils.path.stem( self.txt_file ) )
+    def _init( self, *args, **kwargs ):
         self.cmd = [ "wine", LINKIT_CMD, self.kos_file, self.bin_file, "t" ]
-        self.output_files = [ 
-            self.bin_file, self.txt_file, self.pdb_linker_file, self.pdb_linker_file2
-        ]
     def _pre_exec( self ):
         self._make_kos_file()
     def _post_exec( self ):
@@ -95,16 +89,17 @@ class LinkIt( CmdTool, ProviMixin ):
         npdb = NumPdb( self.pdb_file, features={ 
             "phi_psi": False, "sstruc": False, "backbone_only": True
         })
-        sele1 = numsele( self.res1 )
-        sele2 = numsele( self.res2 )
         with open( self.kos_file, "w" ) as fp:
-            d = [ (sele1, " CA "), (sele1, " C  "), (sele2, " N  "), (sele2, " CA ") ]
+            d = [ 
+                (self.res1, " CA "), (self.res1, " C  "), 
+                (self.res2, " N  "), (self.res2, " CA ") 
+            ]
             for sele, atomname in d:
                 sele["atomname"] = atomname
                 coords = npdb.get( 'xyz', **sele )
                 fp.write( "%s\n" % "\n".join(map( str, coords[0] ) ) )
             fp.write( "%s\n" % self.seq )
-            for sele in ( sele1, sele2 ):
+            for sele in ( self.res1, self.res2 ):
                 fp.write( "%s\t%s\n" % ( sele.get("chain", " "), sele["resno"] ) )
     def _fix_linker_pdb( self, output_file, atoms_only=False, stems=True ):
         backbone = ( ' N  ',' C  ', ' CA ',' O  ' )
@@ -146,27 +141,31 @@ class LinkItDensity( PyTool, ProviMixin ):
     args = [
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
         { "name": "mrc_file", "type": "file", "ext": "mrc" },
-        { "name": "res1", "type": "text" },
-        { "name": "res2", "type": "text" },
+        { "name": "res1", "type": "sele" },
+        { "name": "res2", "type": "sele" },
         { "name": "seq", "type": "text" },
-        { "name": "pixelsize", "type": "slider", "range": [1, 10], "fixed": True },
-        { "name": "resolution", "type": "slider", "range": [1, 10], "fixed": True },
-        { "name": "max_loops", "type": "slider", "range": [0, 200], "default_value": 100 }
+        { "name": "pixelsize", "type": "slider", "range": [1, 10], 
+            "fixed": True },
+        { "name": "resolution", "type": "slider", "range": [1, 10], 
+            "fixed": True },
+        { "name": "max_loops", "type": "slider", "range": [0, 200], 
+            "default": 100 }
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "link_it_density.provi"
-    def _init( self, pdb_file, mrc_file, res1, res2, seq, 
-               pixelsize, resolution, max_loops=100, **kwargs ):
-        self.pdb_file = self.abspath( pdb_file )
-        self.mrc_file = self.abspath( mrc_file )
+    def _init( self, *args, **kwargs ):
         self.link_it = LinkIt( 
-            self.pdb_file, res1, res2, seq,
+            self.pdb_file, self.res1, self.res2, self.seq,
             **copy_dict( kwargs, run=False, output_dir=self.subdir("link_it") )
         )
         self.loop_correl = LoopCrosscorrel(
             self.mrc_file, self.pdb_file, self.link_it.pdb_linker_file2, 
-            res1, res2, len(seq), pixelsize, resolution, max_loops=max_loops,
-            **copy_dict( kwargs, run=False, output_dir=self.subdir("loop_correl") )
+            self.res1, self.res2, len(self.seq), 
+            self.pixelsize, self.resolution,
+            **copy_dict( 
+                kwargs, run=False, output_dir=self.subdir("loop_correl"),
+                max_loops=self.max_loops,
+            )
         )
         self.output_files = list( itertools.chain(
             self.link_it.output_files, 
@@ -179,7 +178,9 @@ class LinkItDensity( PyTool, ProviMixin ):
         self._make_provi_file(
             pdb_file=self.relpath( self.pdb_file ),
             mrc_file=self.relpath( self.mrc_file ),
-            box_mrc_file=self.relpath( self.loop_correl.spider_reconvert.mrc_file ),
+            box_mrc_file=self.relpath( 
+                self.loop_correl.spider_reconvert.mrc_file 
+            ),
             pdb_linker_file3=self.relpath( self.link_it.pdb_linker_file3 ),
             link_it_json_file=self.relpath( self.link_it.json_file )
         )

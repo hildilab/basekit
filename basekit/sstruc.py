@@ -55,7 +55,7 @@ SstrucDbRecord = collections.namedtuple( 'SstrucDbRecord', [
 class BuildSstrucDbRecords( object ):
     def __init__( self, pdb_file, pdb_id=None ):
         self.npdb = numpdb.NumPdb( pdb_file, features={ "phi_psi": False } )
-        self.pdb_id = pdb_id
+        self.pdb_id = pdb_id or utils.path.stem( pdb_file )
         # for a in self.npdb._atoms: print a
         # for a in self.npdb._iter_resno(): print a._atoms
     def _sheet_hbond( self, x, y ):
@@ -119,19 +119,12 @@ class BuildSstrucDbRecords( object ):
 class Sstruc( PyTool, RecordsMixin, ParallelMixin ):
     args = [
         { "name": "pdb_input", "type": "file", "ext": "pdb" },
-        { "name": "pdb_id", "type": "text", "default_value": None }
+        { "name": "pdb_id", "type": "text", "default": None }
     ]
     RecordsClass = SstrucDbRecord
-    def _init( self, pdb_input, pdb_id=None, **kwargs ):
-        self.pdb_input = self.abspath( pdb_input )
-        self.pdb_id = pdb_id
-        self.id = pdb_id
-        self.output_files = []
-        self._init_records( 
-            utils.path.stem( pdb_input ),
-            **kwargs 
-        )
-        self._init_parallel( pdb_input, **kwargs )
+    def _init( self, *args, **kwargs ):
+        self._init_records( self.pdb_input, **kwargs )
+        self._init_parallel( self.pdb_input, **kwargs )
     def func( self ):
         if self.parallel:
             self._make_tool_list()
@@ -142,9 +135,7 @@ class Sstruc( PyTool, RecordsMixin, ParallelMixin ):
             # print self.pdb_input, utils.path.stem( self.pdb_input )
             # print list(self.records)[0] if self.records else None
         else:
-            self.records = BuildSstrucDbRecords( 
-                self.pdb_input, pdb_id=self.pdb_id 
-            ).get()
+            self.records = BuildSstrucDbRecords( self.pdb_input ).get()
             # print self.records[0] if self.records else None
         self.write()
         # for r in self.records:
@@ -181,8 +172,6 @@ class SstrucTest( PyTool ):
         { "name": "pdb_file", "type": "file", "ext": "pdb" }
     ]
     no_output = True
-    def _init( self, pdb_file, **kwargs ):
-        self.pdb_file = self.abspath( pdb_file )
     def func( self ):
         sstruc_test( self.pdb_file )
 

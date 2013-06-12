@@ -1,5 +1,6 @@
 cache remove all;
-load "PNGJ::${jmol_file}";
+# load "PNGJ::${jmol_file}";
+load "${jmol_file}";
 select none;
 frank off;
 set imageState false;
@@ -21,4 +22,15 @@ if( scale & scale!=1 ){
 		height = _height;
 	}
 }
-write image @{width%0} @{height%0} jpg 100 "${image_file}";
+print width;
+print height;
+if( width.type=="decimal" ){
+	width = width%0;
+}
+if( height.type=="decimal" ){
+	height = height%0;
+}
+print width;
+print height;
+# write image @width @height jpg 100 "${image_file}";
+write JPG @width @height "${image_file}";

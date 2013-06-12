@@ -1,7 +1,5 @@
-from __future__ import with_statement
 
 import multiprocessing
-import functools
 import os
 import sys
 import subprocess
@@ -53,19 +51,25 @@ def run_command( cmd, cwd=".", log=None, verbose=False ):
 
 
 
-def do_parallel( func, files, nworkers=None, run=True ):
+def run_parallel( cmd_list, nworkers=None, verbose=False ):
+    """UNTESTED"""
 
     # !important - allows one to abort via CTRL-C
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-
     multiprocessing.log_to_stderr( logging.ERROR )
     
-    if not nworkers:
-        nworkers = multiprocessing.cpu_count()
-    
-    p = multiprocessing.Pool( nworkers )
+    if not nworkers: nworkers = multiprocessing.cpu_count()
+    p = multiprocessing.Pool( nworkers, maxtasksperchild=50 )
 
-    data = p.map( functools.partial(func, run=run), files )
+    data = []
+
+    for cmd in cmd_list:
+        p.apply_async( 
+            cmd, 
+            kwds={ "verbose": verbose },
+            callback=data.append
+        )
+    
     p.close()
     p.join()
 
