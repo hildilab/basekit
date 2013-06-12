@@ -84,10 +84,11 @@ class ToolParser( argparse.ArgumentParser ):
 def get_argument( params ):
     kwargs = {
         "default": params.get( "default" ),
-        "help": params.get( "help" ),
-        "required": False if "default" in params else True,
+        "help": params.get( "help" )
     }
 
+    if "required" in params:
+        kwargs["required"] = params["required"]
     if "metavar" in params:
         kwargs["metavar"] = params["metavar"]
     if "dest" in params:
@@ -174,6 +175,7 @@ class ToolMetaclass( type ):
             if len(flags)>1:
                 if "default" not in p:
                     flags[0] = "--%s" % flags[0]
+                    p["required"] = True
                 for i in range( 1, len(flags) ):
                     flags[i] = "-%s" % flags[i]
             p["flags"] = flags
