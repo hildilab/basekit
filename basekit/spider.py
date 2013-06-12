@@ -65,7 +65,9 @@ class SpiderDeleteFilledDensities( Spider ):
         { "name": "map_file", "type": "file", "ext": "cpv" },
         { "name": "pdb_file", "type": "file", "ext": "pdb" },
         { "name": "pixelsize", "type": "slider", "range": [1, 10], 
-            "fixed": True }
+            "fixed": True },
+        { "name": "resolution", "type": "slider", "range": [1, 10], 
+            "fixed": True, "help": "of the map_file" }
     ]
     out = [
         { "name": "empty_map_file", "file": "usermap.cpv" }
@@ -77,7 +79,8 @@ class SpiderDeleteFilledDensities( Spider ):
         self._make_script_file( 
             map_name=self.relpath( self.map_file, no_ext=True ), 
             pdb_file=self.relpath( self.pdb_file ),
-            pixelsize=self.pixelsize, 
+            pixelsize=self.pixelsize,
+            resolution=self.resolution,
             tmp_dir=self.relpath( self.output_dir ) + os.sep
         )
 

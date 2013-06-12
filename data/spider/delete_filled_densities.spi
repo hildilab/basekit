@@ -7,6 +7,11 @@
 [map]='${map_name}'
 [pdb]='${pdb_file}'
 [tmp_dir]='${tmp_dir}'
+[rs]=${resolution}
+[ps]=${pixelsize}
+;werte für filter
+[f1]=([ps]/[rs])-0.05
+[f2]=([ps]/[rs])+0.05
 ;[path]=''
 ;groesse der box der usermap bestimmen
 FI [X1], [X2], [X3]
@@ -34,7 +39,7 @@ fq
 [tmp_dir]pdb_map2
 [tmp_dir]pdb_mapfi
 7
-.03 .13
+[f1]  [f2]
 
 ;levelbereiche von usermap und pdb map bestimmen
 FS [X4], [X5]
