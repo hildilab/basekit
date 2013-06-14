@@ -228,7 +228,7 @@ class LoopCrosscorrel( PyTool ):
         )
         self.spider_delete_filled_densities = SpiderDeleteFilledDensities( 
             self.spider_convert.map_file, self.cropped_pdb, 
-            self.pixelsize,
+            self.pixelsize, self.resolution,
             **copy_dict( 
                 kwargs, run=False, 
                 output_dir=self.subdir("delete_filled_densities") 
