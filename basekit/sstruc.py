@@ -126,27 +126,8 @@ class Sstruc( PyTool, RecordsMixin, ParallelMixin ):
         self._init_records( self.pdb_input, **kwargs )
         self._init_parallel( self.pdb_input, **kwargs )
     def func( self ):
-        if self.parallel:
-            self._make_tool_list()
-            tool_results = self._func_parallel()
-            self.records = list(itertools.chain.from_iterable(
-                map( operator.attrgetter( "records" ), tool_results )
-            ))
-            # print self.pdb_input, utils.path.stem( self.pdb_input )
-            # print list(self.records)[0] if self.records else None
-        else:
-            self.records = BuildSstrucDbRecords( self.pdb_input ).get()
-            # print self.records[0] if self.records else None
+        self.records = BuildSstrucDbRecords( self.pdb_input ).get()
         self.write()
-        # for r in self.records:
-        #     print r
-        # with Timer( "write sstruc: %s" % self.output_type ):
-        #     self.write()
-        # print self.records[0]
-        # self.records = None
-        # with Timer( "read sstruc: %s" % self.output_type ):
-        #     self.read()
-        # print self.records[0]
 
 
 

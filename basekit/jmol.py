@@ -37,7 +37,7 @@ class JmolImage( Jmol ):
         _( "jmol_file", type="file", ext="jmol" ),
         _( "scale", type="slider", range=[0, 4], default=1, fixed=True ),
         _( "width", type="slider", range=[0, 2048], default=0 ),
-        _(  "height", type="slider", range=[0, 2048], default=0 ),
+        _( "height", type="slider", range=[0, 2048], default=0 ),
         _( "cartoon_fancy", type="checkbox", default=True )
     ]
     out = [

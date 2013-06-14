@@ -206,6 +206,10 @@ class ToolMetaclass( type ):
         if MIXIN_REGISTER['ParallelMixin'] in bases:
             if not "ParallelClass" in dct:
                 cls.ParallelClass = cls
+            cls_func = cls.func
+            cls.func = lambda self: MIXIN_REGISTER['ParallelMixin'].func(
+                self, cls_func
+            )
 
         # TODO remove
         if not "no_output" in dct:
@@ -306,6 +310,11 @@ class RecordsMixin( Mixin ):
             self.records = pickle.load( fp )
     def read( self ):
         getattr( self, "read_%s" % self.records_type )()
+    def _parallel_results( self, tool_list ):
+        self.records = list(itertools.chain.from_iterable(
+            map( operator.attrgetter( "records" ), tool_list )
+        ))
+        self.write()
 
 
 
@@ -328,6 +337,10 @@ class ParallelMixin( Mixin ):
     ]
     def _init_parallel( self, file_input, parallel=None, 
                         sample=None, sample_start=0, **kwargs ):
+        if not hasattr( self, "_parallel_results" ):
+            raise Exception(
+                "Using ParallelMixin requires a '_parallel_results' method."
+            )
         if parallel in [ "pdb_archive", "directory", "dir" ]:
             self.file_input = self.abspath( file_input )
         elif parallel in [ "list" ]:
@@ -374,16 +387,19 @@ class ParallelMixin( Mixin ):
         # !important - allows one to abort via CTRL-C
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         multiprocessing.log_to_stderr( logging.ERROR )
-        
         if not nworkers: nworkers = multiprocessing.cpu_count()
         p = multiprocessing.Pool( nworkers, maxtasksperchild=50 )
-
         data = p.imap( call, self.tool_list )
-
         p.close()
         p.join()
-
         return data
+    def func( self, fn ):
+        if self.parallel:
+            self._make_tool_list()
+            tool_results = self._func_parallel()
+            self._parallel_results( tool_results )
+        else:
+            fn( self )
 
 
 
