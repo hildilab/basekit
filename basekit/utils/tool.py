@@ -44,6 +44,12 @@ LOG.setLevel( logging.WARNING )
 
 
 
+
+def __( name, **kwargs ):
+    kwargs.update( name=name )
+    return kwargs
+
+
 class ToolParser( argparse.ArgumentParser ):
     def __init__( self, tool_class=None, description="", **kwargs ):
         if tool_class:
@@ -95,6 +101,8 @@ def get_argument( params ):
         kwargs["dest"] = params["dest"]
     if "action" in params:
         kwargs["action"] = params["action"]
+    if "choices" in params:
+        kwargs["choices"] = params["choices"]
 
     if params.get( "nargs" ):
         kwargs["nargs"] = params["nargs"]
@@ -433,6 +441,8 @@ class Tool( object ):
         if kwargs.get("run", True) and not kwargs.get("check", False) and not self.fileargs:
             self.__run()
     def __prep_arg( self, value, params ):
+        if not value: 
+            return value
         if params.get("type") in [ "file", "dir" ]:
             return self.abspath( value )
         elif params.get("type")=="sele":
@@ -489,7 +499,10 @@ class Tool( object ):
     def abspath( self, path ):
         return os.path.abspath( path )
     def subdir( self, directory ):
-        return os.path.join( self.output_dir, directory )
+        subdir = os.path.join( self.output_dir, directory )
+        if not os.path.exists( subdir ):
+            os.makedirs( subdir )
+        return subdir
 
 
 

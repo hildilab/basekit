@@ -29,7 +29,14 @@ def change_ext( file_name, extension="" ):
         stem( file_name ) + "." + extension
     )
 
-
+def mod( file_name, ext=None, prefix=None, suffix=None ):
+	if ext:
+		file_name = change_ext( file_name, ext )
+	if ext:
+		file_name = add_prefix( file_name, prefix )
+	if ext:
+		file_name = add_suffix( file_name, suffix )
+	return file_name
 
 
 
