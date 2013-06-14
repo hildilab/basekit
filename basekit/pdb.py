@@ -12,7 +12,7 @@ np.seterr( all="raise" )
 
 import utils.path
 import utils.numpdb as numpdb
-from utils.tool import PyTool, ProviMixin
+from utils.tool import _, PyTool, ProviMixin
 from utils.timer import Timer
 from utils.db import get_pdb_files
 
@@ -48,11 +48,10 @@ class PdbHetDictionary( PyTool ):
     ftp://ftp.rcsb.org/pub/pdb/data/monomers/het_dictionary.txt
     """
     args = [
-        { "name": "het_file", "type": "file", "ext": "txt", 
-            "help": "hetero dictionary" }
+        _( "het_file", type="file", ext="txt", help="hetero dictionary" )
     ]
     out = [
-        { "name": "aa_file", "file": "aa.json" }
+        _( "aa_file", file="aa.json" )
     ]
     def func( self ):
         aminoacid_list = parse_het_dictionary( self.het_file )
@@ -72,7 +71,7 @@ def unzip_pdb( fpath ):
 
 class PdbUnzip( PyTool ):
     args = [
-        { "name": "pdb_archive", "type": "dir" }
+        _( "pdb_archive", type="dir" )
     ]
     def func( self ):
         pdb_file_list = get_pdb_files( self.pdb_archive, pattern="ent.gz" )
@@ -101,8 +100,8 @@ def pdb_download( pdb_id, output_file ):
 
 class PdbDownload( PyTool ):
     args = [
-        { "name": "pdb_id", "type": "text", 
-          "help": "single id or multiple, seperated by spaces or commas" }
+        _( "pdb_id", type="text", 
+            help="single id or multiple, seperated by spaces or commas" )
     ]
     def _init( self, *args, **kwargs ):
         self.pdb_id_list = map( 
@@ -156,13 +155,11 @@ def pdb_split( pdb_file, output_dir, backbone_only=False,
                         
 class PdbSplit( PyTool ):
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" },
-        { "name": "backbone_only", "type": "checkbox", "default": False },
-        { "name": "max_models", "type": "slider", "range": [0, 100], 
-            "default": 0 },
-        { "name": "resno_ignore", "type": "text", "default": "" },
-        { "name": "zfill", "type": "slider", "range": [0, 8], 
-            "default": 0 }
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "backbone_only", type="checkbox", default=False ),
+        _( "max_models", type="slider", range=[0, 100], default=0 ),
+        _( "resno_ignore", type="text", default="" ),
+        _( "zfill", type="slider", range=[0, 8], default=0 )
     ]
     def _init( self, *args, **kwargs ):
         if self.resno_ignore:
@@ -183,14 +180,14 @@ class PdbSplit( PyTool ):
 
 class PdbSuperpose( PyTool, ProviMixin ):
     args = [
-        { "name": "pdb_file1", "type": "file", "ext": "pdb" },
-        { "name": "pdb_file2", "type": "file", "ext": "pdb" },
-        { "name": "sele1", "type": "sele" },
-        { "name": "sele2", "type": "sele" },
-        { "name": "subset", "type": "text", "default": "CA" }
+        _( "pdb_file1", type="file", ext="pdb" ),
+        _( "pdb_file2", type="file", ext="pdb" ),
+        _( "sele1", type="sele" ),
+        _( "sele2", type="sele" ),
+        _( "subset", type="text", default="CA" )
     ]
     out = [
-        { "name": "superposed_file", "file": "superposed.pdb" }
+        _( "superposed_file", file="superposed.pdb" )
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "superpose.provi"
@@ -254,7 +251,7 @@ def numpdb_test( pdb_file ):
 
 class NumpdbTest( PyTool ):
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+        _( "pdb_file", type="file", ext="pdb" )
     ]
     def func( self ):
         numpdb_test( self.pdb_file )

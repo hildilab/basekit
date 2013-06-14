@@ -1,7 +1,7 @@
 import os
 from string import Template
 
-from utils.tool import CmdTool, ScriptMixin
+from utils.tool import _, CmdTool, ScriptMixin
 from utils.job import run_command
 
 
@@ -18,7 +18,7 @@ JMOL_JAR = os.path.join( JMOL_PATH, "JmolData.jar" )
 
 class Jmol( CmdTool, ScriptMixin ):
     args = [
-        { "name": "script_file", "type": "file", "ext": "jspt" }
+        _( "script_file", type="file", ext="jspt" )
     ]
     script_tmpl = None
     tmpl_dir = TMPL_DIR
@@ -34,15 +34,14 @@ class Jmol( CmdTool, ScriptMixin ):
 
 class JmolImage( Jmol ):
     args = [
-        { "name": "jmol_file", "type": "file", "ext": "jmol" },
-        { "name": "scale", "type": "slider", "range": [0, 4], 
-            "default": 1, "fixed": True },
-        { "name": "width", "type": "slider", "range": [0, 2048], "default": 0 },
-        { "name": "height", "type": "slider", "range": [0, 2048], "default": 0 },
-        { "name": "cartoon_fancy", "type": "checkbox", "default": True }
+        _( "jmol_file", type="file", ext="jmol" ),
+        _( "scale", type="slider", range=[0, 4], default=1, fixed=True ),
+        _( "width", type="slider", range=[0, 2048], default=0 ),
+        _(  "height", type="slider", range=[0, 2048], default=0 ),
+        _( "cartoon_fancy", type="checkbox", default=True )
     ]
     out = [
-        { "name": "image_file", "file": "image.jpg" }
+        _( "image_file", file="image.jpg" )
     ]
     script_tmpl = "image.jspt"
     def _init( self, *args, **kwargs ):
@@ -61,16 +60,16 @@ class JmolImage( Jmol ):
 class JmolJvxl( Jmol ):
     """Create a JVXL file (the Jmol surface format) from various file formats"""
     args = [
-        { "name": "dat_file", "type": "file", "ext": "dat", "help": "mrc, obj" },
-        { "name": "sigma", "type": "slider", "range": [-1, 5], "default": 0, 
-            "fixed": True, "help": "level at which the surface will be created" },
-        { "name": "cutoff", "type": "slider", "range": [0, 255], "default": 0, 
-            "fixed": True, "help": "value at which the data is ignored" },
-        { "name": "resolution", "type": "slider", "range": [-1, 10], 
-            "default": 3, "fixed": True }
+        _( "dat_file", type="file", ext="dat", help="mrc, obj" ),
+        _( "sigma", type="slider", range=[-1, 5], default=0, 
+            fixed=True, help="level at which the surface will be created" ),
+        _( "cutoff", type="slider", range=[0, 255], default=0, 
+            fixed=True, help="value at which the data is ignored" ),
+        _( "resolution", type="slider", range=[-1, 10], 
+            default=3, fixed=True )
     ]
     out = [
-        { "name": "jvxl_file", "file": "dat.jvxl" }
+        _( "jvxl_file", file="dat.jvxl" )
     ]
     script_tmpl = "jvxl.jspt"
     def _init( self, *args, **kwargs ):

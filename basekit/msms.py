@@ -10,7 +10,7 @@ import os
 
 import utils.path
 from utils import copy_dict
-from utils.tool import CmdTool
+from utils.tool import _, CmdTool
 
 
 MSMS_CMD = "msms"
@@ -32,14 +32,13 @@ def pdb_select( input_pdb, output_pdb ):
 class Msms( CmdTool ):
     """A wrapper around the MSMS program."""
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" },
-        { "name": "density", "type": "slider", "range": [1, 10], 
-            "fixed": True, "default": 1.0  }
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "density", type="slider", range=[1, 10], fixed=True, default=1.0 )
     ]
     out = [
-        { "name": "area_file", "file": "area.area" },
-        { "name": "face_file", "file": "tri_surface.face" },
-        { "name": "vert_file", "file": "tri_surface.vert" }
+        _( "area_file", file="area.area" ),
+        _( "face_file", file="tri_surface.face" ),
+        _( "vert_file", file="tri_surface.vert" )
     ]
     def _init( self, *args, **kwargs ):
         self.pdb2xyzr = Pdb2xyzr( 
@@ -59,11 +58,11 @@ class Msms( CmdTool ):
 class Pdb2xyzr( CmdTool ):
     """A pdb to xyzr format converter based on OpenBabel."""
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+        _( "pdb_file", type="file", ext="pdb" )
     ]
     out = [
-        { "name": "pdb_prep_file", "file": "{pdb_file.stem}_prep.pdb" },
-        { "name": "xyzr_file", "file": "{pdb_file.stem}.vol" }
+        _( "pdb_prep_file", file="{pdb_file.stem}_prep.pdb" ),
+        _( "xyzr_file", file="{pdb_file.stem}.vol" )
     ]
     def _init( self, *args, **kwargs ):
         self.cmd = [ 

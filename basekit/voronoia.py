@@ -8,7 +8,7 @@ import json
 
 import utils.path
 from utils import copy_dict
-from utils.tool import CmdTool, ProviMixin
+from utils.tool import _, CmdTool, ProviMixin
 
 import provi_prep as provi
 
@@ -25,14 +25,13 @@ VOLUME_CMD = os.path.join( TMPL_DIR, "get_volume.exe" )
 class Voronoia( CmdTool, ProviMixin ):
     """A wrapper around the 'voronoia' aka 'get_volume' programm."""
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" },
-        { "name": "ex", "type": "slider", "range": [1, 5], "factor": 10, 
-            "fixed": True, "default": 0.1  },
-        { "name": "radii", "type": "select", "options": ["protor"], 
-            "default": "protor" }
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "ex", type="slider", range=[1, 5], factor=10, 
+            fixed=True, default=0.1 ),
+        _( "radii", type="select", options=["protor"], default="protor" )
     ]
     out = [
-        { "name": "vol_file", "file": "{pdb_file.stem}.vol" }
+        _( "vol_file", file="{pdb_file.stem}.vol" )
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "voronoia.provi"

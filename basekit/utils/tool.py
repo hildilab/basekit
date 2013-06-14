@@ -45,7 +45,7 @@ LOG.setLevel( logging.WARNING )
 
 
 
-def __( name, **kwargs ):
+def _( name, **kwargs ):
     kwargs.update( name=name )
     return kwargs
 

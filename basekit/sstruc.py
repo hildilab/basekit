@@ -27,7 +27,7 @@ from utils import (
 )
 from utils.timer import Timer
 from utils.db import get_pdb_files, create_table
-from utils.tool import PyTool, DbTool, RecordsMixin, ParallelMixin
+from utils.tool import _, PyTool, DbTool, RecordsMixin, ParallelMixin
 
 import utils.numpdb as numpdb
 
@@ -118,8 +118,8 @@ class BuildSstrucDbRecords( object ):
 
 class Sstruc( PyTool, RecordsMixin, ParallelMixin ):
     args = [
-        { "name": "pdb_input", "type": "file", "ext": "pdb" },
-        { "name": "pdb_id", "type": "text", "default": None }
+        _( "pdb_input", type="file", ext="pdb" ),
+        _( "pdb_id", type="text", default=None )
     ]
     RecordsClass = SstrucDbRecord
     def _init( self, *args, **kwargs ):
@@ -169,7 +169,7 @@ def sstruc_test( pdb_file ):
 
 class SstrucTest( PyTool ):
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+        _( "pdb_file", type="file", ext="pdb" )
     ]
     no_output = True
     def func( self ):

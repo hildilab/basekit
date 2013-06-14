@@ -9,7 +9,7 @@ import shutil
 import argparse
 
 import utils.path
-from utils.tool import CmdTool
+from utils.tool import _, CmdTool
 
 
 DSSP_CMD = "dsspcmbi"
@@ -45,10 +45,10 @@ DSSP_CMD = "dsspcmbi"
 
 class Dssp( CmdTool ):
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+        _( "pdb_file", type="file", ext="pdb" )
     ]
     out = [
-        { "name": "dssp_file", "file": "{pdb_file.stem}.dssp" }
+        _( "dssp_file", file="{pdb_file.stem}.dssp" )
     ]
     def _init( self, *args, **kwargs ):
         self.cmd = [ 
