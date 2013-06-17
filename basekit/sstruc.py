@@ -52,6 +52,8 @@ SstrucDbRecord = collections.namedtuple( 'SstrucDbRecord', [
 ])
 
 
+# TODO all length calculations are potentially wrong!!!
+# TODO fixed precision for angles
 class BuildSstrucDbRecords( object ):
     def __init__( self, pdb_file, pdb_id=None ):
         self.npdb = numpdb.NumPdb( pdb_file, features={ "phi_psi": False } )
