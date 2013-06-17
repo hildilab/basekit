@@ -139,17 +139,15 @@ class LinkIt( CmdTool, ProviMixin ):
 
 class LinkItDensity( PyTool, ProviMixin ):
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" },
-        { "name": "mrc_file", "type": "file", "ext": "mrc" },
-        { "name": "res1", "type": "sele" },
-        { "name": "res2", "type": "sele" },
-        { "name": "seq", "type": "text" },
-        { "name": "pixelsize", "type": "slider", "range": [1, 10], 
-            "fixed": True },
-        { "name": "resolution", "type": "slider", "range": [1, 10], 
-            "fixed": True },
-        { "name": "max_loops", "type": "slider", "range": [0, 200], 
-            "default": 100 }
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "name": "mrc_file", type="file", ext="mrc" ),
+        _( "name": "res1", type="sele" ),
+        _( "name": "res2", type="sele" ),
+        _( "name": "seq", type="text" ),
+        _( "name": "pixelsize", type="slider", range=[1, 10], fixed=True ),
+        _( "name": "resolution", type="slider", range=[1, 10], fixed=True ),
+        _( "name": "cutoff", type="float", default=5 ),
+        _( "name": "max_loops", type="slider", range=[0, 200], default=100 )
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "link_it_density.provi"
@@ -178,6 +176,7 @@ class LinkItDensity( PyTool, ProviMixin ):
         self._make_provi_file(
             pdb_file=self.relpath( self.pdb_file ),
             mrc_file=self.relpath( self.mrc_file ),
+            cutoff=self.cutoff,
             box_mrc_file=self.relpath( 
                 self.loop_correl.spider_reconvert.mrc_file 
             ),
