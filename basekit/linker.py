@@ -10,7 +10,7 @@ import json
 
 import utils.path
 from utils import copy_dict, iter_stride
-from utils.tool import CmdTool, PyTool, ProviMixin, DbTool
+from utils.tool import _, CmdTool, PyTool, ProviMixin, DbTool
 from utils.numpdb import NumPdb, numsele
 
 import provi_prep as provi
@@ -33,10 +33,10 @@ LINKIT_CMD = os.path.join( LINKIT_DIR, "Link_It_dos2.exe" )
 
 class LinkerTest( PyTool ):
     args = [
-        { "name": "linker_txt", "type": "file", "ext": "txt" }
+        _( "linker_txt", type="file", ext="txt" )
     ]
     out = [
-        { "name": "linker_json", "file": "{linker_txt.stem}.json" }
+        _( "linker_json", file="{linker_txt.stem}.json" )
     ]
     def func( self ):
         self._make_linker_json( compact=True )
@@ -56,19 +56,19 @@ class LinkerTest( PyTool ):
 
 class LinkIt( CmdTool, ProviMixin ):
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" },
-        { "name": "res1", "type": "sele" },
-        { "name": "res2", "type": "sele" },
-        { "name": "seq", "type": "text" }
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "res1", type="sele" ),
+        _( "res2", type="sele" ),
+        _( "seq", type="text" )
     ]
     out = [
-        { "name": "bin_file", "file": "{pdb_file.stem}_linker.bin" },
-        { "name": "txt_file", "file": "{pdb_file.stem}_linker.txt" },
-        { "name": "pdb_linker_file", "file": "{pdb_file.stem}_linker.pdb" },
-        { "name": "pdb_linker_file2", "file": "{pdb_file.stem}_linker2.pdb" },
-        { "name": "pdb_linker_file3", "file": "{pdb_file.stem}_linker3.pdb" },
-        { "name": "kos_file", "file": "{pdb_file.stem}_kos.txt" },
-        { "name": "json_file", "file": "{pdb_file.stem}_linker.json" }
+        _( "bin_file", file="{pdb_file.stem}_linker.bin" ),
+        _( "txt_file", file="{pdb_file.stem}_linker.txt" ),
+        _( "pdb_linker_file", file="{pdb_file.stem}_linker.pdb" ),
+        _( "pdb_linker_file2", file="{pdb_file.stem}_linker2.pdb" ),
+        _( "pdb_linker_file3", file="{pdb_file.stem}_linker3.pdb" ),
+        _( "kos_file", file="{pdb_file.stem}_kos.txt" ),
+        _( "json_file", file="{pdb_file.stem}_linker.json" )
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "link_it.provi"
@@ -140,14 +140,14 @@ class LinkIt( CmdTool, ProviMixin ):
 class LinkItDensity( PyTool, ProviMixin ):
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
-        _( "name": "mrc_file", type="file", ext="mrc" ),
-        _( "name": "res1", type="sele" ),
-        _( "name": "res2", type="sele" ),
-        _( "name": "seq", type="text" ),
-        _( "name": "pixelsize", type="slider", range=[1, 10], fixed=True ),
-        _( "name": "resolution", type="slider", range=[1, 10], fixed=True ),
-        _( "name": "cutoff", type="float", default=5 ),
-        _( "name": "max_loops", type="slider", range=[0, 200], default=100 )
+        _( "mrc_file", type="file", ext="mrc" ),
+        _( "res1", type="sele" ),
+        _( "res2", type="sele" ),
+        _( "seq", type="text" ),
+        _( "pixelsize", type="slider", range=[1, 10], fixed=True ),
+        _( "resolution", type="slider", range=[1, 10], fixed=True ),
+        _( "cutoff", type="float", default=5 ),
+        _( "max_loops", type="slider", range=[0, 200], default=100 )
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "link_it_density.provi"
