@@ -9,6 +9,10 @@ import time
 import signal
 import logging
 
+try:
+    from subprocess import DEVNULL # python 3.3
+except ImportError:
+    DEVNULL = open( os.devnull, 'wb' )
 
 
 
@@ -16,7 +20,7 @@ def run_command( cmd, cwd=".", log=None, verbose=False ):
     kwargs = {
         "args": map( str, cmd ),
         "cwd": cwd,
-        "stdout": os.devnull,
+        "stdout": DEVNULL,
         "stderr": subprocess.STDOUT,
         "env": os.environ,
         "preexec_fn": os.setpgrp
