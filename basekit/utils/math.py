@@ -1,5 +1,7 @@
 from __future__ import division
 
+import itertools
+
 import numpy as np
 np.seterr( all="raise" )
 
@@ -108,6 +110,67 @@ def lsq(y):
 
 def axis( coords ):
     return np.array([ lsq(coords[...,i]) for i in range(3) ]).T
+
+def rmsd( coords1, coords2 ):
+    return np.sqrt( 
+        np.sum( np.power( coords1-coords2, 2 ) ) / coords1.shape[0]
+    )
+
+
+
+
+
+
+
+class Superposition( object ):
+    def __init__( self, src_coords, dst_coords ):
+        self.src_coords = src_coords
+        self.dst_coords = dst_coords
+        self.n = src_coords.shape[0]
+        self.rmsd = 0.0
+        self.quaternion = None
+        self.rotmat = None
+        self._superpose()
+    def _superpose( self ):
+        self.src_center = self.src_coords.mean( axis=0 )
+        self.dst_center = self.dst_coords.mean( axis=0 )
+        v0 = ( self.src_coords.copy() - self.src_center ).T
+        v1 = ( self.dst_coords.copy() - self.dst_center ).T
+
+        # SVD of covar matrix
+        u, s, vh = np.linalg.svd( np.dot( v1, v0.T ) )
+        # rotation matrix from SVD orthonormal bases
+        R = np.dot( u, vh )
+        if np.linalg.det( R ) < 0.0:
+            # R not a right handed system
+            R -= np.outer( u[:, 2], vh[2, :]*2.0 )
+            s[-1] *= -1.0
+        # homogeneous transformation matrix
+        M = np.identity(4)
+        M[:3, :3] = R        
+
+        # translation
+        M[:3, 3] = self.dst_center
+        T = np.identity(4)
+        T[:3, 3] = -self.src_center
+        M = np.dot(M, T)
+
+        # rotation matrix
+        self.rotmat = M[0:3,0:3]
+
+        # rmsd
+        E0 = np.sum(np.sum( v0*v0 )) + np.sum(np.sum( v1*v1 ))
+        msd = ( E0 - 2.0*sum(s) ) / v0.shape[1]
+        self.rmsd = np.sqrt( max([ msd, 0.0 ]) )
+    def transform( self, coords, inplace=False ):
+        if not inplace:
+            position = coords.copy()
+        else:
+            position = coords
+        position -= self.src_center
+        position = ( np.dot( self.rotmat, position.T ) ).T
+        position += self.dst_center
+        return position
 
 
 

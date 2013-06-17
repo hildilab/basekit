@@ -1,7 +1,6 @@
 from __future__ import division
 from __future__ import with_statement
 
-
 import collections
 import itertools
 import contextlib
@@ -9,6 +8,8 @@ import copy
 import os
 import re
 
+import job
+import path
 
 
 def memoize(f):
@@ -19,6 +20,15 @@ def memoize(f):
         return cache[x]
     return memf
 
+def lazy_property(fn):
+    attr_name = '_lazy_' + fn.__name__
+    @property
+    def _lazy_property(self):
+        if not hasattr(self, attr_name):
+            setattr(self, attr_name, fn(self))
+        return getattr(self, attr_name)
+    return _lazy_property
+
 def try_int(s, default=None):
     "Convert to integer if possible."
     try: return int(s)
@@ -28,7 +38,6 @@ def try_float(s, default=None):
     "Convert to float if possible."
     try: return float(s)
     except: return default if default!=None else s
-
 
 def get_index(seq, index, default=None):
     if not hasattr(seq, "__getitem__"):
@@ -47,6 +56,21 @@ def boolean(string):
     else:
         raise ValueError()
 
+def wrap(text, width):
+    """
+    http://code.activestate.com/recipes/148061-one-liner-word-wrap-function/
+    A word-wrap function that preserves existing line breaks
+    and most spaces in the text. Expects that existing line
+    breaks are posix newlines (\n).
+    """
+    return reduce(lambda line, word, width=width: '%s%s%s' %
+                  (line,
+                   ' \n'[(len(line)-line.rfind('\n')-1
+                         + len(word.split('\n',1)[0]
+                              ) >= width)],
+                   word),
+                  text.split(' ')
+                 )
 
 def listify( item ):
     """
@@ -62,7 +86,6 @@ def listify( item ):
         return item
     else:
         return [ item ]
-
 
 def iter_overlap( iterator, n=None ):
     if n:
@@ -102,7 +125,6 @@ def iter_consume( iterator, n ):
         # advance to the empty slice starting at position n
         next( itertools.islice( iterator, n, n ), None )
 
-
 def dir_walker( directory, pattern ):
     for root, dirs, files in os.walk(directory):
         for name in files:
@@ -110,7 +132,6 @@ def dir_walker( directory, pattern ):
             m = re.match( pattern, name )
             if( m ):
                 yield (m, fpath)
-
 
 @contextlib.contextmanager 
 def working_directory(directory): 
@@ -121,13 +142,16 @@ def working_directory(directory):
     finally: 
         os.chdir(original_directory) 
 
-
 def copy_dict( dict, **kwargs ):
     dict2 = dict.copy()
     dict2.update( kwargs )
     return dict2
 
 
+
+class Bunch( object ):
+    def __init__(self, **kwds):
+        self.__dict__.update(kwds)
 
 
 class DefaultOrderedDict( collections.OrderedDict ):

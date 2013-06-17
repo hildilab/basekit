@@ -11,10 +11,15 @@ import numpy as np
 np.seterr( all="raise" )
 
 import utils.path
-from utils.tool import PyTool
+import utils.numpdb as numpdb
+from utils.tool import _, PyTool, ProviMixin
 from utils.timer import Timer
-from utils.numpdb import NumPdb, numdist, ATOMS
 from utils.db import get_pdb_files
+
+
+DIR = os.path.split( os.path.abspath(__file__) )[0]
+PARENT_DIR = os.path.split( DIR )[0]
+TMPL_DIR = os.path.join( PARENT_DIR, "data", "pdb" )
 
 
 
@@ -37,18 +42,17 @@ def parse_het_dictionary( het_file ):
     print len(aminoacid_list)
     return aminoacid_list
     
-
 class PdbHetDictionary( PyTool ):
     """
     Tool to extract the names of (non-standard) amino acids from
     ftp://ftp.rcsb.org/pub/pdb/data/monomers/het_dictionary.txt
     """
     args = [
-        { "name": "het_file", "type": "file", "ext": "txt", "help": "hetero dictionary" }
+        _( "het_file", type="file", ext="txt", help="hetero dictionary" )
     ]
-    def _init( self, het_file, **kwargs ):
-        self.het_file = self.abspath( het_file )
-        self.aa_file = self.outpath( "aa.json" )
+    out = [
+        _( "aa_file", file="aa.json" )
+    ]
     def func( self ):
         aminoacid_list = parse_het_dictionary( self.het_file )
         with open( self.aa_file, "w" ) as fp:
@@ -67,11 +71,8 @@ def unzip_pdb( fpath ):
 
 class PdbUnzip( PyTool ):
     args = [
-        { "name": "pdb_archive", "type": "text" }
+        _( "pdb_archive", type="dir" )
     ]
-    no_output = True
-    def _init( self, pdb_archive, **kwargs ):
-        self.pdb_archive = self.abspath( pdb_archive )
     def func( self ):
         pdb_file_list = get_pdb_files( self.pdb_archive, pattern="ent.gz" )
         for pdb_file in pdb_file_list:
@@ -97,19 +98,21 @@ def pdb_download( pdb_id, output_file ):
         except:
             pass
 
-
 class PdbDownload( PyTool ):
     args = [
-        { "name": "pdb_id", "type": "text", 
-          "help": "single id or multiple, seperated by spaces or commas" }
+        _( "pdb_id", type="text", 
+            help="single id or multiple, seperated by spaces or commas" )
     ]
-    def _init( self, pdb_id, **kwargs ):
-        self.pdb_id_list = map( lambda x: x[0:4], re.split("[\s,]+", pdb_id.strip() ) )
+    def _init( self, *args, **kwargs ):
+        self.pdb_id_list = map( 
+            lambda x: x[0:4], 
+            re.split("[\s,]+", self.pdb_id.strip() ) 
+        )
         self.pdb_file_list = map(
             lambda x: self.outpath( "%s.pdb" % x ),
             self.pdb_id_list
         )    
-        self.output_files = [] + self.pdb_file_list
+        self.output_files.extend( self.pdb_file_list )
     def func( self ):
         for pdb_id, pdb_file in zip( self.pdb_id_list, self.pdb_file_list ):
             pdb_download( pdb_id, pdb_file )
@@ -150,28 +153,18 @@ def pdb_split( pdb_file, output_dir, backbone_only=False,
                             continue
                         fp_out.write( line )
                         
-
-
 class PdbSplit( PyTool ):
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" },
-        { "name": "backbone_only", "type": "checkbox", "default_value": False },
-        { "name": "max_models", "type": "slider", "range": [0, 100], "default_value": 0 },
-        { "name": "resno_ignore", "type": "text", "default_value": "" }
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "backbone_only", type="checkbox", default=False ),
+        _( "max_models", type="slider", range=[0, 100], default=0 ),
+        _( "resno_ignore", type="text", default="" ),
+        _( "zfill", type="slider", range=[0, 8], default=0 )
     ]
-    def _init( self, pdb_file, backbone_only=False, max_models=False, 
-               resno_ignore=False, zfill=False, **kwargs ):
-        self.pdb_file = self.abspath( pdb_file )
-        self.backbone_only = backbone_only
-        self.max_models = int( max_models )
-        self.zfill = int( zfill )
-        self.resno_ignore = False
-        if resno_ignore:
-            if isinstance( resno_ignore, basestring ):
-                self.resno_ignore = map( int, resno_ignore.split(",") )
-            else:
-                self.resno_ignore = resno_ignore
-        self.output_files = [] # TODO doesn't work here
+    def _init( self, *args, **kwargs ):
+        if self.resno_ignore:
+            if isinstance( self.resno_ignore, basestring ):
+                self.resno_ignore = map( int, self.resno_ignore.split(",") )
     def func( self ):
         pdb_split( 
             self.pdb_file, self.output_dir, 
@@ -185,20 +178,53 @@ class PdbSplit( PyTool ):
 
 
 
+class PdbSuperpose( PyTool, ProviMixin ):
+    args = [
+        _( "pdb_file1", type="file", ext="pdb" ),
+        _( "pdb_file2", type="file", ext="pdb" ),
+        _( "sele1", type="sele" ),
+        _( "sele2", type="sele" ),
+        _( "subset", type="text", default="CA" )
+    ]
+    out = [
+        _( "superposed_file", file="superposed.pdb" )
+    ]
+    tmpl_dir = TMPL_DIR
+    provi_tmpl = "superpose.provi"
+    def func( self ):
+        npdb1 = numpdb.NumPdb( self.pdb_file1 )
+        npdb2 = numpdb.NumPdb( self.pdb_file2 )
+        numpdb.superpose( 
+            npdb1, npdb2, self.sele1, self.sele2, 
+            subset=self.subset, inplace=True,
+            rmsd_cutoff=1.0, max_cycles=100
+        )
+        npdb1.write( self.superposed_file )
+    def _post_exec( self ):
+        self._make_provi_file(
+            pdb_file1=self.relpath( self.pdb_file1 ),
+            pdb_file2=self.relpath( self.pdb_file2 ),
+            superposed_file=self.relpath( self.superposed_file ),
+        )
+
+
+
+
+
 def numpdb_test( pdb_file ):
     with Timer("read/parse pdb plain"):
-        NumPdb( pdb_file, features={
+        numpdb.NumPdb( pdb_file, features={
             "phi_psi": False, 
             "sstruc": False, 
             "backbone_only": True,
             "detect_incomplete": False
         })
     with Timer("read/parse pdb incomplete"):
-        NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone_only": False, "detect_incomplete": False} )
+        numpdb.NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone_only": False, "detect_incomplete": False} )
     with Timer("read/parse pdb phi/psi"):
-        NumPdb( pdb_file, features={"sstruc": False} )
+        numpdb.NumPdb( pdb_file, features={"sstruc": False} )
     with Timer("read/parse pdb"):
-        npdb = NumPdb( pdb_file )
+        npdb = numpdb.NumPdb( pdb_file )
     # with Timer("resno iter2"):
     #     for numa_list in npdb.iter_resno2( 6, chain="A", resno=[1,22] ):
     #         print [ numa["resno"][0] for numa in numa_list ]
@@ -223,14 +249,10 @@ def numpdb_test( pdb_file ):
     with Timer("write pdb"):
         npdb.write( "test.pdb" )
 
-
 class NumpdbTest( PyTool ):
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+        _( "pdb_file", type="file", ext="pdb" )
     ]
-    no_output = True
-    def _init( self, pdb_file, **kwargs ):
-        self.pdb_file = self.abspath( pdb_file )
     def func( self ):
         numpdb_test( self.pdb_file )
 
