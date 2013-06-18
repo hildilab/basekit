@@ -1,6 +1,7 @@
 
 
 import os
+import errno
 from os.path import basename, splitext, join, dirname
 
 
@@ -42,3 +43,10 @@ def mod( file_name, ext=None, prefix=None, suffix=None ):
 
 
 
+def remove(filename):
+    """silently remove a file"""
+    try:
+        os.remove(filename)
+    except OSError as e:
+        if e.errno != errno.ENOENT:
+            raise e
