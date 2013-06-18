@@ -425,6 +425,11 @@ class Tool( object ):
                     stem=utils.path.stem( value )
                 )
 
+        # hidden kwargs
+        self.pre_exec = kwargs.get("pre_exec", True)
+        self.post_exec = kwargs.get("post_exec", True)
+
+        # general
         self.timeout = kwargs.get("timeout", None)
         self.fileargs = kwargs.get("fileargs", False)
         self.verbose = kwargs.get("verbose", False)
@@ -472,9 +477,9 @@ class Tool( object ):
         raise "do not know how to prep output"
     def __run( self ):
         with working_directory( self.output_dir ):
-            self._pre_exec()
+            if self.pre_exec: self._pre_exec()
             self._run()
-            self._post_exec()
+            if self.post_exec: self._post_exec()
     def __call__( self ):
         self.__run()
         return self
