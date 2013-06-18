@@ -27,7 +27,9 @@ from utils import (
 )
 from utils.timer import Timer
 from utils.db import get_pdb_files, create_table
-from utils.tool import _, PyTool, DbTool, RecordsMixin, ParallelMixin
+from utils.tool import (
+    _, _dir_init, PyTool, DbTool, RecordsMixin, ParallelMixin
+)
 
 import utils.numpdb as numpdb
 
@@ -41,6 +43,7 @@ LOG.setLevel( logging.WARNING )
 
 # http://docs.python.org/2/library/collections.html#collections.namedtuple
 
+DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "sstruc" )
 
 SstrucDbRecord = collections.namedtuple( 'SstrucDbRecord', [
     'pdb_id', 'type', 'subtype', 'length',

@@ -4,6 +4,7 @@ import os
 from os.path import basename, splitext, join, dirname
 
 
+
 def ext( file_name ):
     return splitext( file_name )[1]
 

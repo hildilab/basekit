@@ -1,16 +1,9 @@
-from __future__ import with_statement
 from __future__ import division
 
-
-
-import re
-import os
-import shutil
-import argparse
-
 import utils.path
-from utils.tool import _, CmdTool
+from utils.tool import _, _dir_init, CmdTool
 
+DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "dssp" )
 
 DSSP_CMD = "dsspcmbi"
 
@@ -54,8 +47,6 @@ class Dssp( CmdTool ):
         self.cmd = [ 
             DSSP_CMD, self.pdb_file, self.dssp_file
         ]
-
-
 
 
 

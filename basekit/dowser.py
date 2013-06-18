@@ -3,14 +3,10 @@ import os
 import shutil
 
 from utils import copy_dict
-from utils.tool import _, CmdTool, PyTool, ProviMixin
+from utils.tool import _, _dir_init, CmdTool, PyTool, ProviMixin
 from utils.job import run_command
 
-
-DIR = os.path.split( os.path.abspath(__file__) )[0]
-PARENT_DIR = os.path.split( DIR )[0]
-TMPL_DIR = os.path.join( PARENT_DIR, "data", "dowser" )
-
+DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "dowser" )
 
 DOWSER_CMD = "dowser"
 DOWSERX_CMD = "dowserx"

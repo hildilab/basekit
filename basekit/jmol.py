@@ -1,13 +1,10 @@
 import os
 from string import Template
 
-from utils.tool import _, CmdTool, ScriptMixin
+from utils.tool import _, _dir_init, CmdTool, ScriptMixin
 from utils.job import run_command
 
-
-DIR = os.path.split( os.path.abspath(__file__) )[0]
-PARENT_DIR = os.path.split( DIR )[0]
-TMPL_DIR = os.path.join( PARENT_DIR, "data", "jmol" )
+DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "jmol" )
 
 JAVA_CMD = "java" 
 

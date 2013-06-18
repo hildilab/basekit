@@ -2,25 +2,24 @@ from __future__ import with_statement
 from __future__ import division
 
 
-
 import os
 import itertools
 import operator
 import json
 
+
 import utils.path
 from utils import copy_dict, iter_stride
-from utils.tool import _, CmdTool, PyTool, ProviMixin, DbTool
+from utils.tool import _, _dir_init, CmdTool, PyTool, ProviMixin, DbTool
 from utils.numpdb import NumPdb, numsele
+
 
 import provi_prep as provi
 from spider import LoopCrosscorrel
 
 
+DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "linker" ) 
 
-DIR = os.path.split( os.path.abspath(__file__) )[0]
-PARENT_DIR = os.path.split( DIR )[0]
-TMPL_DIR = os.path.join( PARENT_DIR, "data", "linker" )
 
 try:
     LINKIT_DIR = os.environ["LINKIT_DIR"]

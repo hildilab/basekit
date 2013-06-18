@@ -12,14 +12,12 @@ np.seterr( all="raise" )
 
 import utils.path
 import utils.numpdb as numpdb
-from utils.tool import _, PyTool, ProviMixin
+from utils.tool import _, _dir_init, PyTool, ProviMixin
 from utils.timer import Timer
 from utils.db import get_pdb_files
 
 
-DIR = os.path.split( os.path.abspath(__file__) )[0]
-PARENT_DIR = os.path.split( DIR )[0]
-TMPL_DIR = os.path.join( PARENT_DIR, "data", "pdb" )
+DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "pdb" )
 
 
 

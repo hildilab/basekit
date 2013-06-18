@@ -33,6 +33,16 @@ from basekit.utils.job import run_command
 from basekit.utils.db import get_pdb_files
 
 
+def _dir_init( tool_path, tool_name ):
+    """use like this:
+        DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "dowser" )
+    """
+    DIR = os.path.split( os.path.abspath(tool_path) )[0]
+    PARENT_DIR = os.path.split( DIR )[0]
+    TMPL_DIR = os.path.join( PARENT_DIR, "data", tool_name )
+    return DIR, PARENT_DIR, TMPL_DIR
+
+
 TIMEOUT_CMD = "timeout"
 
 
