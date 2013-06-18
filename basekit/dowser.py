@@ -1,10 +1,15 @@
-#! /usr/bin/env python
 
-import argparse
+import os
 import shutil
 
-from utils import dir_walker, working_directory
+from utils import copy_dict
+from utils.tool import _, CmdTool, PyTool, ProviMixin
 from utils.job import run_command
+
+
+DIR = os.path.split( os.path.abspath(__file__) )[0]
+PARENT_DIR = os.path.split( DIR )[0]
+TMPL_DIR = os.path.join( PARENT_DIR, "data", "dowser" )
 
 
 DOWSER_CMD = "dowser"
@@ -12,104 +17,110 @@ DOWSERX_CMD = "dowserx"
 DOWSER_REPEAT_CMD = "dowser-repeat"
 
 
-from utils.tool import CmdTool
+DOWSER_ARGS = [
+    _( "pdb_file", type="file", ext="pdb" ),
+    _( "hetero", type="checkbox", default=False ),
+    _( "noxtalwater", type="checkbox", default=False ),
+    _( "onlyxtalwater", type="checkbox", default=False ),
+    _( "probe", type="float", default=0.2 ),
+    _( "separation", type="float", default=1.0 ),
+    _( "atomtypes", type="text", default=False ),
+    _( "atomparms", type="text", default=False )
+]
+DOWSER_OUT = [
+    _( "input_file", file="myinput.pdb" ),
+    _( "wat_file", file="dowserwat.pdb" ),
+    _( "watall_file", file="dowserwat_all.pdb" )
+]
+
+class Dowser( CmdTool, ProviMixin ):
+    """ A wrapper around the 'dowser' programm. """
+    args = DOWSER_ARGS + [
+        _( "alt", type="select", options=["x", "repeat"], default=None )
+    ]
+    out = DOWSER_OUT
+    tmpl_dir = TMPL_DIR
+    provi_tmpl = "dowser.provi"
+    def _init( self, *args, **kwargs ):
+        exe = DOWSER_CMD
+        if self.alt=="x":
+            exe = DOWSERX_CMD
+        elif self.alt=="repeat":
+            exe = DOWSER_REPEAT_CMD
+
+        self.cmd = [ 
+            exe, self.relpath( self.input_file ), 
+            "-probe", self.probe,
+            "separation", self.separation
+        ]
+        if self.hetero: self.cmd.append( "-hetero" )
+        if self.noxtalwater: self.cmd.append( "-noxtalwater" )
+        if self.onlyxtalwater: self.cmd.append( "-onlyxtalwater" )
+        if self.atomtypes: self.cmd += [ "-atomtypes", self.atomtypes ]
+        if self.atomparms: self.cmd += [ "-atomparms", self.atomparms ]
+    def _pre_exec( self ):
+        shutil.copy( self.pdb_file, self.input_file )
+    def _post_exec( self ):
+        self._make_provi_file(
+            input_file=self.relpath( self.input_file ),
+            wat_file=self.relpath( self.wat_file ),
+            watall_file=self.relpath( self.watall_file )
+        )
 
 
-class Dowser( CmdTool ):
-    pass
-
-
-class DowserRepeat( CmdTool ):
-    pass
-
-
-
-def dowser( input_file, output_dir, log=None,
-            hetero=False, noxtalwater=False, onlyxtalwater=False,
-            atomtypes=None, atomparms=None, probe=0.2, separation=1.0,
-            alt=None ):
-    exe = DOWSER_CMD
-    if alt=="x":
-        exe = DOWSERX_CMD
-    elif alt=="repeat":
-        exe = DOWSER_REPEAT_CMD
-
-    shutil.copy( input_file, Path( output_dir, "myinput.pdb" ) )
-    cmd = "%s %s -probe %f -separation %f" % (
-        exe, "myinput.pdb", probe, separation
-    )
-    if hetero: cmd += " -hetero"
-    if noxtalwater: cmd += " -noxtalwater"
-    if onlyxtalwater: cmd += " -onlyxtalwater"
-    if atomtypes: cmd += " -atomtypes %s" % atomtypes
-    if atomparms: cmd += " -atomparms %s" % atomparms
-    with working_directory( output_dir ):
-        run_command( cmd, close_fds=True, stdout=log )
-
-
-def main():
-
-    # create the parser
-    parser = argparse.ArgumentParser(
-        description = __doc__,
-    )
-    # add the arguments
-    parser.add_argument(
-        '-i', '--inputFile', metavar='inputFile',
-        help='input file path')
-    parser.add_argument(
-        '-dw', '--dirWalker', metavar='dirWalker',
-        help='dir walker regex pattern e.g. "(.*)_OPM_mod\.pdb"')
-    parser.add_argument(
-        '-o', '--outputDir', metavar='outputDir', default='.',
-        help='the output directory')
-    parser.add_argument(
-        '-het', '--hetero', metavar='hetero', type=int, default=1,
-        help='use hetero atoms')
-    parser.add_argument(
-        '-sep', '--separation', metavar='separation', type=float, default=1.0,
-        help='water separation in angstrom')
-    parser.add_argument(
-        '-alt', '--alternateUsage', metavar='alternateUsage', type=str, default="",
-        help='alternate usage: x for dowserx and repeat for dowser-repeat')
-
-    
-    # parse the command line
-    args = parser.parse_args()
-    
-    if args.inputFile:
-        input_file = Path( args.inputFile ).expand().absolute()
-
-    # kwargs = {
-    #     "hetero": False, "noxtalwater": False, "onlyxtalwater": False,
-    #     "atomtypes": None, "atomparms": None, "probe":0.2, "separation": 1.0,
-    #     "log": "stdlog.txt"
-    # }
-
-    kwargs = {
-        "hetero": args.hetero, "noxtalwater": False, "onlyxtalwater": False,
-        "atomtypes": None, "atomparms": None, "probe":0.2, "separation": args.separation,
-        "log": "stdlog.txt", "alt": args.alternateUsage
-    }
-
-    
-    if args.inputFile and args.dirWalker:
-        print args.dirWalker
-        for m, dw_input_file in dir_walker( input_file, args.dirWalker ):
-            dw_output_dir = Path( dw_input_file.parent, args.outputDir )
-            dw_output_dir.mkdir(True)
-            dw_output_dir = dw_output_dir.expand()
-            dowser( dw_input_file, dw_output_dir, **kwargs )
-    elif args.inputFile:
-        output_dir = Path(args.outputDir)
-        output_dir.mkdir(True)
-        output_dir = output_dir.expand()
-        dowser( input_file, output_dir, **kwargs )
-
-
-
-if __name__ == "__main__":
-    main()
-
-
+class DowserRepeat( PyTool, ProviMixin ):
+    """ A wrapper around the 'dowser-repeat' programm, which is
+        called until no more new waters are found.
+    """
+    args = DOWSER_ARGS
+    out = DOWSER_OUT + [
+        _( "repeat_dir", dir="repeats" )
+    ]
+    tmpl_dir = TMPL_DIR
+    provi_tmpl = "dowser.provi"
+    def _init( self, *args, **kwargs ):
+        self.kwargs = kwargs
+    def func( self ):
+        """ Initial procedure by Dominic Theune. """
+        rep_count = 0
+        dowserwat = []
+        dowserwat_all = []
+        while True:
+            alt = "repeat" if rep_count else None
+            rep_out = os.path.join( self.repeat_dir, str(rep_count) )
+            dowser = Dowser( self.pdb_file, **copy_dict( 
+                self.kwargs, run=False, output_dir=rep_out, alt=alt
+            ))
+            # write dowser waters found until now
+            with open( dowser.wat_file, "w" ) as fp:
+                fp.writelines( dowserwat )
+            with open( dowser.watall_file, "w" ) as fp:
+                fp.writelines( dowserwat_all )
+            # exec dowser
+            dowser()
+            # read newly found dowser waters
+            with open( dowser.wat_file, "r" ) as fp:
+                new_wat = fp.readlines()
+            with open( dowser.watall_file, "r" ) as fp:
+                new_watall = fp.readlines()
+            # checks if there are new waters
+            if len( new_wat ) > 1 and len( new_watall ) > 1:
+                dowserwat += new_wat
+                dowserwat_all += new_watall
+                rep_count += 1
+            else:
+                break
+        # write every dowser water found
+        with open( self.wat_file, "w" ) as fp:
+            fp.writelines( dowserwat )
+        with open( self.watall_file, "w" ) as fp:
+            fp.writelines( dowserwat_all )
+    def _pre_exec( self ):
+        shutil.copy( self.pdb_file, self.input_file )
+    def _post_exec( self ):
+        self._make_provi_file(
+            input_file=self.relpath( self.input_file ),
+            wat_file=self.relpath( self.wat_file ),
+            watall_file=self.relpath( self.watall_file )
+        )
 
