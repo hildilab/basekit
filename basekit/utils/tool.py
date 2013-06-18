@@ -351,7 +351,8 @@ class RecordsMixin( Mixin ):
         with open( self.records_pickle, "r" ) as fp:
             self.records = pickle.load( fp )
     def read_sqlite( self ):
-        with sqlite3.connect( db_path, isolation_level="EXCLUSIVE" ) as conn:
+        db = self.records_sqlite
+        with sqlite3.connect( db, isolation_level="EXCLUSIVE" ) as conn:
             conn.row_factory = self.RecordsClass
             c = conn.cursor()
             c.execute( 'SELECT * FROM ?', ( self.RecordsClass.__name__, ) )
