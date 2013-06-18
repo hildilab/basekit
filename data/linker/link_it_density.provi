@@ -19,7 +19,7 @@
         "type": "mrc",
         "params": {
             "sigma": 0,
-            "cutoff": 1,
+            "cutoff": ${cutoff},
             "sign": false,
             "color": "tomato",
             "frontonly": true,
