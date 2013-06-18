@@ -1,0 +1,19 @@
+[
+    { 
+        "filename": "${input_file}"
+    },
+    { 
+        "filename":  "${wat_file}",
+        "params": {
+            "load_as": "append",
+            "style": "color lime; cpk 30%; wireframe 0.3;"
+        }
+    },
+    { 
+        "filename":  "${watall_file}",
+        "params": {
+            "load_as": "append",
+            "style": "color skyblue; cpk 30%; wireframe 0.3;"
+        }
+    }
+]
