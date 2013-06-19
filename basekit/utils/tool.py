@@ -88,6 +88,7 @@ class ToolParser( argparse.ArgumentParser ):
                 group.add_argument( '-v', '--verbose', action='store_true' )
                 group.add_argument( '-c', '--check', action='store_true' )
                 group.add_argument( '-a', '--fileargs', action='store_true' )
+                group.add_argument( '-d', '--debug', action='store_true' )
             group.add_argument( 
                 '-h', '--help', action="help", 
                 help="show this help message and exit" 
@@ -281,7 +282,7 @@ class RecordsMixin( Mixin ):
     def _init_records( self, input_file, **kwargs ):
         if not hasattr( self, "RecordsClass" ):
             raise Exception("A RecordsMixin needs a 'RecordsClass' attribute")
-        self.records = None
+        self.records = tuple()
         if input_file:
             stem = utils.path.stem( input_file ) 
         else:
@@ -372,6 +373,9 @@ def call( tool ):
         return tool()
     except Exception as e:
         LOG.error( "[%s] %s" % ( tool.id, e ) )
+        if tool.debug:
+            import traceback
+            traceback.print_exc()
     return tool
 
 
@@ -424,11 +428,11 @@ class ParallelMixin( Mixin ):
         for input_file in file_list:
             stem = utils.path.stem( input_file )
             output_dir = self.outpath( os.path.join( "parallel", stem ) )
-            tool_list.append( self.ParallelClass(
-                input_file, **copy_dict( 
-                    self.tool_kwargs, output_dir=output_dir,
-                )
+            tool = self.ParallelClass( input_file, **copy_dict( 
+                self.tool_kwargs, output_dir=output_dir,
             ))
+            tool.id = stem
+            tool_list.append( tool )
         self.tool_list = tool_list
     def _func_parallel( self, nworkers=None ):
         # !important - allows one to abort via CTRL-C
@@ -480,6 +484,7 @@ class Tool( object ):
         self.timeout = kwargs.get("timeout", None)
         self.fileargs = kwargs.get("fileargs", False)
         self.verbose = kwargs.get("verbose", False)
+        self.debug = kwargs.get("debug", False)
         self.output_dir = os.path.abspath( 
             kwargs.get("output_dir", ".") 
         ) + os.sep
