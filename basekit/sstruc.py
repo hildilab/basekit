@@ -12,10 +12,6 @@ import itertools
 import collections
 import string
 import textwrap
-import multiprocessing
-import signal
-import logging
-
 
 import numpy as np
 
@@ -33,16 +29,6 @@ from utils.tool import (
 
 import utils.numpdb as numpdb
 
-
-logging.basicConfig()
-LOG = logging.getLogger('sstruc')
-# LOG.setLevel( logging.ERROR )
-LOG.setLevel( logging.WARNING )
-# LOG.setLevel( logging.DEBUG )
-
-
-# http://docs.python.org/2/library/collections.html#collections.namedtuple
-
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "sstruc" )
 
 SstrucDbRecord = collections.namedtuple( 'SstrucDbRecord', [
@@ -55,8 +41,9 @@ SstrucDbRecord = collections.namedtuple( 'SstrucDbRecord', [
 ])
 
 
-# TODO all length calculations are potentially wrong!!!
-# TODO fixed precision for angles
+# TODO length calculations do not take altloc into account
+# (which will be handled in numpdb) but also no missing residues
+# (maybe add fake resiudes to numpdb for that purpose???)
 class BuildSstrucDbRecords( object ):
     def __init__( self, pdb_file, pdb_id=None ):
         self.npdb = numpdb.NumPdb( pdb_file, features={ "phi_psi": False } )
@@ -68,18 +55,27 @@ class BuildSstrucDbRecords( object ):
             return None
         if x.type!=numpdb.SHEET or y.type!=numpdb.SHEET:
             return None
+        # TODO check if in idx interval, but probably ok as is
+        # because there is only a resno given, no chain, altloc, insertion
         return y.resno1 <= x.hbond <= y.resno2
     @memoize
-    def _axis( self, ss ):
-        idx_beg = self.npdb.index(
-            chain=ss.chain1, resno=ss.resno1, first=True 
+    def _numa( self, ss ):
+        idx_beg = self.npdb.index( 
+            chain=ss.chain1, resno=ss.resno1, interval=True
         )
         idx_end = self.npdb.index( 
-            chain=ss.chain2, resno=ss.resno2, last=True
+            chain=ss.chain2, resno=ss.resno2, interval=True
         )
+        # needed anymore?
         if idx_beg>idx_end:
+            print "FOOBAR"
             idx_beg, idx_end = idx_end, idx_beg
-        numa = self.npdb.slice( idx_beg, idx_end+1 ).copy( atomname="CA" )
+        return self.npdb.slice( idx_beg[0], idx_end[-1]+1 ).copy( 
+            atomname="CA" 
+        )
+    @memoize
+    def _axis( self, ss ):
+        numa = self._numa( ss )
         if numa.length<3:
             return None
         beg, end = numa.axis()
@@ -92,17 +88,46 @@ class BuildSstrucDbRecords( object ):
         if ax==None or ay==None:
             return None
         else:
-            return utils.math.angle( ax, ay )
+            return round( utils.math.angle( ax, ay ), 3 )
+    def _length( self, ss ):
+        numa = self._numa( ss )
+        return numa.length
+    def _distance( self, ss1, ss2 ):
+        if not ss1 or not ss2:
+            return None
+        if ss1.chain1!=ss2.chain1:
+            return None
+        idx_beg = self.npdb.index( 
+            chain=ss1.chain2, resno=ss1.resno2, interval=True
+        )
+        idx_end = self.npdb.index( 
+            chain=ss2.chain1, resno=ss2.resno1, interval=True
+        )
+        if idx_beg==idx_end:
+            return -1
+        if idx_beg[-1]+1==idx_end[0]:
+            return 0
+        # overlap
+        if idx_beg>idx_end:
+            numa = self.npdb.slice( idx_end[0], idx_beg[-1]+1 ).copy( 
+                atomname="CA" 
+            )
+            return numa.length * -1
+        else:
+            numa = self.npdb.slice( idx_beg[-1]+1, idx_end[0] ).copy( 
+                atomname="CA" 
+            )
+            return numa.length
     def _make_record( self, i, cur, prev, next ):
         return SstrucDbRecord(
             self.pdb_id, cur.type, cur.subtype,
-            cur.resno2 - cur.resno1 + 1,
+            self._length( cur ),
             cur.chain1, cur.resno1,
             cur.chain2, cur.resno2,
             prev and prev.type,
-            prev and cur.resno1 - prev.resno2,
+            self._distance( prev, cur ),
             next and next.type,
-            next and next.resno1 - cur.resno2,
+            self._distance( cur, next ),
             self._sheet_hbond( cur, prev ),
             self._sheet_hbond( next, cur ),
             self._sheet_hbond( next, prev ),

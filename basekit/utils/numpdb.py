@@ -12,7 +12,9 @@ import numpy as np
 np.seterr( all="raise" )
 
 import basekit.utils.path
-from basekit.utils import try_int, get_index, copy_dict
+from basekit.utils import (
+    try_int, get_index, copy_dict, iter_window, iter_stride
+)
 from math import dihedral, vec_dihedral, mag, axis, Superposition, rmsd
 
 
@@ -267,37 +269,57 @@ class SstrucParser( SimpleParser ):
     def _test_line( self, line ):
         return line.startswith("HELIX") or line.startswith("SHEET")
     def _parse_line( self, line ):
-            if line.startswith("HELIX"):
-                return SstrucRecord(
-                    HELIX,
-                    try_int( line[38:40] ),     # subtype
-                    line[19],                   # chain 1
-                    try_int( line[21:25] ),     # resno 1
-                    line[15:18],                # resname 1
-                    line[31],                   # chain 2
-                    try_int( line[33:37] ),     # resno 2
-                    line[27:30],                # resname 2
-                    None                        # padding...
-                )
-            elif line.startswith("SHEET"):
-                return SstrucRecord(
-                    SHEET,
-                    try_int( line[38:40] ),     # strand sense (subtype)
-                    line[21],                   # chain 1
-                    try_int( line[22:26] ),     # resno 1
-                    line[17:20],                # resname 1
-                    line[32],                   # chain 2
-                    try_int( line[33:37] ),     # resno 2
-                    line[28:31],                # resname 2
-                    try_int( line[65:69], False ),     # resno hbond prev strand
-                )
+        # ensure that res1 comes before res2
+        if line.startswith("HELIX"):
+            # chain, resno, resname
+            res1 = ( line[19], try_int( line[21:25] ), line[15:18] )
+            res2 = ( line[31], try_int( line[33:37] ), line[27:30] )
+            if res1>res2:
+                res1, res2 = res2, res1
+            return SstrucRecord(
+                HELIX,
+                try_int( line[38:40] ),     # subtype
+                res1[0], res1[1], res1[2],  # res1
+                res2[0], res2[1], res2[2],  # res2
+                None                        # padding...
+            )
+        elif line.startswith("SHEET"):
+            # chain, resno, resname
+            res1 = ( line[21], try_int( line[22:26] ), line[17:20] )
+            res2 = ( line[32], try_int( line[33:37] ), line[28:31] )
+            if res1>res2:
+                res1, res2 = res2, res1
+            return SstrucRecord(
+                SHEET,
+                try_int( line[38:40] ),     # strand sense (subtype)
+                res1[0], res1[1], res1[2],  # res1
+                res2[0], res2[1], res2[2],  # res2
+                try_int( line[65:69], False ),     # resno hbond prev strand
+            )
     def get( self ):
         self._list.sort( key=operator.attrgetter("chain1", "resno1") )
+        # for ss in self._list:
+        #     print ss
+        filtered = []
+        it = iter_window( self._list, 2 )
+        for ss1, ss2 in it:
+            # remove sstruc that occur twice i.e. in 3s0c
+            # once as the starting strand and then making an
+            # hbond - take the second one
+            if (ss1.chain1, ss1.resno1)==(ss2.chain1, ss2.resno1):
+                continue
+            # remove sstruc that is within another i.e. in 2plv
+            # take the one that starts first
+            # NO overlaps are OK and handled later
+            # if (ss1.chain2, ss1.resno2)>(ss2.chain1, ss2.resno1):
+            #     next(it)
+            filtered.append( ss1 )
+        self._list = filtered
         return self._list
 
 
 
-
+# TODO needs documentation
 _BORDER = [{ 
     'resno': None, 'insertion': None, 'chain': None, 
     'sstruc': None, 'altloc': None
@@ -389,12 +411,14 @@ class NumAtoms:
             return coords
         else:
             return atoms[ key ]
-    def index( self, first=False, last=False, **sele ):
+    def index( self, first=False, last=False, interval=False, **sele ):
         indices = np.nonzero( self.sele( **sele ) )[0]
         if first:
             return indices[0]
         elif last:
             return indices[-1]
+        elif interval:
+            return indices[0], indices[-1]
         else:
             return indices
     def iter_chain( self, **sele ):
