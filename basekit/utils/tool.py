@@ -576,6 +576,10 @@ class Tool( object ):
         if not os.path.exists( subdir ):
             os.makedirs( subdir )
         return subdir
+    def datapath( self, file_name ):
+        if not hasattr( self, "tmpl_dir" ):
+            raise "No data path available."
+        return os.path.join( self.tmpl_dir, file_name )
 
 
 
