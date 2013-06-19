@@ -88,6 +88,7 @@ def listify( item ):
         return [ item ]
 
 def iter_overlap( iterator, n=None ):
+    iterator = iter(iterator)
     if n:
         iterator = itertools.chain( 
             [None]*n, iterator, [None]*n
@@ -117,6 +118,7 @@ def iter_stride( iterator, n=2, boundary_overlap=None ):
 
 def iter_consume( iterator, n ):
     "Advance the iterator n-steps ahead. If n is none, consume entirely."
+    iterator = iter(iterator)
     # Use functions that consume iterators at C speed.
     if n is None:
         # feed the entire iterator into a zero-length deque
