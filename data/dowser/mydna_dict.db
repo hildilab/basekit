@@ -1,0 +1,352 @@
+REMARK === NUCLEIC ACID SECTION ================================================
+REMARK NOTE-1: Inability of Dowser code to modify terminal residues by deleting
+REMARK atoms (rather than just adding them) precludes possibility of defining
+REMARK 5' and 3' TERM patches to create customized 5'- and 3'-term nucleotides;
+REMARK instead, one must individually define each residue in its entirety. For
+REMARK instance, one must define DG, DG5, and DG3 instead of just a DG along
+REMARK with generic 5' and 3'-terminal patch RESIDUEs.
+REMARK
+REMARK NOTE-2: Deoxynucleotides were adapted from GROMOS FF (ffgmx.rtp supplied 
+REMARK with Gromacs). Many hydrogens (non-polar) are not explicitly represented
+REMARK in this UA model ff. Unless otherwise noted, atomic partial charges were
+REMARK drawn from the Gromos ff as provided by Gromacs -- specifically, see the
+REMARK file /usr/share/gromacs/top/ffgmx.rtp provided by the gromacs-3.3-1 RPM.
+REMARK
+REMARK NOTE-3: Usage of this file assumes input PDB file contains all DNA heavy
+REMARK atoms -- will not properly build them (non-proton geometry unspecified).
+REMARK
+REMARK NOTE-4: Terminal sugar atoms were slightly reordered so that defined ones
+REMARK lie ahead of undefined ones in this atom list (where "defined" means that
+REMARK coordinates were provided in input PDB).
+REMARK
+REMARK NOTE-5: Selected type "O" (not "OA") for phospoester oxygens because type
+REMARK "O" LJ params (used to describe "other oxygen" in $DOWSER/DATA/atomparms.db 
+REMARK and the 1984 paper) seem to be a better description of these oxygens than 
+REMARK type "OA", which is actually meant to describe the hydroxyl oxygen of 
+REMARK alcohols according to both the Hermans et al. 1984 Biopolymer paper (see 
+REMARK Tables I and II) and the Gromos ff as distributed with Gromacs. It would 
+REMARK seem that the atomparms.db file's description of type "OA" as "oxygen in 
+REMARK carboxylate" is erroneous; carboxylate oxygen should have a LJ beta value
+REMARK of 1840 (not 1230) according to the 1984 paper and Gromos ff.  Also note
+REMARK that type "O" is more internally consistent w/ other DOWSER assignments
+REMARK than is type "OA" (e.g., the carboxylate oxygens of GLU are type "O"). 
+REMARK
+REMARK NOTE-6: The following schema applies to all residues defined herein. Note 
+REMARK that a 'D' does not prefix the phosphorylated termini resid names because 
+REMARK official PDB format specifies residue fields as being 3-characters wide.
+REMARK - GUANINE ---------------------------------------------------------------
+REMARK - {DG} = Guanine base within a stretch of DNA, considered as 5' phosphate
+REMARK -        ester of deoxyguanylic acid -- i.e., 5'...pdN{pdG}pdN...3'
+REMARK - {DG5} = Guanine base @ dephosphorylated 5' terminus (5'{dG}pdNpdN...3')
+REMARK - {DG3} = Guanine base @ dephosphorylated 3' terminus (5'...dNpdN{pdG}3')
+REMARK - {G5P} = Guanine base @ phosphorylated 5' terminus (5'{pdG}pdNpdN...3')
+REMARK - {G3P} = Guanine base @ phosphorylated 3' terminus (5'...dNpdN{pdGp}3')
+REMARK -------------------------------------------------------------------------
+REMARK
+REMARK NOTE-7: Phosphorylated residues (D[AGCT][35]P) have not been defined yet
+REMARK (C.Mura; Dec-2005).
+REMARK
+REMARK NOTE-8: For dephosphorylated 5' termini, partial charges on the three
+REMARK terminal alcoholic atoms (H5T-O5*-C5*-) were taken from the hydroxyl
+REMARK values in Table III of the 1984 Hermans et al. Biopolymers paper. 
+REMARK Likewise for the -C3*-O3*-H3T moiety of 3' dephosphorylated groups. 
+REMARK Sum of 5' and 3' termini partial charges is -1.0 (not zero).
+REMARK
+REMARK -------------------------------------------------------------------------
+REMARK - GUANINE ---------------------------------------------------------------
+RESIDUE DG
+REMARK q-sum = -1.00
+ATOM DG   P    NOT  NOT  0.000   0.000   0.0   0.990 P
+ATOM DG   O1P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DG   O2P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DG   O5*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DG   C5*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DG   C4*  NOT  NOT  0.000   0.000   0.0   0.160 CH1
+ATOM DG   O4*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DG   C1*  NOT  NOT  0.000   0.000   0.0   0.200 CH1
+ATOM DG   N9   NOT  NOT  0.000   0.000   0.0  -0.200 N
+ATOM DG   C4   NOT  NOT  0.000   0.000   0.0   0.200 CR
+ATOM DG   N3   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DG   C2    N3   N1  0.000   0.000   0.0   0.360 CR
+ATOM DG   N2    C2  H22  0.000   0.000   0.0  -0.830 N
+ATOM DG   H21   N2  NOT  1.000 120.000 180.0   0.415 H
+ATOM DG   H22   N2  NOT  1.000 120.000   0.0   0.415 H
+ATOM DG   N1    C2   C6  0.000   0.000   0.0  -0.280 N
+ATOM DG   H1    N1  NOT  1.000 120.000 180.0   0.280 H
+ATOM DG   C6   NOT  NOT  0.000   0.000   0.0   0.380 CR
+ATOM DG   O6   NOT  NOT  0.000   0.000   0.0  -0.380 O
+ATOM DG   C5   NOT  NOT  0.000   0.000   0.0   0.000 CR
+ATOM DG   N7   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DG   C8   NOT  NOT  0.000   0.000   0.0   0.360 CHR
+ATOM DG   C2*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DG   C3*  NOT  NOT  0.000   0.000   0.0   0.000 CH1
+ATOM DG   O3*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+RESIDUE DG5
+REMARK q-sum = -0.36
+ATOM DG5  C4*  NOT  NOT  0.000   0.000   0.0   0.160 CH1
+ATOM DG5  O4*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DG5  C1*  NOT  NOT  0.000   0.000   0.0   0.200 CH1
+ATOM DG5  C5*  C4*  O5*  0.000   0.000   0.0   0.150 CH2
+ATOM DG5  O5*  C5*  H5T  0.000   0.000   0.0  -0.550 OA
+ATOM DG5  H5T  O5*  NOT  1.000 109.500 180.0   0.400 H
+ATOM DG5  N9   NOT  NOT  0.000   0.000   0.0  -0.200 N
+ATOM DG5  C4   NOT  NOT  0.000   0.000   0.0   0.200 CR
+ATOM DG5  N3   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DG5  C2    N3   N1  0.000   0.000   0.0   0.360 CR
+ATOM DG5  N2    C2  H22  0.000   0.000   0.0  -0.830 N
+ATOM DG5  H21   N2  NOT  1.000 120.000 180.0   0.415 H
+ATOM DG5  H22   N2  NOT  1.000 120.000   0.0   0.415 H
+ATOM DG5  N1    C2   C6  0.000   0.000   0.0  -0.280 N
+ATOM DG5  H1    N1  NOT  1.000 120.000 180.0   0.280 H
+ATOM DG5  C6   NOT  NOT  0.000   0.000   0.0   0.380 CR
+ATOM DG5  O6   NOT  NOT  0.000   0.000   0.0  -0.380 O
+ATOM DG5  C5   NOT  NOT  0.000   0.000   0.0   0.000 CR
+ATOM DG5  N7   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DG5  C8   NOT  NOT  0.000   0.000   0.0   0.360 CHR
+ATOM DG5  C2*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DG5  C3*  NOT  NOT  0.000   0.000   0.0   0.000 CH1
+ATOM DG5  O3*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+RESIDUE DG3
+REMARK q-sum = -0.64
+ATOM DG3  P    NOT  NOT  0.000   0.000   0.0   0.990 P
+ATOM DG3  O1P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DG3  O2P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DG3  O5*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DG3  C5*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DG3  C4*  NOT  NOT  0.000   0.000   0.0   0.160 CH1
+ATOM DG3  O4*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DG3  C1*  NOT  NOT  0.000   0.000   0.0   0.200 CH1
+ATOM DG3  N9   NOT  NOT  0.000   0.000   0.0  -0.200 N
+ATOM DG3  C4   NOT  NOT  0.000   0.000   0.0   0.200 CR
+ATOM DG3  N3   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DG3  C2    N3   N1  0.000   0.000   0.0   0.360 CR
+ATOM DG3  N2    C2  H22  0.000   0.000   0.0  -0.830 N
+ATOM DG3  H21   N2  NOT  1.000 120.000 180.0   0.415 H
+ATOM DG3  H22   N2  NOT  1.000 120.000   0.0   0.415 H
+ATOM DG3  N1    C2   C6  0.000   0.000   0.0  -0.280 N
+ATOM DG3  H1    N1  NOT  1.000 120.000 180.0   0.280 H
+ATOM DG3  C6   NOT  NOT  0.000   0.000   0.0   0.380 CR
+ATOM DG3  O6   NOT  NOT  0.000   0.000   0.0  -0.380 O
+ATOM DG3  C5   NOT  NOT  0.000   0.000   0.0   0.000 CR
+ATOM DG3  N7   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DG3  C8   NOT  NOT  0.000   0.000   0.0   0.360 CHR
+ATOM DG3  C2*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DG3  C3*  C2*  O3*  0.000   0.000   0.0   0.150 CH1
+ATOM DG3  O3*  C3*  H3T  0.000   0.000   0.0  -0.550 OA
+ATOM DG3  H3T  O3*  NOT  1.000 109.500 180.0   0.400 H
+REMARK -------------------------------------------------------------------------
+REMARK - ADENINE ---------------------------------------------------------------
+RESIDUE DA
+REMARK q-sum = -1.00
+ATOM DA   P    NOT  NOT  0.000   0.000   0.0   0.990 P
+ATOM DA   O1P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DA   O2P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DA   O5*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DA   C5*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DA   C4*  NOT  NOT  0.000   0.000   0.0   0.160 CH1
+ATOM DA   O4*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DA   C1*  NOT  NOT  0.000   0.000   0.0   0.200 CH1
+ATOM DA   N9   NOT  NOT  0.000   0.000   0.0  -0.200 N
+ATOM DA   C4   NOT  NOT  0.000   0.000   0.0   0.200 CR
+ATOM DA   N3   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DA   C2   NOT  NOT  0.000   0.000   0.0   0.360 CHR
+ATOM DA   N1   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DA   C6    N1   C5  0.000   0.000   0.0   0.360 CR
+ATOM DA   N6    C6  H62  0.000   0.000   0.0  -0.830 N
+ATOM DA   H61   N6  NOT  1.000 120.000 180.0   0.415 H
+ATOM DA   H62   N6  NOT  1.000 120.000   0.0   0.415 H
+ATOM DA   C5   NOT  NOT  0.000   0.000   0.0   0.000 CR
+ATOM DA   N7   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DA   C8   NOT  NOT  0.000   0.000   0.0   0.360 CHR
+ATOM DA   C2*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DA   C3*  NOT  NOT  0.000   0.000   0.0   0.000 CH1
+ATOM DA   O3*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+RESIDUE DA5
+REMARK q-sum = -0.36
+ATOM DA5  C4*  NOT  NOT  0.000   0.000   0.0   0.160 CH1
+ATOM DA5  O4*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DA5  C1*  NOT  NOT  0.000   0.000   0.0   0.200 CH1
+ATOM DA5  C5*  C4*  O5*  0.000   0.000   0.0   0.150 CH2
+ATOM DA5  O5*  C5*  H5T  0.000   0.000   0.0  -0.550 OA
+ATOM DA5  H5T  O5*  NOT  1.000 109.500 180.0   0.400 H
+ATOM DA5  N9   NOT  NOT  0.000   0.000   0.0  -0.200 N
+ATOM DA5  C4   NOT  NOT  0.000   0.000   0.0   0.200 CR
+ATOM DA5  N3   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DA5  C2   NOT  NOT  0.000   0.000   0.0   0.360 CHR
+ATOM DA5  N1   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DA5  C6    N1   C5  0.000   0.000   0.0   0.360 CR
+ATOM DA5  N6    C6  H62  0.000   0.000   0.0  -0.830 N
+ATOM DA5  H61   N6  NOT  1.000 120.000 180.0   0.415 H
+ATOM DA5  H62   N6  NOT  1.000 120.000   0.0   0.415 H
+ATOM DA5  C5   NOT  NOT  0.000   0.000   0.0   0.000 CR
+ATOM DA5  N7   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DA5  C8   NOT  NOT  0.000   0.000   0.0   0.360 CHR
+ATOM DA5  C2*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DA5  C3*  NOT  NOT  0.000   0.000   0.0   0.000 CH1
+ATOM DA5  O3*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+RESIDUE DA3
+REMARK q-sum = -0.64
+ATOM DA3  P    NOT  NOT  0.000   0.000   0.0   0.990 P
+ATOM DA3  O1P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DA3  O2P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DA3  O5*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DA3  C5*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DA3  C4*  NOT  NOT  0.000   0.000   0.0   0.160 CH1
+ATOM DA3  O4*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DA3  C1*  NOT  NOT  0.000   0.000   0.0   0.200 CH1
+ATOM DA3  N9   NOT  NOT  0.000   0.000   0.0  -0.200 N
+ATOM DA3  C4   NOT  NOT  0.000   0.000   0.0   0.200 CR
+ATOM DA3  N3   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DA3  C2   NOT  NOT  0.000   0.000   0.0   0.360 CHR
+ATOM DA3  N1   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DA3  C6    N1   C5  0.000   0.000   0.0   0.360 CR
+ATOM DA3  N6    C6  H62  0.000   0.000   0.0  -0.830 N
+ATOM DA3  H61   N6  NOT  1.000 120.000 180.0   0.415 H
+ATOM DA3  H62   N6  NOT  1.000 120.000   0.0   0.415 H
+ATOM DA3  C5   NOT  NOT  0.000   0.000   0.0   0.000 CR
+ATOM DA3  N7   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DA3  C8   NOT  NOT  0.000   0.000   0.0   0.360 CHR
+ATOM DA3  C2*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DA3  C3*  C2*  O3*  0.000   0.000   0.0   0.150 CH1
+ATOM DA3  O3*  C3*  H3T  0.000   0.000   0.0  -0.550 OA
+ATOM DA3  H3T  O3*  NOT  1.000 109.500 180.0   0.400 H
+REMARK -------------------------------------------------------------------------
+REMARK - CYTOSINE --------------------------------------------------------------
+RESIDUE DC
+REMARK q-sum = -1.00
+ATOM DC   P    NOT  NOT  0.000   0.000   0.0   0.990 P
+ATOM DC   O1P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DC   O2P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DC   O5*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DC   C5*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DC   C4*  NOT  NOT  0.000   0.000   0.0   0.160 CH1
+ATOM DC   O4*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DC   C1*  NOT  NOT  0.000   0.000   0.0   0.200 CH1
+ATOM DC   N1   NOT  NOT  0.000   0.000   0.0  -0.200 N
+ATOM DC   C6   NOT  NOT  0.000   0.000   0.0   0.200 CHR
+ATOM DC   C2   NOT  NOT  0.000   0.000   0.0   0.380 CR
+ATOM DC   O2   NOT  NOT  0.000   0.000   0.0  -0.380 O
+ATOM DC   N3   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DC   C4    N3   C5  0.000   0.000   0.0   0.360 CR
+ATOM DC   N4    C4  H42  0.000   0.000   0.0  -0.830 N
+ATOM DC   H41   N4  NOT  0.000   0.000   0.0   0.415 H
+ATOM DC   H42   N4  NOT  0.000   0.000   0.0   0.415 H
+ATOM DC   C5   NOT  NOT  0.000   0.000   0.0   0.000 CHR
+ATOM DC   C2*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DC   C3*  NOT  NOT  0.000   0.000   0.0   0.000 CH1
+ATOM DC   O3*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+RESIDUE DC5
+REMARK q-sum = -0.36
+ATOM DC5  C4*  NOT  NOT  0.000   0.000   0.0   0.160 CH1
+ATOM DC5  O4*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DC5  C1*  NOT  NOT  0.000   0.000   0.0   0.200 CH1
+ATOM DC5  C5*  C4*  O5*  0.000   0.000   0.0   0.150 CH2
+ATOM DC5  O5*  C5*  H5T  0.000   0.000   0.0  -0.550 OA
+ATOM DC5  H5T  O5*  NOT  1.000 109.500 180.0   0.400 H
+ATOM DC5  N1   NOT  NOT  0.000   0.000   0.0  -0.200 N
+ATOM DC5  C6   NOT  NOT  0.000   0.000   0.0   0.200 CHR
+ATOM DC5  C2   NOT  NOT  0.000   0.000   0.0   0.380 CR
+ATOM DC5  O2   NOT  NOT  0.000   0.000   0.0  -0.380 O
+ATOM DC5  N3   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DC5  C4    N3   C5  0.000   0.000   0.0   0.360 CR
+ATOM DC5  N4    C4  H42  0.000   0.000   0.0  -0.830 N
+ATOM DC5  H41   N4  NOT  0.000   0.000   0.0   0.415 H
+ATOM DC5  H42   N4  NOT  0.000   0.000   0.0   0.415 H
+ATOM DC5  C5   NOT  NOT  0.000   0.000   0.0   0.000 CHR
+ATOM DC5  C2*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DC5  C3*  NOT  NOT  0.000   0.000   0.0   0.000 CH1
+ATOM DC5  O3*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+RESIDUE DC3
+REMARK q-sum = -0.64
+ATOM DC3  P    NOT  NOT  0.000   0.000   0.0   0.990 P
+ATOM DC3  O1P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DC3  O2P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DC3  O5*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DC3  C5*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DC3  C4*  NOT  NOT  0.000   0.000   0.0   0.160 CH1
+ATOM DC3  O4*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DC3  C1*  NOT  NOT  0.000   0.000   0.0   0.200 CH1
+ATOM DC3  N1   NOT  NOT  0.000   0.000   0.0  -0.200 N
+ATOM DC3  C6   NOT  NOT  0.000   0.000   0.0   0.200 CHR
+ATOM DC3  C2   NOT  NOT  0.000   0.000   0.0   0.380 CR
+ATOM DC3  O2   NOT  NOT  0.000   0.000   0.0  -0.380 O
+ATOM DC3  N3   NOT  NOT  0.000   0.000   0.0  -0.360 N
+ATOM DC3  C4    N3   C5  0.000   0.000   0.0   0.360 CR
+ATOM DC3  N4    C4  H42  0.000   0.000   0.0  -0.830 N
+ATOM DC3  H41   N4  NOT  0.000   0.000   0.0   0.415 H
+ATOM DC3  H42   N4  NOT  0.000   0.000   0.0   0.415 H
+ATOM DC3  C5   NOT  NOT  0.000   0.000   0.0   0.000 CHR
+ATOM DC3  C2*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DC3  C3*  C2*  O3*  0.000   0.000   0.0   0.150 CH1
+ATOM DC3  O3*  C3*  H3T  0.000   0.000   0.0  -0.550 OA
+ATOM DC3  H3T  O3*  NOT  1.000 109.500 180.0   0.400 H
+REMARK -------------------------------------------------------------------------
+REMARK - THYMINE ---------------------------------------------------------------
+RESIDUE DT
+REMARK q-sum = -1.00
+ATOM DT   P    NOT  NOT  0.000   0.000   0.0   0.990 P
+ATOM DT   O1P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DT   O2P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DT   O5*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DT   C5*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DT   C4*  NOT  NOT  0.000   0.000   0.0   0.160 CH1
+ATOM DT   O4*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DT   C1*  NOT  NOT  0.000   0.000   0.0   0.200 CH1
+ATOM DT   N1   C1*  C2   0.000   0.000   0.0  -0.200 N
+ATOM DT   C6   N1   C5   0.000   0.000   0.0   0.200 CHR
+ATOM DT   C2   N1   N3   0.000   0.000   0.0   0.380 CR
+ATOM DT   O2   C2   NOT  0.000   0.000   0.0  -0.380 O
+ATOM DT   N3   C2   C4   0.000   0.000   0.0  -0.280 N
+ATOM DT   H3   N3   NOT  0.000   0.000   0.0   0.280 H
+ATOM DT   C4   N3   C5   0.000   0.000   0.0   0.380 CR
+ATOM DT   O4   C4   NOT  0.000   0.000   0.0  -0.380 O
+ATOM DT   C5   C6   C5M  0.000   0.000   0.0   0.000 CR
+ATOM DT   C5M  C5   NOT  0.000   0.000   0.0   0.000 CH3
+ATOM DT   C2*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DT   C3*  NOT  NOT  0.000   0.000   0.0   0.000 CH1
+ATOM DT   O3*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+RESIDUE DT5
+REMARK q-sum = -0.36
+ATOM DT5  C4*  NOT  NOT  0.000   0.000   0.0   0.160 CH1
+ATOM DT5  O4*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DT5  C1*  NOT  NOT  0.000   0.000   0.0   0.200 CH1
+ATOM DT5  C5*  C4*  O5*  0.000   0.000   0.0   0.150 CH2
+ATOM DT5  O5*  C5*  H5T  0.000   0.000   0.0  -0.550 OA
+ATOM DT5  H5T  O5*  NOT  1.000 109.500 180.0   0.400 H
+ATOM DT5  N1   C1*  C2   0.000   0.000   0.0  -0.200 N
+ATOM DT5  C6   N1   C5   0.000   0.000   0.0   0.200 CHR
+ATOM DT5  C2   N1   N3   0.000   0.000   0.0   0.380 CR
+ATOM DT5  O2   C2   NOT  0.000   0.000   0.0  -0.380 O
+ATOM DT5  N3   C2   C4   0.000   0.000   0.0  -0.280 N
+ATOM DT5  H3   N3   NOT  0.000   0.000   0.0   0.280 H
+ATOM DT5  C4   N3   C5   0.000   0.000   0.0   0.380 CR
+ATOM DT5  O4   C4   NOT  0.000   0.000   0.0  -0.380 O
+ATOM DT5  C5   C6   C5M  0.000   0.000   0.0   0.000 CR
+ATOM DT5  C5M  C5   NOT  0.000   0.000   0.0   0.000 CH3
+ATOM DT5  C2*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DT5  C3*  NOT  NOT  0.000   0.000   0.0   0.000 CH1
+ATOM DT5  O3*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+RESIDUE DT3
+REMARK q-sum = -0.64
+ATOM DT3  P    NOT  NOT  0.000   0.000   0.0   0.990 P
+ATOM DT3  O1P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DT3  O2P  NOT  NOT  0.000   0.000   0.0  -0.635 O
+ATOM DT3  O5*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DT3  C5*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DT3  C4*  NOT  NOT  0.000   0.000   0.0   0.160 CH1
+ATOM DT3  O4*  NOT  NOT  0.000   0.000   0.0  -0.360 O
+ATOM DT3  C1*  NOT  NOT  0.000   0.000   0.0   0.200 CH1
+ATOM DT3  N1   C1*  C2   0.000   0.000   0.0  -0.200 N
+ATOM DT3  C6   N1   C5   0.000   0.000   0.0   0.200 CHR
+ATOM DT3  C2   N1   N3   0.000   0.000   0.0   0.380 CR
+ATOM DT3  O2   C2   NOT  0.000   0.000   0.0  -0.380 O
+ATOM DT3  N3   C2   C4   0.000   0.000   0.0  -0.280 N
+ATOM DT3  H3   N3   NOT  0.000   0.000   0.0   0.280 H
+ATOM DT3  C4   N3   C5   0.000   0.000   0.0   0.380 CR
+ATOM DT3  O4   C4   NOT  0.000   0.000   0.0  -0.380 O
+ATOM DT3  C5   C6   C5M  0.000   0.000   0.0   0.000 CR
+ATOM DT3  C5M  C5   NOT  0.000   0.000   0.0   0.000 CH3
+ATOM DT3  C2*  NOT  NOT  0.000   0.000   0.0   0.000 CH2
+ATOM DT3  C3*  C2*  O3*  0.000   0.000   0.0   0.150 CH1
+ATOM DT3  O3*  C3*  H3T  0.000   0.000   0.0  -0.550 OA
+ATOM DT3  H3T  O3*  NOT  1.000 109.500 180.0   0.400 H
