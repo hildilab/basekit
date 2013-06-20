@@ -1,5 +1,6 @@
 """
     http://danger.med.unc.edu/hermans/dowser/Dowman.htm
+    http://danger.med.unc.edu/hermans/dowser/Cameron_Mura_DOWSER.html
     http://www.ks.uiuc.edu/Research/vmd/plugins/dowser/
     http://muralab.org/~cmura/DOWSER/
     http://www.ks.uiuc.edu/Research/vmd/plugins/dowser/dowser-rna.html

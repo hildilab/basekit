@@ -88,3 +88,9 @@ DOCU
 * http://sphinx-doc.org/tutorial.html
 * http://sphinx-doc.org/rest.html#rst-primer
 
+
+UNITTEST
+--------
+
+* http://docs.python-guide.org/en/latest/writing/tests.html
+* http://docs.python.org/2/library/unittest.html
