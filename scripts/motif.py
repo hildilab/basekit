@@ -5,13 +5,14 @@
 
 
 from basekit.utils.tool import parse_subargs
-from basekit.motif import CapsMotifFinder
+from basekit.motif import CapsMotifFinder, StructureGetter
 
 
 
 def main():
     tools = {
-        "finder": CapsMotifFinder
+        "finder": CapsMotifFinder,
+        "strucinfo": StructureGetter
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )

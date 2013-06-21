@@ -6,7 +6,7 @@ from __future__ import division
 
 import numpy as np
 from numpy import array
-
+from utils.numpdb import NumPdb, numdist
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.pyplot import figure
@@ -27,11 +27,12 @@ from utils import (
 from utils.timer import Timer
 from utils.db import get_pdb_files, create_table
 from utils.tool import (
-    PyTool, DbTool, RecordsMixin, ParallelMixin, ProviMixin
+    _, PyTool, DbTool, RecordsMixin, ParallelMixin, ProviMixin
 )
 import utils.path
 
 import utils.numpdb as numpdb
+import json
 
 
 
@@ -49,6 +50,11 @@ TMPL_DIR = os.path.join( PARENT_DIR, "data", "motif" )
 MotifRecord = collections.namedtuple( 'MotifRecord', [
     'motif', 'pdb_id', 'chain', 'resno',
     'phi_angles', 'psi_angles', 'no'
+])
+
+StrucRecord = collections.namedtuple( 'StrucRecord', [
+    'pdb_id', 'chain', 'resno', 'phi_angles',
+    'psi_angles', 'distances', 'no'
 ])
 
 
@@ -325,7 +331,7 @@ def find_motifs( infile, motif_type ):
         motif_found=_find_all_motifs(npdb)[motif]
         if motif_found!=[]:
             for i, elem in enumerate(motif_found):
-                records.append(_make_record(motif, pdb_id, elem, i)) 
+                records.append(_make_record(motif, pdb_id, elem, i))
     return records
 
 
@@ -385,44 +391,73 @@ def _rama_plot( phi, psi, pos, motif, plot, n, m, axes, *args ):
         plt.savefig(name, dpi=300)
         plt.close()
 
+def _make_struc_record( name, info_line, i ):
+    #    'pdb_id', 'chain', 'resno', 'phi_angles', 'psi_angles', 'distances', 'no'
+    return StrucRecord(
+        name, info_line[0], info_line[1], 
+        list(info_line[2]), list(info_line[3]),
+        list(info_line[4]), i
+    )
+
+def _motif_out_struc_record( records ):
+    infodic=defaultdict(list)
+    for r in records:
+        infodic[r.resno].append(r)
+    return infodic
+
+def get_info( infile, residue ):
+    # generate a numpy-pdb
+    # get the motif-dicc and parses the motifs to Motif-Record
+    infos = []
+    npdb=numpdb.NumPdb(infile)
+    pdb_id = utils.path.stem( infile )
+
+    for i, res in enumerate(residue):
+        distances=[]; phi_angles=[]; psi_angles=[]
+        chain = res.split(':')[0]
+        resi = int(res.split(':')[1])
+        
+        for numatoms in npdb.iter_resno2( 7 ):
+            if numatoms[3]['resno'][0]==resi:
+                for el in numatoms:
+                    phi_angles.append( el[0]['phi'] )
+                    psi_angles.append( el[0]['psi'] )
+                    dist = numpdb.numdist( el, numatoms[3] )
+                    if 0 < dist < 3.9:
+                        distances.append((el[0]['resno'], dist))
+        elem=[chain, resi, phi_angles, psi_angles, distances]
+        infos.append(_make_struc_record(pdb_id, elem, i))
+    return infos
+
 
 class CapsMotifFinder( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
     """A tool that finds cap motifs. """
     args = [
-        { "name": "inputs", "type": "text" ,
-          "help": "input: file, files (seperated with a ',') or one directory, "
-                  "e.g. '~/Downloads' or '~/Downloads/3DQB.pdb,~/Downloads/3SN6'"},
-        { "name": "motif_type", "type": "select", "options": ['all'] + motifs_dict.keys(),
-          "default_value": "all", "help": "motif_type: all, one motif or more motifs "
-                           "(seperated with a ','); available motifs: all, "+
-                           ', '.join(motifs_dict.keys())+"" },
-        { "name": "plot", "type": "select", "options": ["", "big", "sep"],
-          "default_value": "", "group": "plot",
-          "help": "residue(C3-C'')-plot in one picture (= big, 6in1), "
-                  "separatly (=sep) or no plot (=default)" }
+        _( "inputs", type="text" ,
+            help="input: file, files (seperated with a ',') or one directory, "
+            "e.g. '~/Downloads' or '~/Downloads/3DQB.pdb,~/Downloads/3SN6'"),
+        _( "motif_type", type="select", options=['all'] + motifs_dict.keys(),
+            default="all", help="motif_type: all, one motif or more motifs "
+            "(seperated with a ','); available motifs: all, "+
+            ', '.join(motifs_dict.keys())+"" ),
+        _( "plot", type="select", options=["", "big", "sep"],
+            default="", group="plot", help="residue(C3-C'')-plot in one picture "
+            "(= big, 6in1), separatly (=sep) or no plot (=default)" )
+    ]
+    out = [
+         _( "jspt_file", file="color_motif.jspt" )
     ]
     RecordsClass = MotifRecord
     tmpl_dir = TMPL_DIR
     provi_tmpl = "motif.provi"
     def _init( self, inputs, motif_type="all", plot="", **kwargs ):
-        self.inputs = self.abspath( inputs )
-        self.plot=plot
-        self.motif_type = motif_type.split(",")
+        self.motif_type = self.motif_type.split(",")
         if self.motif_type[0]=='all':
             self.motif_type=motifs_dict
-        self.jspt_file = self.outpath( "color_motif.jspt" )
-        self.output_files = []
         self._init_records( utils.path.stem( inputs ), **kwargs )
         self._init_parallel( self.inputs, **kwargs )
     def func( self ):
-        if self.parallel:
-            self._make_tool_list()
-            tool_results = self._func_parallel()
-            self.records = list(itertools.chain.from_iterable(
-                map( operator.attrgetter( "records" ), tool_results )
-            ))
-        else:
-            self.records = find_motifs(self.inputs, self.motif_type )
+        self.records = find_motifs(self.inputs, self.motif_type )
         self.write()
     def _post_exec( self ):
         if self.plot!="":
@@ -455,3 +490,56 @@ class CapsMotifFinder( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             fp.write( "select none; background black;" )
     
 
+class StructureGetter( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
+    """A tool to get structure informations. """
+    args = [
+        _( "inputs", type="text" ,
+            help="input: file, files (seperated with a ',') or one directory, "
+            "e.g. '~/Downloads' or '~/Downloads/3DQB.pdb,~/Downloads/3SN6'"),
+        _( "residue", type="text", help="chain:atom")
+    ]
+    out = [
+        _( "jspt_file", file="color_motif.jspt" )
+    ]
+    RecordsClass = StrucRecord
+    tmpl_dir = TMPL_DIR
+    provi_tmpl = "motif.provi"
+    def _init( self, *args, **kwargs ):
+        self.residue = self.residue.split(",")
+        self._init_records( utils.path.stem( self.inputs ), **kwargs )
+        self._init_parallel( self.inputs, **kwargs )
+    def func( self ):
+        self.records = get_info(self.inputs, self.residue )
+        self.write()
+    def _post_exec( self ):
+        self._make_jspt_color_motif()
+        self._make_provi_file(
+            pdb_file=self.relpath( self.inputs ),
+            jspt_file=self.relpath( self.jspt_file )
+        )
+        records_list = map( 
+            operator.methodcaller( "_asdict" ), 
+            self.records 
+        )
+        print json.dumps( records_list, indent=4 )
+    def _make_jspt_color_motif( self ):
+        records_dict = _motif_out_struc_record( self.records )
+        with open( self.jspt_file, "w" ) as fp:
+            n = len(records_dict)
+            for i, resnum in enumerate(records_dict):
+                residues = []
+                for r in records_dict[resnum]:
+                    residues.append( "%s:%s" % (r.resno, r.chain) )
+                s = "select {%s}; color @{color('roygb', 0, %s, %s)}; wireframe 0.3; \n" % (
+                    " or ".join( residues ), n-1, i
+                )
+                fname2 = self.outpath( "%s_%s.jspt" % (
+                    utils.path.stem( self.jspt_file ), resnum
+                ) )
+                with open( fname2 , "w" ) as fp2:
+                    fp2.write(
+                        "select *; color cpk; wireframe off; " + s +
+                        "select none; background black;"
+                    )
+                fp.write( s )
+            fp.write( "select none; background black;" )
