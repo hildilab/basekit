@@ -16,6 +16,7 @@ import inspect
 import json
 import cPickle as pickle
 import csv
+import sqlite3
 import string
 import collections
 import logging
@@ -23,7 +24,7 @@ import signal
 import multiprocessing
 
 import basekit.utils.numpdb as numpdb
-import basekit.utils as utils
+from basekit import utils
 from basekit.utils import (
     try_int, get_index, boolean, working_directory, dir_walker, copy_dict,
     DefaultOrderedDict
@@ -31,6 +32,16 @@ from basekit.utils import (
 from basekit.utils.timer import Timer
 from basekit.utils.job import run_command
 from basekit.utils.db import get_pdb_files
+
+
+def _dir_init( tool_path, tool_name ):
+    """use like this:
+        DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "dowser" )
+    """
+    DIR = os.path.split( os.path.abspath(tool_path) )[0]
+    PARENT_DIR = os.path.split( DIR )[0]
+    TMPL_DIR = os.path.join( PARENT_DIR, "data", tool_name )
+    return DIR, PARENT_DIR, TMPL_DIR
 
 
 TIMEOUT_CMD = "timeout"
@@ -77,6 +88,7 @@ class ToolParser( argparse.ArgumentParser ):
                 group.add_argument( '-v', '--verbose', action='store_true' )
                 group.add_argument( '-c', '--check', action='store_true' )
                 group.add_argument( '-a', '--fileargs', action='store_true' )
+                group.add_argument( '-d', '--debug', action='store_true' )
             group.add_argument( 
                 '-h', '--help', action="help", 
                 help="show this help message and exit" 
@@ -252,25 +264,40 @@ class ProviMixin( TmplMixin ):
         return self._make_file_from_tmpl( provi_tmpl, **values_dict )
 
 
+
+# conn = sqlite3.connect('/companydata')
+# cursor = conn.cursor()
+# cursor.execute('SELECT name, age, title, department, paygrade FROM employees')
+# for emp in map(EmployeeRecord._make, cursor.fetchall()):
+#     print emp.name, emp.title
+
+RECORDS_BACKENDS = [ "json", "csv", "pickle", "sqlite" ]
 class RecordsMixin( Mixin ):
     args = [
-        { "name": "records_type", "type": "select", 
-            "options": [ "json", "csv", "pickle" ], 
-            "default": "json" }
+        _( "records_backend|rb", type="select", default="json", 
+            options=RECORDS_BACKENDS, metavar="BACKEND" ),
+        _( "records_backend_parallel|rbp", type="select", default="json", 
+            options=RECORDS_BACKENDS, metavar="BACKEND" )
     ]
     def _init_records( self, input_file, **kwargs ):
         if not hasattr( self, "RecordsClass" ):
             raise Exception("A RecordsMixin needs a 'RecordsClass' attribute")
-        self.records = None
+        self.records = tuple()
         if input_file:
             stem = utils.path.stem( input_file ) 
         else:
             stem = "%s_records" % self.name
-        out_var = "records_%s" % self.records_type
+        out_var = "records_%s" % self.records_backend
         self.__dict__[ out_var ] = self.outpath( 
-            "%s.%s" % ( stem, self.records_type ) 
+            "%s.%s" % ( stem, self.records_backend ) 
         )
-        self.output_files.append( self.__dict__[ out_var ] )
+        out_var_p = "records_%s" % self.records_backend_parallel
+        self.__dict__[ out_var_p ] = self.outpath( 
+            "%s.%s" % ( stem, self.records_backend_parallel ) 
+        )
+        self.output_files + [ 
+            self.__dict__[ out_var ], self.__dict__[ out_var_p ] 
+        ]
         if self.fileargs:
             self.read()
     def write_csv( self ):
@@ -288,8 +315,24 @@ class RecordsMixin( Mixin ):
     def write_pickle( self ):
         with open( self.records_pickle, "w" ) as fp:
             pickle.dump( self.records, fp )
+    def write_sqlite( self ):
+        utils.path.remove( self.records_sqlite )
+        db = self.records_sqlite
+        cls = self.RecordsClass
+        qn = ",".join( "?" * len( cls._fields ) )
+        with sqlite3.connect( db, isolation_level="EXCLUSIVE" ) as conn:
+            c = conn.cursor()
+            c.execute( 
+                'CREATE TABLE %s (%s)' % ( 
+                    cls.__name__, ",".join( cls._fields ) 
+                ),
+            )
+            c.executemany( 
+                'INSERT INTO %s VALUES (%s)' % ( cls.__name__, qn ),
+                itertools.imap( tuple, self.records ) 
+            )
     def write( self ):
-        getattr( self, "write_%s" % self.records_type )()
+        getattr( self, "write_%s" % self.records_backend )()
     def read_csv( self ):
         with open( self.records_csv, "r" ) as fp:
             self.records = map( 
@@ -308,13 +351,20 @@ class RecordsMixin( Mixin ):
     def read_pickle( self ):
         with open( self.records_pickle, "r" ) as fp:
             self.records = pickle.load( fp )
+    def read_sqlite( self ):
+        db = self.records_sqlite
+        with sqlite3.connect( db, isolation_level="EXCLUSIVE" ) as conn:
+            conn.row_factory = self.RecordsClass
+            c = conn.cursor()
+            c.execute( 'SELECT * FROM ?', ( self.RecordsClass.__name__, ) )
+            self.records = c.fetchall()
     def read( self ):
-        getattr( self, "read_%s" % self.records_type )()
+        getattr( self, "read_%s" % self.records_backend )()
     def _parallel_results( self, tool_list ):
         self.records = list(itertools.chain.from_iterable(
             map( operator.attrgetter( "records" ), tool_list )
         ))
-        self.write()
+        getattr( self, "write_%s" % self.records_backend_parallel )()
 
 
 
@@ -323,17 +373,18 @@ def call( tool ):
         return tool()
     except Exception as e:
         LOG.error( "[%s] %s" % ( tool.id, e ) )
+        if tool.debug:
+            import traceback
+            traceback.print_exc()
     return tool
 
 
 class ParallelMixin( Mixin ):
     args = [
-        { "name": "parallel", "type": "select", "default": False,
-          "options": [ "directory", "pdb_archive", "list" ] },
-        { "name": "sample", "type": "slider", "range": [0, 100], 
-            "default": None },
-        { "name": "sample_start", "type": "slider", "range": [0, 100], 
-            "default": 0 }
+        _( "parallel", type="select", default=False,
+            options=[ "directory", "pdb_archive", "list" ] ),
+        _( "sample", type="slider", range=[0, 100], default=None ),
+        _( "sample_start", type="slider", range=[0, 100], default=0 )
     ]
     def _init_parallel( self, file_input, parallel=None, 
                         sample=None, sample_start=0, **kwargs ):
@@ -377,11 +428,11 @@ class ParallelMixin( Mixin ):
         for input_file in file_list:
             stem = utils.path.stem( input_file )
             output_dir = self.outpath( os.path.join( "parallel", stem ) )
-            tool_list.append( self.ParallelClass(
-                input_file, **copy_dict( 
-                    self.tool_kwargs, output_dir=output_dir,
-                )
+            tool = self.ParallelClass( input_file, **copy_dict( 
+                self.tool_kwargs, output_dir=output_dir,
             ))
+            tool.id = stem
+            tool_list.append( tool )
         self.tool_list = tool_list
     def _func_parallel( self, nworkers=None ):
         # !important - allows one to abort via CTRL-C
@@ -425,9 +476,15 @@ class Tool( object ):
                     stem=utils.path.stem( value )
                 )
 
+        # hidden kwargs
+        self.pre_exec = kwargs.get("pre_exec", True)
+        self.post_exec = kwargs.get("post_exec", True)
+
+        # general
         self.timeout = kwargs.get("timeout", None)
         self.fileargs = kwargs.get("fileargs", False)
         self.verbose = kwargs.get("verbose", False)
+        self.debug = kwargs.get("debug", False)
         self.output_dir = os.path.abspath( 
             kwargs.get("output_dir", ".") 
         ) + os.sep
@@ -472,9 +529,9 @@ class Tool( object ):
         raise "do not know how to prep output"
     def __run( self ):
         with working_directory( self.output_dir ):
-            self._pre_exec()
+            if self.pre_exec: self._pre_exec()
             self._run()
-            self._post_exec()
+            if self.post_exec: self._post_exec()
     def __call__( self ):
         self.__run()
         return self
@@ -519,6 +576,10 @@ class Tool( object ):
         if not os.path.exists( subdir ):
             os.makedirs( subdir )
         return subdir
+    def datapath( self, file_name ):
+        if not hasattr( self, "tmpl_dir" ):
+            raise "No data path available."
+        return os.path.join( self.tmpl_dir, file_name )
 
 
 

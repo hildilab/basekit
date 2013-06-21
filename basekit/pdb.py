@@ -12,14 +12,13 @@ np.seterr( all="raise" )
 
 import utils.path
 import utils.numpdb as numpdb
-from utils.tool import _, PyTool, ProviMixin
+from utils import try_int
+from utils.tool import _, _dir_init, PyTool, ProviMixin
 from utils.timer import Timer
 from utils.db import get_pdb_files
 
 
-DIR = os.path.split( os.path.abspath(__file__) )[0]
-PARENT_DIR = os.path.split( DIR )[0]
-TMPL_DIR = os.path.join( PARENT_DIR, "data", "pdb" )
+DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "pdb" )
 
 
 
@@ -149,8 +148,9 @@ def pdb_split( pdb_file, output_dir, backbone_only=False,
                             continue
                         if backbone_only and line[12:16] not in backbone:
                             continue
-                        if resno_ignore and int( line[22:26] ) in resno_ignore:
-                            continue
+                        if resno_ignore:
+                            if try_int( line[22:26] ) in resno_ignore:
+                                continue
                         fp_out.write( line )
                         
 class PdbSplit( PyTool ):

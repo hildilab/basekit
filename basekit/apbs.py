@@ -7,8 +7,9 @@ import os
 
 import utils.path
 from utils import copy_dict
-from utils.tool import CmdTool
+from utils.tool import _, _dir_init, CmdTool
 
+DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "apbs" )
 
 PDB2PQR_CMD = "pdb2pqr.py"
 APBS_CMD = "apbs"
@@ -19,12 +20,12 @@ APBS_CMD = "apbs"
 
 class Pdb2pqr( CmdTool ):
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+        _( "pdb_file", type="file", ext="pdb" )
     ]
     out = [
-        { "name": "pqr_file", "file": "{pdb_file.stem}.pqr" },
-        { "name": "apbsin_file", "file": "{pdb_file.stem}.in" },
-        { "name": "apbsin_pickle", "file": "{pdb_file.stem}-input.p" }
+        _( "pqr_file", file="{pdb_file.stem}.pqr" ),
+        _( "apbsin_file", file="{pdb_file.stem}.in" ),
+        _( "apbsin_pickle", file="{pdb_file.stem}-input.p" )
     ]
     def _init( self, *args, **kwargs ):
         self.cmd = [ 
@@ -38,11 +39,11 @@ class Pdb2pqr( CmdTool ):
 
 class Apbs( CmdTool ):
     args = [
-        { "name": "pdb_file", "type": "file", "ext": "pdb" }
+        _( "pdb_file", type="file", ext="pdb" )
     ]
     out = [
-        { "name": "dx_file", "file": "pot-PE0.dx" },
-        { "name": "mc_file", "file": "io.mc" }
+        _( "dx_file", file="pot-PE0.dx" ),
+        _( "mc_file", file="io.mc" )
     ]
     def _init( self, *args, **kwargs ):
         self.pdb2pqr = Pdb2pqr( 

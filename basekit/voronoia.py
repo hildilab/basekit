@@ -8,15 +8,12 @@ import json
 
 import utils.path
 from utils import copy_dict
-from utils.tool import _, CmdTool, ProviMixin
+from utils.tool import _, _dir_init, CmdTool, ProviMixin
 
 import provi_prep as provi
 
 
-
-DIR = os.path.split( os.path.abspath(__file__) )[0]
-PARENT_DIR = os.path.split( DIR )[0]
-TMPL_DIR = os.path.join( PARENT_DIR, "data", "voronoia" )
+DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "voronoia" )
 VOLUME_CMD = os.path.join( TMPL_DIR, "get_volume.exe" )
 
 

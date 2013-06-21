@@ -1,7 +1,8 @@
 
+NumPdb
+======
 
-NUMPDB
-* implement handling of hetero atoms
+* implement handling of *hetero* atoms
 * handling of RNA/DNA aka nukleotides
 * option to flag (or only parse) complete residues 
 		(w.r.t. sidechain/ backbone atoms)
@@ -18,7 +19,11 @@ NUMPDB
 	=> calc configuration: 1 as first config, more could be binary coded
 
 
-PROBLEMATIC PDBs (first 90k)
+PROBLEMATIC PDBs
+----------------
+
+ (first 90k)
+
 => sstruc.py pdb ~/projects/pdb_structures/pdb/ -o sstruc_test/ --parallel pdb_archive --sample 10000 --sample_start 40000
 * OK sstruc only in altloc=B: 3aeq, 1c4o, 3cyp, 3e4c
 * OK sstruc only in altloc=B,C: 3arc, 4db5, 4dwo
@@ -35,23 +40,57 @@ PROBLEMATIC PDBs (first 90k)
 * ??? 2: 3vr2, 3vr3, 3vr4, 3vr5, 3vr6, 2v93
 
 
+UFUNC
+-----
+
+* http://docs.scipy.org/doc/numpy-dev/user/c-info.ufunc-tutorial.html
+
+
+ALIGN
+-----
+
+* https://github.com/brentp/align/blob/master/align/align.py
+
+
+GEOM
+----
+
+* rename math to geom
+
+
+HBOND
+-----
+
+* https://code.google.com/p/mdanalysis/source/browse/package/MDAnalysis/analysis/hbonds.py
+
+
+
 TOOL
+====
+
 * PyTool timeout: 
 	http://stackoverflow.com/questions/492519/timeout-on-a-python-function-call/494273#494273
 	http://stackoverflow.com/questions/2281850/timeout-function-if-it-takes-too-long-to-finish
 
 
-UFUNC
-* http://docs.scipy.org/doc/numpy-dev/user/c-info.ufunc-tutorial.html
-
+MODULE
+======
 
 SCRIPTS
+-------
+
 * http://reinout.vanrees.org/weblog/2010/01/06/zest-releaser-entry-points.html
 
 
-ALIGN
-* https://github.com/brentp/align/blob/master/align/align.py
+DOCU
+----
+
+* http://sphinx-doc.org/tutorial.html
+* http://sphinx-doc.org/rest.html#rst-primer
 
 
-GEOM
-* rename math to geom
+UNITTEST
+--------
+
+* http://docs.python-guide.org/en/latest/writing/tests.html
+* http://docs.python.org/2/library/unittest.html

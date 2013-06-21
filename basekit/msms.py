@@ -10,8 +10,9 @@ import os
 
 import utils.path
 from utils import copy_dict
-from utils.tool import _, CmdTool
+from utils.tool import _, _dir_init, CmdTool
 
+DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "msms" )
 
 MSMS_CMD = "msms"
 BABEL_CMD = "babel"

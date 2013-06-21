@@ -7,15 +7,13 @@ import itertools
 from string import Template
 
 from utils import copy_dict
-from utils.tool import PyTool, CmdTool, ScriptMixin, ProviMixin
+from utils.tool import _, _dir_init, PyTool, CmdTool, ScriptMixin, ProviMixin
 from utils.numpdb import NumPdb, numsele
 
 from pdb import PdbSplit
 
 
-DIR = os.path.split( os.path.abspath(__file__) )[0]
-PARENT_DIR = os.path.split( DIR )[0]
-TMPL_DIR = os.path.join( PARENT_DIR, "data", "spider" )
+DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "spider" )
 SPIDER_CMD = "spider" 
 
 
@@ -24,7 +22,7 @@ SPIDER_CMD = "spider"
 
 class Spider( CmdTool, ScriptMixin ):
     args = [
-        { "name": "script_file", "type": "file", "ext": "spi" }
+        _( "script_file", type="file", ext="spi" )
     ]
     script_tmpl = None
     tmpl_dir = TMPL_DIR
@@ -45,10 +43,10 @@ class Spider( CmdTool, ScriptMixin ):
 class SpiderConvert( Spider ):
     """Simple tool that converts mrc files to the spider format"""
     args = [
-        { "name": "mrc_file", "type": "file", "ext": "mrc" }
+        _( "mrc_file", type="file", ext="mrc" )
     ]
     out = [
-        { "name": "map_file", "file": "mapupload.cpv" }
+        _( "map_file", file="mapupload.cpv" )
     ]
     script_tmpl = "convert.spi"
     def _init( self, *args, **kwargs ):
@@ -62,15 +60,14 @@ class SpiderConvert( Spider ):
 
 class SpiderDeleteFilledDensities( Spider ):
     args = [
-        { "name": "map_file", "type": "file", "ext": "cpv" },
-        { "name": "pdb_file", "type": "file", "ext": "pdb" },
-        { "name": "pixelsize", "type": "slider", "range": [1, 10], 
-            "fixed": True },
-        { "name": "resolution", "type": "slider", "range": [1, 10], 
-            "fixed": True, "help": "of the map_file" }
+        _( "map_file", type="file", ext="cpv" ),
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "pixelsize", type="slider", range=[1, 10], fixed=True ),
+        _( "resolution", type="slider", range=[1, 10], 
+            fixed=True, help="of the map_file" )
     ]
     out = [
-        { "name": "empty_map_file", "file": "usermap.cpv" }
+        _( "empty_map_file", file="usermap.cpv" )
     ]
     script_tmpl = "delete_filled_densities.spi"
     def _init( self, *args, **kwargs ):
@@ -88,20 +85,19 @@ class SpiderDeleteFilledDensities( Spider ):
 
 class SpiderBox( Spider ):
     args = [
-        { "name": "map_file", "type": "file", "ext": "cpv" },
-        { "name": "pdb_file", "type": "file", "ext": "pdb" },
-        { "name": "res1", "type": "sele", "help": "resno:chain, i.e. 10:A" },
-        { "name": "res2", "type": "sele" },
-        { "name": "length", "type": "slider", "range": [1, 30] },
-        { "name": "pixelsize", "type": "slider", "range": [1, 10], 
-            "fixed": True },
-        { "name": "resolution", "type": "slider", "range": [1, 10], 
-            "fixed": True, "help": "of the map_file" }
+        _( "map_file", type="file", ext="cpv" ),
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "res1", type="sele", help="resno:chain, i.e. 10:A" ),
+        _( "res2", type="sele" ),
+        _( "length", type="slider", range=[1, 30] ),
+        _( "pixelsize", type="slider", range=[1, 10], fixed=True ),
+        _( "resolution", type="slider", range=[1, 10], 
+            fixed=True, help="of the map_file" )
     ]
     out = [
-        { "name": "var_file", "file": "variables.cpv" },
-        { "name": "box_file", "file": "ergebnisse.cpv" },
-        { "name": "box_map_file", "file": "boxil.cpv" }
+        _( "var_file", file="variables.cpv" ),
+        _( "box_file", file="ergebnisse.cpv" ),
+        _( "box_map_file", file="boxil.cpv" )
     ]
     script_tmpl = "box.spi"
     def _init( self, *args, **kwargs ):
@@ -133,12 +129,12 @@ class SpiderBox( Spider ):
 
 class SpiderReConvert( Spider ):
     args = [
-        { "name": "box_file", "type": "file", "ext": "cpv" },
-        { "name": "map_file", "type": "file", "ext": "cpv" },
-        { "name": "box_map_file", "type": "file", "ext": "cpv" },
+        _( "box_file", type="file", ext="cpv" ),
+        _( "map_file", type="file", ext="cpv" ),
+        _( "box_map_file", type="file", ext="cpv" )
     ]
     out = [
-        { "name": "mrc_file", "file": "reconvert.mrc" }
+        _( "mrc_file", file="reconvert.mrc" )
     ]
     script_tmpl = "recon.spi"
     def _init( self, *args, **kwargs ):
@@ -153,17 +149,16 @@ class SpiderReConvert( Spider ):
 
 class SpiderCrosscorrelation( Spider ):
     args = [
-        { "name": "map_file", "type": "file", "ext": "cpv" },
-        { "name": "box_map_file", "type": "file", "ext": "cpv" },
-        { "name": "box_file", "type": "file", "ext": "cpv" },
-        { "name": "loop_file", "type": "file", "ext": "pdb" },
-        { "name": "max_loops", "type": "slider", "range": [0, 200], 
-            "default": 100 }
+        _( "map_file", type="file", ext="cpv" ),
+        _( "box_map_file", type="file", ext="cpv" ),
+        _( "box_file", type="file", ext="cpv" ),
+        _( "loop_file", type="file", ext="pdb" ),
+        _( "max_loops", type="slider", range=[0, 200], default=100 )
     ]
     out = [
-        { "name": "loop_dir", "dir": "loops" },
-        { "name": "crosscorrel_file", "file": "crosscorrelation.cpv" },
-        { "name": "crosscorrel_json", "file": "crosscorrelation.json" }
+        _( "loop_dir", dir="loops" ),
+        _( "crosscorrel_file", file="crosscorrelation.cpv" ),
+        _( "crosscorrel_json", file="crosscorrelation.json" )
     ]
     script_tmpl = "crosscorrelation.spi"
     def _init( self, *args, **kwargs ):
@@ -202,21 +197,18 @@ class SpiderCrosscorrelation( Spider ):
 
 class LoopCrosscorrel( PyTool ):
     args = [
-        { "name": "mrc_file", "type": "file", "ext": "mrc" },
-        { "name": "pdb_file", "type": "file", "ext": "pdb" },
-        { "name": "loop_file", "type": "file", "ext": "pdb" },
-        { "name": "res1", "type": "sele" },
-        { "name": "res2", "type": "sele" },
-        { "name": "length", "type": "slider", "range": [1, 30] },
-        { "name": "pixelsize", "type": "slider", "range": [1, 10], 
-            "fixed": True },
-        { "name": "resolution", "type": "slider", "range": [1, 10], 
-            "fixed": True },
-        { "name": "max_loops", "type": "slider", "range": [0, 200], 
-            "default": 100 }
+        _( "mrc_file", type="file", ext="mrc" ),
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "loop_file", type="file", ext="pdb" ),
+        _( "res1", type="sele" ),
+        _( "res2", type="sele" ),
+        _( "length", type="slider", range=[1, 30] ),
+        _( "pixelsize", type="slider", range=[1, 10], fixed=True ),
+        _( "resolution", type="slider", range=[1, 10], fixed=True ),
+        _( "max_loops", type="slider", range=[0, 200], default=100 )
     ]
     out = [
-        { "name": "cropped_pdb", "file": "cropped.pdb" }
+        _( "cropped_pdb", file="cropped.pdb" )
     ]
     tmpl_dir = TMPL_DIR
     def _init( self, *args, **kwargs ):
