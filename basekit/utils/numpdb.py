@@ -16,6 +16,7 @@ from basekit.utils import (
     try_int, get_index, copy_dict, iter_window, iter_stride
 )
 from math import dihedral, vec_dihedral, mag, axis, Superposition, rmsd
+from bio import AA1, AA3
 
 
 logging.basicConfig()
@@ -76,29 +77,6 @@ except:
     LOG.warning( 'Aminoacid list could not be loaded.' )
 
 
-AA1 = {
-    'HIS': 'H',
-    'ARG': 'R',
-    'LYS': 'K',
-    'ILE': 'I',
-    'PHE': 'F',
-    'LEU': 'L',
-    'TRP': 'W',
-    'ALA': 'A',
-    'MET': 'M',
-    'PRO': 'P',
-    'CYS': 'C',
-    'ASN': 'N',
-    'VAL': 'V',
-    'GLY': 'G',
-    'SER': 'S',
-    'GLN': 'Q',
-    'TYR': 'Y',
-    'ASP': 'D',
-    'GLU': 'E',
-    'THR': 'T'
-}
-AA3 = dict((v,k) for k, v in AA1.iteritems())
 
 ATOMS = { 
     "CA": " CA ",

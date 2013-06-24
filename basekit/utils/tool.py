@@ -221,7 +221,6 @@ class ToolMetaclass( type ):
                 self, cls_func
             )
 
-        # TODO remove
         if not "no_output" in dct:
             cls.no_output = False
 
