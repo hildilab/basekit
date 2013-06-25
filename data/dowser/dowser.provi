@@ -6,21 +6,21 @@
         "filename":  "${wat_file}",
         "params": {
             "load_as": "append",
-            "style": "color lime; cpk 30%; wireframe 0.3;"
+            "style": "cpk 60%; wireframe 0.3; color {_O} property temperature;"
         }
     },
     { 
         "filename":  "${watall_file}",
         "params": {
             "load_as": "append",
-            "style": "color skyblue; cpk 30%; wireframe 0.3;"
+            "style": "color skyblue; cpk 30%; wireframe 0.1;"
         }
     },
     { 
         "filename":  "${intsurf_file}",
         "params": {
             "load_as": "append",
-            "style": "color tomato; cpk 5%; connect (selected) (selected) DELETE;"
+            "style": "color tomato; stars 0.4; cpk 7%; connect (selected) (selected) DELETE;"
         }
     } 
 ]
