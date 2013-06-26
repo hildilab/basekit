@@ -1,0 +1,25 @@
+#! /usr/bin/env python
+
+"""basekit scripts"""
+
+import textwrap
+
+script_list = [
+	"apbs.py", "dowser.py", "dssp.py", "jmol.py", "linker.py", 
+	"motif.py", "msms.py", "pdb.py", "spider.py", "sstruc.py",
+	"voronoia.py"
+]
+
+script_text = "\n".join( textwrap.wrap(
+	", ".join( script_list ), 
+	initial_indent="\t", 
+	subsequent_indent="\t" 
+))
+
+def main():
+    print "\nAvailable basekit scripts: \n%s\n" % script_text
+
+
+if __name__ == "__main__":
+    main()
+

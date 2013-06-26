@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 from __future__ import with_statement
 from __future__ import division
 
@@ -223,7 +221,6 @@ class ToolMetaclass( type ):
                 self, cls_func
             )
 
-        # TODO remove
         if not "no_output" in dct:
             cls.no_output = False
 
@@ -265,19 +262,97 @@ class ProviMixin( TmplMixin ):
 
 
 
-# conn = sqlite3.connect('/companydata')
-# cursor = conn.cursor()
-# cursor.execute('SELECT name, age, title, department, paygrade FROM employees')
-# for emp in map(EmployeeRecord._make, cursor.fetchall()):
-#     print emp.name, emp.title
+BACKEND_REGISTER = {}
+class BackendMetaclass( type ):
+    def __init__(cls, name, bases, dct):
+        BACKEND_REGISTER[ cls.name ] = cls
 
-RECORDS_BACKENDS = [ "json", "csv", "pickle", "sqlite" ]
+class RecordsBackend( object ):
+    __metaclass__ = BackendMetaclass
+    name = "dat"
+    def __init__( self, file_name, cls ):
+        self.file_name = file_name
+        self.cls = cls
+    def write( self, records ):
+        pass
+    def read( self ):
+        pass 
+
+class CsvBackend( RecordsBackend ):
+    name = "csv"
+    def write( self, records ):
+        with open( self.file_name, "w" ) as fp:
+            cw = csv.writer( fp, delimiter=',')
+            for r in records:
+                cw.writerow( r )
+    def read( self ):
+        with open( self.file_name, "r" ) as fp:
+            return map( 
+                self.cls._make, csv.reader( fp, delimiter=',') 
+            ) 
+
+class JsonBackend( RecordsBackend ):
+    name = "json"
+    def write( self, records ):
+        records_list = map( 
+            operator.methodcaller( "_asdict" ), records 
+        )
+        with open( self.file_name, "w" ) as fp:
+            json.dump( records_list, fp, indent=4 )
+    def read( self ):
+        with open( self.file_name, "r" ) as fp:
+            records_list = json.load( 
+                fp, object_pairs_hook=collections.OrderedDict
+            )
+        return map( 
+            lambda x: self.cls._make( x.itervalues() ), 
+            records_list 
+        ) 
+
+class PickleBackend( RecordsBackend ):
+    name = "pickle"
+    def write( self, records ):
+        with open( self.file_name, "w" ) as fp:
+            pickle.dump( records, fp )
+    def read( self ):
+        with open( self.file_name, "r" ) as fp:
+            return pickle.load( fp ) 
+
+class SqliteBackend( RecordsBackend ):
+    name = "sqlite"
+    def write( self, records ):
+        utils.path.remove( self.file_name )
+        db = self.file_name
+        qn = ",".join( "?" * len( self.cls._fields ) )
+        with sqlite3.connect( db, isolation_level="EXCLUSIVE" ) as conn:
+            c = conn.cursor()
+            c.execute( 
+                'CREATE TABLE %s (%s)' % ( 
+                    self.cls.__name__, ",".join( self.cls._fields ) 
+                ),
+            )
+            c.executemany( 
+                'INSERT INTO %s VALUES (%s)' % ( self.cls.__name__, qn ),
+                itertools.imap( tuple, records ) 
+            )
+    def read( self ):
+        db = self.file_name
+        with sqlite3.connect( db, isolation_level="EXCLUSIVE" ) as conn:
+            conn.row_factory = self.cls
+            c = conn.cursor()
+            c.execute( 'SELECT * FROM ?', ( self.cls.__name__, ) )
+            return c.fetchall()
+
+def records_backend( backend, file_name, records_cls ):
+    backend_cls = BACKEND_REGISTER[ backend ]
+    return backend_cls( file_name, records_cls )
+
 class RecordsMixin( Mixin ):
     args = [
-        _( "records_backend|rb", type="select", default="json", 
-            options=RECORDS_BACKENDS, metavar="BACKEND" ),
-        _( "records_backend_parallel|rbp", type="select", default="json", 
-            options=RECORDS_BACKENDS, metavar="BACKEND" )
+        _( "backend|rb", type="select", default="json", 
+            options=BACKEND_REGISTER.keys(), metavar="B" ),
+        _( "backend_parallel|rbp", type="select", default="json", 
+            options=BACKEND_REGISTER.keys(), metavar="B" )
     ]
     def _init_records( self, input_file, **kwargs ):
         if not hasattr( self, "RecordsClass" ):
@@ -287,84 +362,28 @@ class RecordsMixin( Mixin ):
             stem = utils.path.stem( input_file ) 
         else:
             stem = "%s_records" % self.name
-        out_var = "records_%s" % self.records_backend
-        self.__dict__[ out_var ] = self.outpath( 
-            "%s.%s" % ( stem, self.records_backend ) 
-        )
-        out_var_p = "records_%s" % self.records_backend_parallel
-        self.__dict__[ out_var_p ] = self.outpath( 
-            "%s.%s" % ( stem, self.records_backend_parallel ) 
-        )
-        self.output_files + [ 
-            self.__dict__[ out_var ], self.__dict__[ out_var_p ] 
-        ]
+        self.backend_obj = self._backend( stem, self.backend )
+        self.backend_obj_p = self._backend( stem, self.backend_parallel )
         if self.fileargs:
             self.read()
-    def write_csv( self ):
-        with open( self.records_csv, "w" ) as fp:
-            cw = csv.writer( fp, delimiter=',')
-            for r in self.records:
-                cw.writerow( r )
-    def write_json( self ):
-        records_list = map( 
-            operator.methodcaller( "_asdict" ), 
-            self.records 
+    def _backend( self, stem, backend ):
+        backend_cls = BACKEND_REGISTER[ backend ]
+        file_name = os.path.join( 
+            self.output_dir, "%s.%s" % ( stem, backend_cls.name )
         )
-        with open( self.records_json, "w" ) as fp:
-            json.dump( records_list, fp, indent=4 )
-    def write_pickle( self ):
-        with open( self.records_pickle, "w" ) as fp:
-            pickle.dump( self.records, fp )
-    def write_sqlite( self ):
-        utils.path.remove( self.records_sqlite )
-        db = self.records_sqlite
-        cls = self.RecordsClass
-        qn = ",".join( "?" * len( cls._fields ) )
-        with sqlite3.connect( db, isolation_level="EXCLUSIVE" ) as conn:
-            c = conn.cursor()
-            c.execute( 
-                'CREATE TABLE %s (%s)' % ( 
-                    cls.__name__, ",".join( cls._fields ) 
-                ),
-            )
-            c.executemany( 
-                'INSERT INTO %s VALUES (%s)' % ( cls.__name__, qn ),
-                itertools.imap( tuple, self.records ) 
-            )
+        return backend_cls( file_name, self.RecordsClass )
     def write( self ):
-        getattr( self, "write_%s" % self.records_backend )()
-    def read_csv( self ):
-        with open( self.records_csv, "r" ) as fp:
-            self.records = map( 
-                self.RecordsClass._make, 
-                csv.reader( fp, delimiter=',') 
-            )
-    def read_json( self ):
-        with open( self.records_json, "r" ) as fp:
-            records_list = json.load( 
-                fp, object_pairs_hook=collections.OrderedDict
-            )
-        self.records = map( 
-            lambda x: self.RecordsClass._make( x.itervalues() ), 
-            records_list 
-        )
-    def read_pickle( self ):
-        with open( self.records_pickle, "r" ) as fp:
-            self.records = pickle.load( fp )
-    def read_sqlite( self ):
-        db = self.records_sqlite
-        with sqlite3.connect( db, isolation_level="EXCLUSIVE" ) as conn:
-            conn.row_factory = self.RecordsClass
-            c = conn.cursor()
-            c.execute( 'SELECT * FROM ?', ( self.RecordsClass.__name__, ) )
-            self.records = c.fetchall()
+        self.backend_obj.write( self.records )
     def read( self ):
-        getattr( self, "read_%s" % self.records_backend )()
+        try:
+            self.records = self.backend_obj.read()
+        except Exception as e:
+            print e
     def _parallel_results( self, tool_list ):
         self.records = list(itertools.chain.from_iterable(
             map( operator.attrgetter( "records" ), tool_list )
         ))
-        getattr( self, "write_%s" % self.records_backend_parallel )()
+        self.backend_obj_p.write( self.records )
 
 
 
@@ -381,30 +400,28 @@ def call( tool ):
 
 class ParallelMixin( Mixin ):
     args = [
-        _( "parallel", type="select", default=False,
+        _( "parallel|p", type="select", default=False,
             options=[ "directory", "pdb_archive", "list" ] ),
-        _( "sample", type="slider", range=[0, 100], default=None ),
-        _( "sample_start", type="slider", range=[0, 100], default=0 )
+        _( "interval|i", type="int", default=[ 0, None ], 
+            metavar=("BEG", "END"), nargs=2 ),
     ]
-    def _init_parallel( self, file_input, parallel=None, 
-                        sample=None, sample_start=0, **kwargs ):
+    def _init_parallel( self, file_input, **kwargs ):
         if not hasattr( self, "_parallel_results" ):
-            raise Exception(
-                "Using ParallelMixin requires a '_parallel_results' method."
-            )
-        if parallel in [ "pdb_archive", "directory", "dir" ]:
+            raise Exception( "'_parallel_results' method required" )
+        if self.parallel in [ "pdb_archive", "directory", "dir" ]:
             self.file_input = self.abspath( file_input )
-        elif parallel in [ "list" ]:
+        elif self.parallel in [ "list" ]:
             self.file_input = map(
                 self.abspath,
                 re.split( "[\s,]+", file_input.strip() )
             )
         else:
             self.file_input = file_input
-        self.parallel = parallel
-        self.sample_start = sample_start or 0
-        self.sample_end = None if not sample else self.sample_start+sample
         self.tool_kwargs = kwargs
+        if self.fileargs and self.parallel:
+            self.tool_kwargs[ "fileargs" ] = True
+            self._make_tool_list()
+            self._parallel_results( self.tool_list )
     def _make_tool_list( self ):
         if self.parallel=="pdb_archive":
             file_list = get_pdb_files( 
@@ -421,7 +438,7 @@ class ParallelMixin( Mixin ):
                 "unknown value '%s' for 'parallel'" % self.parallel 
             )
         file_list = itertools.islice( 
-            file_list, self.sample_start, self.sample_end
+            file_list, self.interval[0], self.interval[1]
         )
         tool_list = []
         self.tool_kwargs["run"] = False
@@ -429,7 +446,8 @@ class ParallelMixin( Mixin ):
             stem = utils.path.stem( input_file )
             output_dir = self.outpath( os.path.join( "parallel", stem ) )
             tool = self.ParallelClass( input_file, **copy_dict( 
-                self.tool_kwargs, output_dir=output_dir,
+                self.tool_kwargs, parallel=False,
+                output_dir=output_dir,
             ))
             tool.id = stem
             tool_list.append( tool )
