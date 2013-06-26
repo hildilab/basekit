@@ -3,6 +3,8 @@
     MIT license
 """
 
+import os
+
 DIR = os.path.split( os.path.abspath(__file__) )[0]
 PARENT_DIR = os.path.split( DIR )[0]
 BASEKIT_DIR = os.path.split( PARENT_DIR )[0]
