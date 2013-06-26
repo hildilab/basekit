@@ -24,7 +24,8 @@ from utils import (
 from utils.timer import Timer
 from utils.db import get_pdb_files, create_table
 from utils.tool import (
-    _, _dir_init, PyTool, DbTool, RecordsMixin, ParallelMixin
+    _, _dir_init, PyTool, DbTool, RecordsMixin, ParallelMixin,
+    ProviMixin, SqliteBackend
 )
 
 import utils.numpdb as numpdb
@@ -66,10 +67,6 @@ class BuildSstrucDbRecords( object ):
         idx_end = self.npdb.index( 
             chain=ss.chain2, resno=ss.resno2, interval=True
         )
-        # needed anymore?
-        if idx_beg>idx_end:
-            print "FOOBAR"
-            idx_beg, idx_end = idx_end, idx_beg
         return self.npdb.slice( idx_beg[0], idx_end[-1]+1 ).copy( 
             atomname="CA" 
         )
@@ -160,17 +157,110 @@ class Sstruc( PyTool, RecordsMixin, ParallelMixin ):
         self.write()
 
 
+class SstrucInfo( PyTool ):
+    args = [
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "sele", type="sele" )
+    ]
+    def _init( self, *args, **kwargs ):
+        pass
+    def func( self ):
+        npdb = numpdb.NumPdb( self.pdb_file )
+        self.sele[ "atomname" ] = "CA"
+        numa = npdb.copy( **self.sele )
+        sstruc_order = []
+        for k, g in itertools.groupby( numa['sstruc'] ):
+            n = len( list(g) )
+            sstruc_order.append( ( k, n ) )
+            print k, n
 
-class SstrucDb( DbTool ):
-    pass
 
+class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
+    args = [
+        _( "sstruc_db", type="file", ext="sqlite" ),
+        _( "pdb_archive", type="dir", default=None ),
+        _( "count", type="checkbox", default=False ),
+        _( "limit", type="int", default=None ),
+        _( "type", type="str", default="H", help="H or E" ),
+        _( "subtype", type="int", default=None, help="H: ; E: " ),
+        _( "length", type="int", default=None, nargs=2, help="" ),
+        _( "prev_type", type="str", default=None, help="H or E" ),
+        _( "prev_dist", type="int", default=None, nargs=2, help="" ),
+        _( "next_type", type="str", default=None, help="H or E" ),
+        _( "next_dist", type="int", default=None, nargs=2, help="" ),
+        _( "next_dist", type="int", default=None, nargs=2, help="" ),
+        _( "hbond_next_prev", type="checkbox", default=False ),
+    ]
+    out = [
+        _( "query_file", file="query.sql" ),
+        _( "provi_dir", dir="provi" )
+    ]
+    tmpl_dir = TMPL_DIR
+    provi_tmpl = "sstruc.provi"
+    RecordsClass = SstrucDbRecord
+    def _init( self, *args, **kwargs ):
+        self._init_records( None, **kwargs )
+    def func( self ):
+        db = SqliteBackend( self.sstruc_db, SstrucDbRecord )
+        where = []
+        types = { "H": 1, "E": 2 }
+        if self.type:
+            where.append( "type=%i" % types[ self.type ] )
+        if self.subtype:
+            where.append( "subtype=%i" % self.subtype )
+        if self.length:
+            where.append( 
+                "length BETWEEN %i AND %i" % tuple(self.length) 
+            )
+        if self.prev_type:
+            where.append( "prev_type=%i" % types[ self.prev_type ] )
+        if self.next_type:
+            where.append( "next_type=%i" % types[ self.next_type ] )
+        if self.prev_dist:
+            where.append( 
+                "prev_dist BETWEEN %i AND %i" % tuple( self.prev_dist )
+            )
+        if self.next_dist:
+            where.append( 
+                "next_dist BETWEEN %i AND %i" % tuple( self.next_dist ) 
+            )
+        if self.hbond_next_prev:
+            where.append( "hbond_next_prev=1" )
+        where = "\n\tAND ".join( where )
+        if self.count:
+            print "Count %i" % db.query( where=where, count=True )
+        else:
+            self.records = db.query( where=where, limit=self.limit )
+        with open( self.query_file, "w" ) as fp:
+            fp.write( db.q )
+        self.write()
+    def _post_exec( self ):
+        if self.count:
+            return
+        pdb_groups = []
+        it = itertools.groupby( 
+            self.records, operator.attrgetter('pdb_id') 
+        )
+        for pdb_id, records in it:
+            self. _make_provi( pdb_id, list(records) )
+    def _make_provi( self, pdb_id, records ):
+        pdb_file = os.path.join( 
+            self.pdb_archive, pdb_id[1:3], "%s.pdb" % pdb_id
+        )
+        script = []
+        for r in records:
+            s = "color { chain='%s' and %s-%s } tomato;" % ( 
+                r.chain1, r.resno1, r.resno2 
+            )
+            script.append( s )
+        self._make_provi_file(
+            output_dir=self.provi_dir,
+            prefix="%s_" % pdb_id,
+            pdb_file=os.path.relpath( pdb_file, self.provi_dir ),
+            script=" ".join( script )
+        )
 
-class SstrucFinder( PyTool ):
-    pass
-
-
-class SstrucPlot( PyTool ):
-    pass
+        
 
 
 
@@ -201,43 +291,8 @@ def sstruc2jmol( sstruc ):
     return ret
 
 
-def _sstruc_pdb( fpath ):
-    return get_sstruc_records( numpdb.NumPdb( fpath ) )
 
 
-def sstruc_pdb( pdb_files, nworkers=None ):
-    return do_parallel( _sstruc_pdb, pdb_files, nworkers )
-
-
-def create_sstruc_db( db_path, data, overwrite=False ):
-    schema = textwrap.dedent("""
-        CREATE TABLE sstruc (
-            pdb_id text, type int, subtype int, 
-            length int, chain1 text, resno1 int, chain2 text, resno2 int,
-            prev_type int, prev_dist int, next_type int, next_dist int,
-            cur_prev_hbond boolean, cur_next_hbond boolean, prev_next_hbond boolean,
-            cur_prev_angle real, cur_next_angle real, prev_next_angle real,
-            no int
-        )"""
-    )
-    name = "sstruc"
-
-    all_data = []
-    for pdb_path, sstruc_record in data:
-        if sstruc_record:
-            all_data += [ [pdb_path] + r for r in sstruc_record ]
-
-    return create_table( db_path, schema, name, all_data, overwrite=overwrite )
-
-
-
-def query_sstruc_db( db_path, query, func=None ):
-    with sqlite3.connect( db_path, isolation_level="EXCLUSIVE" ) as conn:
-        c = conn.cursor()
-        for row in c.execute( query ):
-            if func:
-                func( row )
-            
 def create_provi( output_dir, template, row ):
     pdb_path = row[0]
     sele = "{ chain='%s' and %s-%s }" % ( row[3], row[4], row[6] )
@@ -257,100 +312,3 @@ def create_provi( output_dir, template, row ):
     create_json( d, fpath, template )
 
 
-
-
-def main():
-
-    # create the parser
-    parser = argparse.ArgumentParser(
-        description = __doc__,
-    )
-    # add the arguments
-    parser.add_argument(
-        '-db_file', help='path to the db', type=str)
-    parser.add_argument(
-        '-create_db', help='create db', type=boolean)
-    parser.add_argument(
-        '-overwrite', help='overwrite existing table when creating db', type=boolean)
-    parser.add_argument(
-        '-pdb_path', help='path to the pdb files and directories', type=str)
-    parser.add_argument(
-        '-test_sample', help='how many?', type=int)
-    parser.add_argument(
-        '-query_file', help='path to a sql file', type=str)
-    parser.add_argument(
-        '-provi_tpl', help='path to a provi template', type=str)
-    parser.add_argument(
-        '-provi_out', help='path where the provi files should be written to', type=str)
-    parser.add_argument(
-        '-analyze', help='do some analysis', type=boolean)
-    parser.add_argument(
-        '-pdb', help='get sstruc record for a pdb file', type=str)
-    parser.add_argument(
-        '-dssp', help='parse dssp for a pdb file', type=str)
-
-    
-    # parse the command line
-    args = parser.parse_args()
-
-
-
-    if args.pdb_path:
-        pdb_files = get_pdb_files( args.pdb_path, pattern=".pdb" )
-        if args.test_sample:
-            pdb_files = pdb_files[0:args.test_sample]
-        print "%s pdb files" % len( pdb_files )
-
-
-    if args.create_db and args.db_file and args.pdb_path: 
-        with Timer("get sstruc pdb -> records"):
-            sstruc_records = sstruc_pdb( pdb_files )
-
-        # with Timer("struc records"):
-        #     sstruc_records = [ (x[0], get_sstruc_records(x[1])) for x in sstruc_npdb_list ]
-
-        with Timer("create sstruc db"):
-            create_sstruc_db( args.db_file, sstruc_records, overwrite=args.overwrite )
-
-
-    if args.query_file and args.db_file:
-        with open( args.query_file, "r" ) as fp:
-            query = fp.read()
-        if args.provi_tpl and args.provi_out:
-            if not os.path.exists( args.provi_out ):
-                os.makedirs( args.provi_out )
-            fn = functools.partial( create_provi, args.provi_out, args.provi_tpl )
-            query_sstruc_db( args.db_file, query, fn )
-
-
-    if args.analyze and args.pdb_path:
-        with Timer("pdb2numpy"):
-            for fpath in pdb_files:
-                #print fpath
-                npdb = numpdb.NumPdb( fpath )
-                for i, ss in enumerate( npdb.sstruc() ):
-                    # print i, ss[4]-ss[2]+1
-                    a = npdb.axis( chain=ss[1], atomname="CA", resno=[ ss[2], ss[4] ] )
-                    print "draw ID 'v%i' vector {%s} {%s};" % (
-                        i,
-                        "%0.2f %0.2f %0.2f" % tuple(a[0]),
-                        "%0.2f %0.2f %0.2f" % tuple(a[1]-a[0])
-                    )
-
-
-    if args.pdb:
-        npdb = numpdb.NumPdb( args.pdb )
-        records = get_sstruc_records( npdb )
-        for r in records:
-            print r
-            print npdb.sequence( resno=[r[3], r[5]+4], chain=r[2], atomname="CA" )
-
-
-    if args.dssp:
-        s = parse_dssp( args.dssp )
-        with open( "%s.txt" % args.dssp, "w" ) as fp:
-            fp.write( s )
-
-
-if __name__ == "__main__":
-    main()

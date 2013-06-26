@@ -240,25 +240,28 @@ class Mixin( object ):
 
 
 class TmplMixin( Mixin ):
-    def _make_file_from_tmpl( self, tmpl_name, **values_dict ):
+    def _make_file_from_tmpl( self, tmpl_name, output_dir=None, 
+                              prefix=None, **values_dict ):
+        output_dir = output_dir or self.output_dir
         tmpl_file = os.path.join( self.tmpl_dir, tmpl_name )
         with open( tmpl_file, "r" ) as fp:
             tmpl_str = fp.read()
-        out_file = os.path.join( self.output_dir, tmpl_name )
+        out_file = os.path.join( output_dir, tmpl_name )
+        out_file = utils.path.mod( out_file, prefix=prefix )
         with open( out_file, "w" ) as fp:
             fp.write( string.Template( tmpl_str ).substitute( **values_dict ) )
         return out_file
 
 
 class ScriptMixin( TmplMixin ):
-    def _make_script_file( self, **values_dict ):
-        return self._make_file_from_tmpl( self.script_tmpl, **values_dict )
+    def _make_script_file( self, **kwargs ):
+        return self._make_file_from_tmpl( self.script_tmpl, **kwargs )
 
 
 class ProviMixin( TmplMixin ):
-    def _make_provi_file( self, provi_tmpl=None, **values_dict ):
+    def _make_provi_file( self, provi_tmpl=None, **kwargs ):
         provi_tmpl = provi_tmpl or self.provi_tmpl
-        return self._make_file_from_tmpl( provi_tmpl, **values_dict )
+        return self._make_file_from_tmpl( provi_tmpl, **kwargs )
 
 
 
@@ -320,11 +323,11 @@ class PickleBackend( RecordsBackend ):
 
 class SqliteBackend( RecordsBackend ):
     name = "sqlite"
+    conn_kwargs = { "isolation_level": "EXCLUSIVE" }
     def write( self, records ):
         utils.path.remove( self.file_name )
-        db = self.file_name
         qn = ",".join( "?" * len( self.cls._fields ) )
-        with sqlite3.connect( db, isolation_level="EXCLUSIVE" ) as conn:
+        with sqlite3.connect( self.file_name, **self.conn_kwargs ) as conn:
             c = conn.cursor()
             c.execute( 
                 'CREATE TABLE %s (%s)' % ( 
@@ -336,12 +339,21 @@ class SqliteBackend( RecordsBackend ):
                 itertools.imap( tuple, records ) 
             )
     def read( self ):
-        db = self.file_name
-        with sqlite3.connect( db, isolation_level="EXCLUSIVE" ) as conn:
-            conn.row_factory = self.cls
+        return self.query()
+    def query( self, where=None, count=False, limit=None ):
+        self.q = 'SELECT\n\t%s\nFROM\n\t%s' % (
+            'COUNT(*)' if count else '*', self.cls.__name__
+        )
+        if where:
+            self.q += '\nWHERE\n\t%s' % where
+        if limit:
+            self.q += '\nLIMIT\n\t%i' % limit
+        with sqlite3.connect( self.file_name, **self.conn_kwargs ) as conn:
+            if not count:
+                conn.row_factory = lambda x, y: self.cls( *y )
             c = conn.cursor()
-            c.execute( 'SELECT * FROM ?', ( self.cls.__name__, ) )
-            return c.fetchall()
+            c.execute( self.q )
+            return c.fetchone() if count else c.fetchall()
 
 def records_backend( backend, file_name, records_cls ):
     backend_cls = BACKEND_REGISTER[ backend ]
@@ -351,18 +363,20 @@ class RecordsMixin( Mixin ):
     args = [
         _( "backend|rb", type="select", default="json", 
             options=BACKEND_REGISTER.keys(), metavar="B" ),
+        # TODO only when ParallelMixin
         _( "backend_parallel|rbp", type="select", default="json", 
             options=BACKEND_REGISTER.keys(), metavar="B" )
     ]
     def _init_records( self, input_file, **kwargs ):
         if not hasattr( self, "RecordsClass" ):
             raise Exception("A RecordsMixin needs a 'RecordsClass' attribute")
-        self.records = tuple()
+        self.records = []
         if input_file:
             stem = utils.path.stem( input_file ) 
         else:
             stem = "%s_records" % self.name
         self.backend_obj = self._backend( stem, self.backend )
+        # TODO only when ParallelMixin
         self.backend_obj_p = self._backend( stem, self.backend_parallel )
         if self.fileargs:
             self.read()
@@ -379,6 +393,7 @@ class RecordsMixin( Mixin ):
             self.records = self.backend_obj.read()
         except Exception as e:
             print e
+    # TODO only when ParallelMixin
     def _parallel_results( self, tool_list ):
         self.records = list(itertools.chain.from_iterable(
             map( operator.attrgetter( "records" ), tool_list )
