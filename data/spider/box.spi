@@ -20,7 +20,7 @@ FI [x8],[x9],[x10]
 [y2]=[y2]*[psf]
 [z1]=[z1]*[psf]
 [z2]=[z2]*[psf]
-[ass]=5*[psf]
+[ass]=8*[psf]
 ;boxsize shift (weil der ursprung woander sitzt
 [sx]=([x8]/2)+1
 [sy]=([x9]/2)+1
@@ -38,34 +38,38 @@ FI [x8],[x9],[x10]
 [x3]=([x1]+[x2])/2
 [y3]=([y1]+[y2])/2
 [z3]=([z1]+[z2])/2
-
+;für das ausschneiden der unrotierten box brauchen wir noch ein z4 aus den neg z werten
+[z4]=(((-1*[z1])+(-1*[z2]))/2)
+vm
+ echo [z4] is now= {%F7.4%[z4]}
 ;wenn der ausschlag (dim) des loops grösser ist als der abstand der stems dann den nehmen um ecke und boxgröße zu berechnen
 IF ([dim].GT.[abstand]) THEN
 	[hb]=[dim]/2
 	[obenlinks1]=[x3]+[sx]-[hb]
 	[obenlinks2]=[y3]+[sy]-[hb]
 	[obenlinks3]=[z3]+[sz]-[hb]
+	[obenlinks4]=[z4]+[sz]-[hb]
 	wi 
 	[file]
 	boxil
 	[dim] [dim] [dim]
 	[obenlinks1] [obenlinks2] [obenlinks3]
-	sd 1,[dim] [obenlinks1] [obenlinks2] [obenlinks3] [ps] [rs]
+	sd 1,[dim] [obenlinks1] [obenlinks2] [obenlinks3] [obenlinks4] [ps] [rs]
 	ergebnisse
 	vm 
-	echo dimensio
+	echo {%F7.4%[obenlinks4]}
 ELSE
 	[hb]=[abstand]/2
 	[obenlinks1]=[x3]+[sx]-[hb]
 	[obenlinks2]=[y3]+[sy]-[hb]
 	[obenlinks3]=[z3]+[sz]-[hb]
-
+	[obenlinks4]=[z4]+[sz]-[hb]
 	wi 
 	[file]
 	boxil
 	[abstand] [abstand] [abstand]
 	[obenlinks1] [obenlinks2] [obenlinks3]
-	sd 1,[abstand] [obenlinks1] [obenlinks2] [obenlinks3] [ps] [rs]
+	sd 1,[abstand] [obenlinks1] [obenlinks2] [obenlinks3] [obenlinks4] [ps] [rs]
 	ergebnisse
 	vm 
 	echo abstand
