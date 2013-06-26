@@ -4,8 +4,10 @@
 [usermap]='${map_name}'
 [usermapb]='${box_map_name}'
 
+[pass-band] = 0.15   ; Pass-band frequency
+[stop-band] = 0.25   ; Stop-band frequency
 
-UD IC 1,[bs],[obenlinks1],[obenlinks2],[obenlinks3],[ps], [rs]
+UD IC 1,[bs],[obenlinks1],[obenlinks2],[obenlinks3],[obenlinks4],[ps], [rs]
 ${box_name}
 
 
@@ -18,7 +20,7 @@ ${box_name}
 FS [X4], [X5]
 [usermapb]
 ;mitte des spektrums bestimmen
-[x6]=(X5-X4)/2
+[x6]=(X4+X5)/2
 
 ;Maske erstellen noch zu testen
 TH M
@@ -48,44 +50,77 @@ DO  [y]=1,[nl]
  N
  A
  [x8] [x9] [x10]
- [filename]box
- RT 3d
- [filename]box
- [filename]box1
- -90,0,0
- RT 3d
- [filename]box1
- [filename]box2
- 0,180,0
+ _1
+ vm
+ echo "PDB erstellt"
+
+;alte version wo erst rotiert und dann ausgeschnitten wurde:
+;  RT 3d
+; _1
+; _3
+; -90,180,0
+ 
 ;box ausschneiden
- WI 
- [filename]box2
- [filename]boxwi
- [bs] [bs] [bs]
- [obenlinks1] [obenlinks2] [obenlinks3]
+;VM
+;echo "rotiert"
+; WI 
+; _3
+; _4
+; [bs] [bs] [bs]
+; [obenlinks1] [obenlinks2] [obenlinks3]
 ;theoretische maps auf gleiche auflösung filtern wie usermap
+;VM
+;echo "window"
+
+;ausschneiden
+wi
+_1
+_2
+[bs] [bs] [bs]
+[obenlinks2] [obenlinks1] [obenlinks4]
+VM
+echo "window"
+
+;rotierem
+RT 3d
+_2
+_4
+-90,180,0
 
 ;Map auf resolution filtern
 
  FQ
- [filename]boxwi
- [filename]boxfi
+ _4
+ _5
  7
  [f1] [f2]
  
+ VM
+ echo "Filter"
 ;cross correlation ausrechnen
  CC C [ccc]
  [usermapb]
- [filename]boxfi
+ _5
  mask
  1
+ 
  ;cross correlation in ein file schreiben
  sd [y],[ccc]
  crosscorrelation
+ 
+;zum loopmaps ausgeben:
+;CP
+;_5
+;{***[y]}S
+vm
+echo "CC"
 
 
 
 ENDDO
-VM
-rm loops/*bb.pdbbo*
+doc sort
+crosscorrelation
+ccsort
+-1
+N N
 en

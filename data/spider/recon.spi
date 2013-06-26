@@ -1,7 +1,7 @@
 ; author: jochen ismer
 
 ;das ergebnisse file einlesen weil wir die obere linke Ecke brauchen
-UD IC 1,[bs],[obenlinks1],[obenlinks2],[obenlinks3],[ps], [rs]
+UD IC 1,[bs],[obenlinks1],[obenlinks2],[obenlinks3],[obenlinks4],[ps], [rs]
 ${box_name}
 ;die boxgrösse der originalen usermap herausfinden weil wir die brauchen um die kleine an die richtige Stelle zu bekommen
 ;Groesse Usermap

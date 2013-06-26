@@ -2,8 +2,11 @@
 
 ;script zu löschen von dichten die bereits von der PDB structure besetzt sind
 ;input files
+[pass-band] = 0.15   ; Pass-band frequency
+[stop-band] = 0.25   ; Stop-band frequency
 
 
+[out1]='usermap'
 [map]='${map_name}'
 [pdb]='${pdb_file}'
 [tmp_dir]='${tmp_dir}'
@@ -24,41 +27,90 @@ ${pixelsize}  ;pixelsize (wo bekomme ich die her??)
 N
 A
 [X1],[X2],[X3] ;boxgröße sollte die gleiche sein wie bei 
-[tmp_dir]pdb_map
+_8
 ;rotieren
  RT 3d
- [tmp_dir]pdb_map
- [tmp_dir]pdb_map1
- -90,0,0
- RT 3d
- [tmp_dir]pdb_map1
- [tmp_dir]pdb_map2
- 0,180,0
-;filtern der pdb map damit sie zum löschen taugt
-fq
-[tmp_dir]pdb_map2
-[tmp_dir]pdb_mapfi
-7
-[f1]  [f2]
+ _8
+ _9
+ -90,180,0
+ 
+FQ                        ; Filtern der pdb map
+_9                    ; Reference vol.  (input)
+_10                       ; Filtered vol    (output)
+7                         ; Butterworth filter
+[f1],[f2]   ; Pass-band and stop-band frequencies
 
-;levelbereiche von usermap und pdb map bestimmen
-FS [X4], [X5]
-[map]
-FS [X6] [X7]
-[tmp_dir]pdb_mapfi
-;faktor berechnen
-[X8]=[X4]/[X6]
-;map entsprechend verstärken...
-ar
-[tmp_dir]pdb_mapfi
-[tmp_dir]pdb_mapfife
-p1*[X8]
+FQ                        ; Filtern der pdb map
+_10                   ; Reference vol.  (input)
+_1                        ; Filtered vol    (output)
+7                         ; Butterworth filter
+[pass-band],[stop-band]   ; Pass-band and stop-band frequencies
 
-sub
-[map]
-[tmp_dir]pdb_mapfife
-usermap
+FS [max],[min]            ; Max & min 
+_1                        ; Filtered vol    (input)
+
+[th]=([max]+[min])/2      ; The threshold is a value halfway between min & max
+
+;maske erstellen
+TH M                      ; Threshold & create Mask
+_1                        ; Filtered vol    (input)
+_5                        ; Mask            (output)
+B                         ; If (pixel > threshold) Mask = 1; else Mask = 0
+[th]                      ; Threshold
+
+FS M [max],[min],[avg],[sd]  ; Statistics within  mask
+_1                        ; Filtered vol    (input)        
+_5                        ; Mask            (input)
+
+AR
+_1                        ; Filtered vol        (input)
+_7                        ; Scaled filtered vol (input)
+((p1-[avg])/[sd])
+
+;für die andere map das selbe
+
+; 2nd volume: the reference is subtracted from this volume
+;filtern:
+
+FQ
+[map]                 ; Second vol.   (input)
+_2                        ; Filterd vol.  (output)
+7                         ; Filter type
+[pass-band],[stop-band]
+
+FS M [max],[min],[avg],[sd]
+_2                       ; Image
+_5                       ; Mask (From reference or created for 2nd vol)
+
+AR
+_2                      ; Filtered vol.         (input)
+_6                      ; Scaled Filterd vol.  (output)
+((p1-[avg])/[sd])
+
+SU                      ; Subtract         
+_6		        ; 2nd volume        (input)
+_7		        ; Reference         (input)
+_5		        ; Result            (output)
 *
-VM
-rm [tmp_dir]pdb_map*
-en
+
+;FQ                      ; Quick filter
+;_5                      ; Difference volume  (input)
+;_8                      ; Filtered diff volume (output)
+;7                       ; Filter type
+;[pass-band2],[stop-band2]
+
+FS                     ; Statistics before filtering
+_5                     ; Difference volume  (input)
+
+;FS                     ; Statistics after filtering
+;_8                     ; Filtered diff volume (output)
+
+CP                     ; Copy to output
+_5                     ; Difference volume  (input)
+[out1]                 ; Difference volume  (output)
+
+;CP                     ; Copy to output
+;_8                     ; Filtered diff volume (input)
+;[out2]                 ; Filtered diff volume (output)
+
+EN
