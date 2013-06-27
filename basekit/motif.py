@@ -258,28 +258,34 @@ class AlphaLTest():
             )
         )
 
-class AlphaLTest_moreloose():
+class AlphaLTest_fitted():
     """
     * H-bond between CO of residue C3 and NH of residue Cd
-    * phi angles of residues Ccap=[-99,-81], Cd=[79,91], Cdd=[-113,-87], Cddd=[-112,-88]
-    * psi angles of residues Ccap=[-16,-2], Cd=[3,21], Cdd=[110,144]
+    * phi angles of residues C3=[-100,50], C2=[-100,50], C1=[-100,50], Ccap=[-150,-25], Cd=[0,180]
+    * psi angles of residues C3=[-100,50], C2=[-100,50], C1=[-100,50], Ccap=[-75,50]
     Reference:
         self
     """
-    length = 6
-    def test(self, C3, C2, C1, Ccap, Cd, Cdd):#, Cddd):
+    length = 8
+    def test(self, C5, C4, C3, C2, C1, Ccap, Cd, Cdd):#, Cddd):
         C3_dist = C3.copy(atomname="O")
+        C2_dist = C2.copy(atomname="O")
         Cd_dist = Cd.copy(atomname="N")
         distance1 = numpdb.numdist( C3_dist, Cd_dist )
-        return distance1<3.9 and 79<Cd['phi'][0]<91 and 3<Cd['psi'][0]<21 
+        distance2 = numpdb.numdist( C2_dist, Cd_dist )
+        return distance1<3.4 and distance2<3.4 and -100<C3['phi'][0]<50 and C4["sstruc"][0]=="H" and C5["sstruc"][0]=="H" \
+            and -100<C3['psi'][0]<50  and -100<C2['phi'][0]<50 and C3["sstruc"][0]=="H" \
+            and -100<C2['psi'][0]<50  and -100<C1['phi'][0]<50 and C2["sstruc"][0]=="H"  \
+            and -100<C1['psi'][0]<50  and -150<Ccap['phi'][0]<-25 \
+            and -75<Ccap['psi'][0]<50  and 0<Cd['phi'][0]<180  #and (-180<Cd['psi'][0]<-100 or 100<Cd['psi'][0]<180)
     def get_dihedral(self, name, *numatoms):
         return np.hstack( map( lambda x: x[name][0], numatoms ) )
     def make_list(self, *numatoms):
-        Ccap = numatoms[3]
+        Ccap = numatoms[5]
         return (
             Ccap['resno'][0],Ccap['chain'][0],(
-                self.get_dihedral( "phi", *numatoms ),
-                self.get_dihedral( "psi", *numatoms )
+                self.get_dihedral( "phi", *numatoms )[2:],
+                self.get_dihedral( "psi", *numatoms )[2:]
             )
         )
 
@@ -295,7 +301,7 @@ class AlphaLTest_moreloose():
 motifs_dict = {
     "alpha_beta_motif": AlphaBetaMotifTest(),
     "alpha_L_motif": AlphaLTest(),
-    "alpha_L-more_loose_motif": AlphaLTest_moreloose(),
+    "alpha_L_motif-fitted": AlphaLTest_fitted(),
     "st_motif": STTest()
 }
 
@@ -319,7 +325,6 @@ def _find_all_motifs( npdb ):
             if motif_obj.test(*numatoms):
                 motif_data[ name ].append( motif_obj.make_list(*numatoms) )
     return motif_data
-
 
 def find_motifs( infile, motif_type ):
     # generate a numpy-pdb
@@ -352,8 +357,8 @@ def _overplot( records, plot, motife, outdir ):
     for index, pos in enumerate(['C3','C2','C1','CCap','C\'','C\'\'']):
         phi=[]; psi=[];
         for motif_pos in records:
-            phi=np.hstack((phi,motif_pos.phi_angles))
-            psi=np.hstack((psi,motif_pos.psi_angles))
+            phi=np.hstack((phi,motif_pos.phi_angles[index]))
+            psi=np.hstack((psi,motif_pos.psi_angles[index]))
         if not (phi==[] or psi==[]):
             sele=(np.isnan(phi)==False) & (np.isnan(psi)==False)
             phi = phi[sele]
@@ -418,16 +423,84 @@ def get_info( infile, residue ):
         resi = int(res.split(':')[1])
         
         for numatoms in npdb.iter_resno2( 7 ):
-            if numatoms[3]['resno'][0]==resi:
+            if numatoms[3]['resno'][0]==resi and numatoms[3]['chain'][0]==chain:
                 for el in numatoms:
                     phi_angles.append( el[0]['phi'] )
                     psi_angles.append( el[0]['psi'] )
-                    dist = numpdb.numdist( el, numatoms[3] )
-                    if 0 < dist < 3.9:
-                        distances.append((el[0]['resno'], dist))
+                    dist = numpdb.numdist( el.copy(atomname='O'), numatoms[4].copy(atomname='N') )
+                    if 0 < dist < 13.9:
+                        distances.append((el[0]['resno'], numatoms[4]['resno'][0], dist))
+                break;
         elem=[chain, resi, phi_angles, psi_angles, distances]
         infos.append(_make_struc_record(pdb_id, elem, i))
     return infos
+
+def _histo_plot( dist_list, motif, *args ):
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    y = [np.mean(dist_list[0]), np.mean(dist_list[1]), np.mean(dist_list[2]), np.mean(dist_list[3])]
+    N = len(y)
+    ind = range(N)
+    err = [np.std(dist_list[0])/np.sqrt(len(dist_list[0])), np.std(dist_list[1])/np.sqrt(len(dist_list[1])), np.std(dist_list[2])/np.sqrt(len(dist_list[2])), np.std(dist_list[3])/np.sqrt(len(dist_list[3]))]
+    # See note below on the breakdown of this command
+    ax.bar(ind, y, facecolor='#777777',
+           align='center', yerr=err, ecolor='black')
+    ax.set_ylabel('Distance')
+    ax.set_title('Distances from CO to N',fontstyle='italic')
+    ax.set_xticks(ind)
+    group_labels = ['C3 to C\'', 'C2 to C\'',
+                     'C1 to C\'', 'Ccap to C\'']
+    ax.set_xticklabels(group_labels)
+    fig.autofmt_xdate()
+    plt.plotting()
+    for dir in args:a=dir
+    name=a+motif+'_Distance_'+strftime("%Y-%m-%d_%H-%M-%S", gmtime())
+    plt.savefig(name, dpi=300)
+    plt.close()
+
+def ploti( outdir, motife, plot ):
+    phi_list=[]; psi_list=[]; distance_list=[]
+    for dir, subdir, files in os.walk(outdir):
+        for fi in files:
+            if fi[-4:]=='json' and not fi=='structuregetter.json':
+                with open(fi) as json_data:
+                    data = json.loads(json_data.read())
+                    phi_list.append(data[0]["phi_angles"])
+                    psi_list.append(data[0]["psi_angles"])
+                    distance_list.append(data[0]["distances"])
+    n = 0; m = 0; axes=None
+    if plot=="big": fig, axes  = plt.subplots( nrows=3, ncols=3, figsize=(15,15) )
+    for index, pos in enumerate(['C3','C2','C1','CCap','C\'','C\'\'','C\'\'\'']):
+        phi=[]; psi=[];
+        for motif_pos in phi_list:
+            phi=np.hstack((phi,motif_pos[index]))
+        for motif_pos in psi_list:
+            psi=np.hstack((psi,motif_pos[index]))
+        if not (phi==[] or psi==[]):
+            sele=(np.isnan(phi)==False) & (np.isnan(psi)==False)
+            phi = phi[sele]
+            psi = psi[sele]
+            _rama_plot( phi, psi, pos,motife,plot,n, m,axes, outdir )
+            m=m+1
+            if m==3:
+                m=0
+                n=n+1
+    if plot=="big":
+        fig.tight_layout()
+        name=outdir+motife+'-motif_all'+'_'+strftime("%Y-%m-%d_%H-%M-%S", gmtime())
+        plt.suptitle('Ramachandrian plot for '+motife+' motif')
+        plt.savefig(name, dpi=300)
+        plt.close()
+    #distance-plot
+    dist_list=[]
+    for index, pos in enumerate(['C3','C2','C1','CCap']):
+        dist=[];
+        for motif_pos in distance_list:
+            dist=np.hstack((dist,motif_pos[index][2]))
+        dist_list.append(dist)
+    if not dist_list==[]:
+        _histo_plot( dist_list, motife, outdir )
+    pass
 
 
 class CapsMotifFinder( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
@@ -436,7 +509,7 @@ class CapsMotifFinder( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         _( "inputs", type="text" ,
             help="input: file, files (seperated with a ',') or one directory, "
             "e.g. '~/Downloads' or '~/Downloads/3DQB.pdb,~/Downloads/3SN6'"),
-        _( "motif_type", type="select", options=['all'] + motifs_dict.keys(),
+        _( "motif_type|m", type="select", options=['all'] + motifs_dict.keys(),
             default="all", help="motif_type: all, one motif or more motifs "
             "(seperated with a ','); available motifs: all, "+
             ', '.join(motifs_dict.keys())+"" ),
@@ -450,11 +523,11 @@ class CapsMotifFinder( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
     RecordsClass = MotifRecord
     tmpl_dir = TMPL_DIR
     provi_tmpl = "motif.provi"
-    def _init( self, inputs, motif_type="all", plot="", **kwargs ):
+    def _init( self, *args, **kwargs ):
         self.motif_type = self.motif_type.split(",")
         if self.motif_type[0]=='all':
             self.motif_type=motifs_dict
-        self._init_records( utils.path.stem( inputs ), **kwargs )
+        self._init_records( utils.path.stem( self.inputs ), **kwargs )
         self._init_parallel( self.inputs, **kwargs )
     def func( self ):
         self.records = find_motifs(self.inputs, self.motif_type )
@@ -496,7 +569,10 @@ class StructureGetter( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         _( "inputs", type="text" ,
             help="input: file, files (seperated with a ',') or one directory, "
             "e.g. '~/Downloads' or '~/Downloads/3DQB.pdb,~/Downloads/3SN6'"),
-        _( "residue", type="text", help="chain:atom")
+        _( "residue", type="text", help="chain:atom"),
+        _( "plot", type="select", options=["", "big", "sep"],
+            default="", group="plot", help="residue(C3-C'')-plot in one picture "
+            "(= big, 6in1), separatly (=sep) or no plot (=default)" )
     ]
     out = [
         _( "jspt_file", file="color_motif.jspt" )
@@ -522,6 +598,10 @@ class StructureGetter( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             self.records 
         )
         print json.dumps( records_list, indent=4 )
+        self._plot_all_json()
+    def _plot_all_json(self ):
+        if self.plot!="":
+            ploti(self.output_dir, 'alphaL', self.plot)
     def _make_jspt_color_motif( self ):
         records_dict = _motif_out_struc_record( self.records )
         with open( self.jspt_file, "w" ) as fp:
