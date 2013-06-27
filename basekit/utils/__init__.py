@@ -87,6 +87,9 @@ def listify( item ):
     else:
         return [ item ]
 
+def flatten( lists ):
+    return list( itertools.chain.from_iterable( lists ) )
+
 def iter_overlap( iterator, n=None ):
     iterator = iter(iterator)
     if n:

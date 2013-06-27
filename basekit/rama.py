@@ -1,63 +1,66 @@
-#! /usr/bin/env python
-
 from __future__ import division
 
-import re
-import os
-import argparse
-import operator
-import sqlite3
-import functools
 
-from collections import defaultdict
-from string import Template
+import os
+import math
+
+from utils import listify, flatten, get_index
 
 import numpy as np
 
-from utils import try_int, get_index, boolean
-from utils.timer import Timer
-from utils.db import get_pdb_files, create_table
-from utils.job import do_parallel
-from utils.math import vec_angle
-
-from utils.numpdb import NumPdb, numdist
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.pyplot import figure
 
 
+def rama_plot( phi_psi, suptitle="Ramachandran Plot", titles=None,
+               xlabel="Psi", ylabel="Psi", image_file="rama.png" ):
+    """
+        phi_psi: 
+            [ (phi1, psi1), (phi2, psi2), ... ] 
+            or (phi1, psi1)
+        titles: 
+            [ title1, title2, ... ] 
+            or title1
+    """
+    phi_psi = listify( phi_psi )
+    titles = listify( titles )
+    n = len( phi_psi )
+    if not titles and n>1:
+        titles = map( str, range(n) )
 
+    nrows = int( round( math.sqrt(n) ) )
+    ncols = int( math.ceil( math.sqrt(n) ) )
+    figsize = ( nrows*5, ncols*5 )
 
+    fig, axes = plt.subplots( nrows=nrows, ncols=ncols, figsize=figsize)
+    fig.suptitle( suptitle )
 
-
-def main():
-
-    # create the parser
-    parser = argparse.ArgumentParser(
-        description = __doc__,
-    )
-    # add the arguments
-    parser.add_argument(
-        '-pdb', help='analyze a pdb file', type=str)
-
+    for i in range(n):
+        if n==1:
+            ax = axes
+        else:
+            ax = axes[ round( i/nrows ), i%nrows ]
+        phi = np.ma.masked_invalid( phi_psi[i][0], copy=False )
+        psi = np.ma.masked_invalid( phi_psi[i][1], copy=False )
+        _rama_sub_plot( 
+            phi, psi, ax, xlabel=xlabel, ylabel=ylabel, 
+            title=get_index( titles, i, "" )
+        )
     
-    # parse the command line
-    args = parser.parse_args()
+    fig.tight_layout()
+    fig.savefig( image_file, dpi=300 )
 
 
-
-    if args.pdb:
-        with Timer("read/parse pdb"):
-            npdb = NumPdb( args.pdb )
-        with Timer("dist"):
-            print npdb.dist( {"chain":"A"}, {"chain":"B"} )
-            print numdist( npdb.copy( chain="A" ), npdb.copy( chain="B" ) )
-        with Timer("access phi/psi"):
-            print np.nansum( npdb['phi'] )
-        with Timer("sequence"):
-            print npdb.sequence( chain="A" )
-        with Timer("sstruc"):
-            for numa in npdb.iter_sstruc():
-                if numa["sstruc"][0]=="H":
-                    pass #print numa.axis( atomname="CA" )
-
-
-if __name__ == "__main__":
-    main()
+def _rama_sub_plot( phi, psi, ax, xlabel="Psi", ylabel="Phi", title=None ):
+    xy_range = [ [ -180, 180 ], [ -180, 180 ] ]
+    hist2d, phi_edges, psi_edges = np.histogram2d( 
+        phi, psi, bins=180, range=xy_range
+    )
+    ax.imshow( 
+        np.flipud( hist2d ), extent=flatten( xy_range ), 
+        interpolation='nearest', cmap=cm.Reds
+    )
+    ax.set_title( title )
+    ax.set_xlabel( xlabel )
+    ax.set_ylabel( ylabel )
