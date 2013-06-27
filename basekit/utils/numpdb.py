@@ -12,18 +12,17 @@ import numpy as np
 np.seterr( all="raise" )
 
 import basekit.utils.path
+from basekit.utils.align import aligner
 from basekit.utils import (
     try_int, get_index, copy_dict, iter_window, iter_stride
 )
 from math import vec_dihedral, mag, axis, Superposition, rmsd
 from bio import AA1, AA3
 
-# from math import dihedral
 try:
     from cgeom import dihedral
-except Exception as e:
-    print e
-    print "cgeom import error"
+except ImportError as e:
+    print "cgeom import error", e
     from math import dihedral
 
 
@@ -110,6 +109,8 @@ def numsele( string ):
     if isinstance( string, dict ):
         return string
     sele = { "chain": None, "resno": None, "atomname": None }
+    if string in [ "*", "", "all" ]:
+        return sele
     atomname = string.split(".")
     if len(atomname)>1 and atomname[1]:
         sele["atomname"] = atomname[1][0:4]
@@ -126,10 +127,32 @@ def numdist( numa1, numa2 ):
     return mag( numa1.center() - numa2.center() )
 
 
-def superpose( numa1, numa2, sele1, sele2, subset="CA", inplace=True,
+def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
                rmsd_cutoff=None, max_cycles=None ):
-    coords1 = numa1.get('xyz', **copy_dict( sele1, atomname=subset ) )
-    coords2 = numa2.get('xyz', **copy_dict( sele2, atomname=subset ) )
+    numa1 = npdb1.copy( **copy_dict( sele1, atomname=subset ) )
+    numa2 = npdb2.copy( **copy_dict( sele2, atomname=subset ) )
+
+    ali1, ali2 = aligner( 
+        numa1.sequence(), numa2.sequence(),
+        method="global", matrix="BLOSUM62"
+    )
+    as1 = np.ones( numa1.length, bool )
+    as2 = np.ones( numa2.length, bool )
+    i = 0
+    j = 0
+    for x, y in zip( ali1, ali2 ):
+        if x=="-":
+            as2[j] = False
+        else:
+            i += 1
+        if y=="-":
+            as1[i] = False
+        else:
+            j += 1
+
+    coords1 = numa1['xyz'][ as1 ]
+    coords2 = numa2['xyz'][ as2 ]
+
     if rmsd_cutoff and max_cycles:
         for cycle in xrange( max_cycles ):
             sp = Superposition( coords1, coords2 )
@@ -512,10 +535,15 @@ class NumAtoms:
         except Exception as e:
             LOG.error( "axis (%s) => %s, %s" % ( e, sele, self._atoms ) )
             raise e
-    def sequence( self, **sele ):
-        return "".join([ 
-            AA1.get( a['resname'][0], "?" ) for a in self.iter_resno( **sele ) 
-        ])
+    def sequence( self, as_array=False, **sele ):
+        s = [ 
+            AA1.get( a['resname'][0], "?" ) 
+            for a in self._iter_resno( **sele )
+        ]
+        if as_array:
+            return np.array( s, dtype="|S1" )
+        else:
+            return "".join( s )
     def center( self, **sele ):
         coords = self.get( 'xyz', **sele )
         return np.sum( coords, axis=0 ) / len(coords)

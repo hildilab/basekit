@@ -195,10 +195,6 @@ class PdbSuperpose( PyTool, ProviMixin ):
         npdb1 = numpdb.NumPdb( self.pdb_file1 )
         npdb2 = numpdb.NumPdb( self.pdb_file2 )
 
-        # from utils.align import aligner
-        # with Timer("aligner"):
-        #     print aligner( npdb1.sequence(), npdb2.sequence() )
-
         numpdb.superpose( 
             npdb1, npdb2, self.sele1, self.sele2, 
             subset=self.subset, inplace=True,

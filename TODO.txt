@@ -7,7 +7,6 @@ NumPdb
 * option to flag (or only parse) complete residues 
 		(w.r.t. sidechain/ backbone atoms)
 	=> name "detect_incomplete" [done for backbone]
-* http://docs.python.org/2/library/itertools.html#itertools.groupby
 * write XYZR
 * altloc handling ideas... 
 	- read all atoms; sort by (chain, resno, insertion, altloc, atomname) 
@@ -75,6 +74,12 @@ TOOL
 
 MODULE
 ======
+
+IDEAS
+-----
+
+* https://github.com/SimTk/msmbuilder/tree/master/src/ext
+
 
 SCRIPTS
 -------
