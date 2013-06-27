@@ -1,0 +1,8 @@
+[
+    { 
+        "filename": "${pdb_file}",
+        "params": {
+            "script": "${script}"
+        }
+    }
+]
