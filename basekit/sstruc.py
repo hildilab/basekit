@@ -30,6 +30,8 @@ from utils.tool import (
 
 import utils.numpdb as numpdb
 
+from rama import rama_plot
+
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "sstruc" )
 
 SstrucDbRecord = collections.namedtuple( 'SstrucDbRecord', [
@@ -238,15 +240,24 @@ class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
         if self.count:
             return
         pdb_groups = []
+        phi = []
+        psi = []
         it = itertools.groupby( 
             self.records, operator.attrgetter('pdb_id') 
         )
         for pdb_id, records in it:
-            self. _make_provi( pdb_id, list(records) )
-    def _make_provi( self, pdb_id, records ):
-        pdb_file = os.path.join( 
+            rec = list(records)
+            self._make_provi( pdb_id, rec )
+            _phi, _psi = self._get_phi_psi( pdb_id, rec )
+            phi += _phi
+            psi += _psi
+        self._make_rama( phi, psi )
+    def _pdb_file( self, pdb_id ):
+        return os.path.join( 
             self.pdb_archive, pdb_id[1:3], "%s.pdb" % pdb_id
         )
+    def _make_provi( self, pdb_id, records ):
+        pdb_file = self._pdb_file( pdb_id )
         script = []
         for r in records:
             s = "color { chain='%s' and %s-%s } tomato;" % ( 
@@ -259,6 +270,18 @@ class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
             pdb_file=os.path.relpath( pdb_file, self.provi_dir ),
             script=" ".join( script )
         )
+    def _get_phi_psi( self, pdb_id, records ):
+        npdb = numpdb.NumPdb( self._pdb_file( pdb_id ) )
+        phi = []
+        psi = []
+        for r in records:
+            numa = npdb.copy( chain=r.chain2, resno=r.resno2 )
+            phi.append( numa['phi'][0] )
+            psi.append( numa['psi'][0] )
+        return phi, psi
+    def _make_rama( self, phi, psi ):
+        rama_plot( ( phi, psi ) )
+
 
         
 
