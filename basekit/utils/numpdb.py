@@ -15,8 +15,16 @@ import basekit.utils.path
 from basekit.utils import (
     try_int, get_index, copy_dict, iter_window, iter_stride
 )
-from math import dihedral, vec_dihedral, mag, axis, Superposition, rmsd
+from math import vec_dihedral, mag, axis, Superposition, rmsd
 from bio import AA1, AA3
+
+# from math import dihedral
+try:
+    from cgeom import dihedral
+except Exception as e:
+    print e
+    print "cgeom import error"
+    from math import dihedral
 
 
 logging.basicConfig()
@@ -675,12 +683,15 @@ class NumPdb:
         mainchain = ATOMS['mainchain']
         for na_curr, na_next in self.iter_resno2( 2 ):
             try:
-                xyz_n, xyz_ca, xyz_c = na_curr.get( 
-                    'xyz', atomname=mainchain 
-                )
-                xyz_n_next, xyz_ca_next, xyz_c_next = na_next.get( 
-                    'xyz', atomname=mainchain
-                )
+                # xyz_n, xyz_ca, xyz_c = na_curr.get( 
+                #     'xyz', atomname=mainchain 
+                # )
+                # xyz_n_next, xyz_ca_next, xyz_c_next = na_next.get( 
+                #     'xyz', atomname=mainchain
+                # )
+                # assuming the first three atoms are N, CA, C
+                xyz_n, xyz_ca, xyz_c = na_curr._coords[0:3]
+                xyz_n_next, xyz_ca_next, xyz_c_next = na_next._coords[0:3]
                 na_curr['psi'] = dihedral( 
                     xyz_n, xyz_ca, xyz_c, xyz_n_next 
                 )

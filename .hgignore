@@ -12,8 +12,10 @@ Icon*
 *.sublime-workspace
 
 *.pyc
+*.so
 
 data/test/*
 data/voronoia/get_volume.lg
 
 basekit.egg-info/*
+build/*
