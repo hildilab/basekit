@@ -131,10 +131,12 @@ class SpiderReConvert( Spider ):
     args = [
         _( "box_file", type="file", ext="cpv" ),
         _( "map_file", type="file", ext="cpv" ),
-        _( "box_map_file", type="file", ext="cpv" )
+        _( "box_map_file", type="file", ext="cpv" ),
+        _( "ori_map_file", type="file", ext="cpv" )
     ]
     out = [
-        _( "mrc_file", file="reconvert.mrc" )
+        _( "mrc_file", file="reconvert.mrc" ),
+        _( "mrc_ori_file", file="reconvertori.mrc" )
     ]
     script_tmpl = "recon.spi"
     def _init( self, *args, **kwargs ):
@@ -143,7 +145,8 @@ class SpiderReConvert( Spider ):
         self._make_script_file( 
             box_name=self.relpath( self.box_file, no_ext=True ),
             map_name=self.relpath( self.map_file, no_ext=True ),
-            box_map_name=self.relpath( self.box_map_file, no_ext=True )
+            box_map_name=self.relpath( self.box_map_file, no_ext=True ),
+            ori_map_name=self.relpath( self.ori_map_file, no_ext=True )
         )
 
 
@@ -236,7 +239,10 @@ class LoopCrosscorrel( PyTool ):
             self.spider_box.box_file,
             self.spider_convert.map_file,
             self.spider_box.box_map_file,
-            **copy_dict( kwargs, run=False, output_dir=self.subdir("reconvert") )
+            self.spider_convert.map_file,
+            **copy_dict( 
+                kwargs, run=False, output_dir=self.subdir("reconvert") 
+            )
         )
         self.spider_crosscorrelation = SpiderCrosscorrelation(
             self.spider_convert.map_file, 

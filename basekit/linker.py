@@ -184,6 +184,9 @@ class LinkItDensity( PyTool, ProviMixin ):
             box_mrc_file=self.relpath( 
                 self.loop_correl.spider_reconvert.mrc_file 
             ),
+            box_ori_mrc_file=self.relpath( 
+                self.loop_correl.spider_reconvert.mrc_ori_file 
+            ),
             pdb_linker_file3=self.relpath( self.link_it.pdb_linker_file3 ),
             linker_correl_file=self.relpath( self.linker_correl_file )
         )

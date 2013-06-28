@@ -27,6 +27,18 @@
         }
     },
     {
+        "filename": "${box_ori_mrc_file}",
+        "type": "mrc",
+        "params": {
+            "sigma": 0,
+            "cutoff": ${cutoff},
+            "sign": false,
+            "color": "gold",
+            "frontonly": true,
+            "style": "MESH NOFILL NODOTS"
+        }
+    },
+    {
         "name": "linker_pdb",
         "filename": "${pdb_linker_file3}",
         "params": {
