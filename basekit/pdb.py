@@ -176,6 +176,27 @@ class PdbSplit( PyTool ):
 
 
 
+class PdbBox( PyTool ):
+    """Cuts away all atoms that are not within the given box"""
+    args = [
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "top_left", type="float", nargs=3 ),
+        _( "extent", type="float", nargs=3 )
+    ]
+    out = [
+        _( "boxed_pdb_file", file="boxed.pdb" )
+    ]
+    def func( self ):
+        npdb = numpdb.NumPdb( self.pdb_file )
+        top_left = np.array( self.top_left )
+        extent = np.array( self.extent )
+        sele = (
+            ( npdb._coords>top_left ) & 
+            ( npdb._coords<(top_left+extent) )
+        ).all( axis=1 )
+        npdb.copy( sele=sele ).write( self.boxed_pdb_file )
+
+
 
 
 class PdbSuperpose( PyTool, ProviMixin ):
