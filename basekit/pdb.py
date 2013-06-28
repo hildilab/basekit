@@ -215,7 +215,6 @@ class PdbSuperpose( PyTool, ProviMixin ):
     def func( self ):
         npdb1 = numpdb.NumPdb( self.pdb_file1 )
         npdb2 = numpdb.NumPdb( self.pdb_file2 )
-
         numpdb.superpose( 
             npdb1, npdb2, self.sele1, self.sele2, 
             subset=self.subset, inplace=True,

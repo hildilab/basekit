@@ -540,7 +540,8 @@ class Tool( object ):
             value = self.__prep_out( params )
             # TODO check if the name already exists
             self.__dict__[ name ] = value
-            self.output_files.append( value )
+            if "file" in params:
+                self.output_files.append( value )
 
         self._init( *args, **kwargs )
         
