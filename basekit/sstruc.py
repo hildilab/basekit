@@ -19,7 +19,7 @@ import utils.math
 import utils.path
 from utils import (
     try_int, get_index, boolean, iter_window, memoize, 
-    copy_dict, dir_walker
+    copy_dict, dir_walker, DefaultOrderedDict
 )
 from utils.timer import Timer
 from utils.db import get_pdb_files, create_table
@@ -240,24 +240,28 @@ class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
         if self.count:
             return
         pdb_groups = []
-        phi = []
-        psi = []
+        phi = DefaultOrderedDict(list)
+        psi = DefaultOrderedDict(list)
+        window = range( -2, 3 )
         it = itertools.groupby( 
             self.records, operator.attrgetter('pdb_id') 
         )
         for pdb_id, records in it:
             rec = list(records)
-            self._make_provi( pdb_id, rec )
-            _phi, _psi = self._get_phi_psi( pdb_id, rec )
-            phi += _phi
-            psi += _psi
-        self._make_rama( phi, psi )
+            pdb_file = self._pdb_file( pdb_id )
+            npdb = numpdb.NumPdb( pdb_file )
+            self._make_provi( pdb_id, pdb_file, rec )
+            phi, psi = self._get_phi_psi( npdb, rec, phi, psi, window )
+        print zip( phi.values(), psi.values() )
+        rama_plot( 
+            zip( phi.values(), psi.values() ),
+            titles = map( str, window )
+        )
     def _pdb_file( self, pdb_id ):
         return os.path.join( 
             self.pdb_archive, pdb_id[1:3], "%s.pdb" % pdb_id
         )
-    def _make_provi( self, pdb_id, records ):
-        pdb_file = self._pdb_file( pdb_id )
+    def _make_provi( self, pdb_id, pdb_file, records ):
         script = []
         for r in records:
             s = "color { chain='%s' and %s-%s } tomato;" % ( 
@@ -270,17 +274,16 @@ class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
             pdb_file=os.path.relpath( pdb_file, self.provi_dir ),
             script=" ".join( script )
         )
-    def _get_phi_psi( self, pdb_id, records ):
-        npdb = numpdb.NumPdb( self._pdb_file( pdb_id ) )
-        phi = []
-        psi = []
+    def _get_phi_psi( self, npdb, records, phi, psi, window ):
         for r in records:
-            numa = npdb.copy( chain=r.chain2, resno=r.resno2 )
-            phi.append( numa['phi'][0] )
-            psi.append( numa['psi'][0] )
+            for i in window:
+                numa = npdb.copy( chain=r.chain2, resno=r.resno2+i )
+                try:
+                    phi[i].append( numa['phi'][0] )
+                    psi[i].append( numa['psi'][0] )
+                except Exception as e:
+                    print i, e
         return phi, psi
-    def _make_rama( self, phi, psi ):
-        rama_plot( ( phi, psi ) )
 
 
         
