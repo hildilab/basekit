@@ -20,4 +20,22 @@ reconvert.mrc
 *
 [ps] [ps] [ps]
 [x100] [x101] [x102]
+
+;alternativ box aus der originalen map ausschneiden und zu mrc konvertieren
+;geht davon aus das die original map im spiderformat in /convert liegt!
+
+wi
+../convert/mapupload
+_1
+[bs] [bs] [bs]
+[obenlinks1] [obenlinks2] [obenlinks3]
+
+cp to mrc
+_1
+reconvertori.mrc
+32 0
+*
+[ps] [ps] [ps]
+[x100] [x101] [x102]
+
 en
