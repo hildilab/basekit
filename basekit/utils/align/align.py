@@ -5,7 +5,7 @@
 
 
 import numpy as np
-from bio import BLOSUM62, DNAFULL
+from basekit.utils.bio import BLOSUM62, DNAFULL
 
 def max_index(array):
     """
