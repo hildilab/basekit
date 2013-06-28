@@ -6,6 +6,7 @@ import os
 import itertools
 import operator
 import json
+import collections
 
 
 import utils.path
@@ -148,6 +149,9 @@ class LinkItDensity( PyTool, ProviMixin ):
         _( "cutoff", type="float", default=5 ),
         _( "max_loops", type="slider", range=[0, 200], default=100 )
     ]
+    out = [
+        _( "linker_correl_file", file="linker_correl.json" )
+    ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "link_it_density.provi"
     def _init( self, *args, **kwargs ):
@@ -172,6 +176,7 @@ class LinkItDensity( PyTool, ProviMixin ):
         self.link_it()
         self.loop_correl()
     def _post_exec( self ):
+        self._make_correl_json()
         self._make_provi_file(
             pdb_file=self.relpath( self.pdb_file ),
             mrc_file=self.relpath( self.mrc_file ),
@@ -180,20 +185,27 @@ class LinkItDensity( PyTool, ProviMixin ):
                 self.loop_correl.spider_reconvert.mrc_file 
             ),
             pdb_linker_file3=self.relpath( self.link_it.pdb_linker_file3 ),
-            link_it_json_file=self.relpath( self.link_it.json_file )
+            linker_correl_file=self.relpath( self.linker_correl_file )
         )
     def _make_correl_json( self, compact=False ):
-        linker_dict = {}
-        with open( self.txt_file, "r" ) as fp:
-            x = fp.next()
-            n = fp.next()
-            for i, d in enumerate( iter_stride( fp, 3 ), start=1 ):
-                linker_dict[ i ] = [ float(d[0]), float(d[1]), d[2].strip() ]
-        with open( self.json_file, "w" ) as fp:
+        li = self.link_it.json_file
+        cc = self.loop_correl.spider_crosscorrelation.crosscorrel_json
+        with open( li, "r" ) as fp:
+            li_dict = json.load( 
+                fp, object_pairs_hook=collections.OrderedDict
+            )
+        with open( cc, "r" ) as fp:
+            cc_dict = json.load( 
+                fp, object_pairs_hook=collections.OrderedDict
+            )
+        linker_correl_dict = {}
+        for k, v in cc_dict.iteritems():
+            linker_correl_dict[k] = [ v ] + li_dict[k]
+        with open( self.linker_correl_file, "w" ) as fp:
             if compact:
-                json.dump( linker_dict, fp, separators=(',',':') )
+                json.dump( linker_correl_dict, fp, separators=(',',':') )
             else:
-                json.dump( linker_dict, fp, indent=4 )
+                json.dump( linker_correl_dict, fp, indent=4 )
 
 
 

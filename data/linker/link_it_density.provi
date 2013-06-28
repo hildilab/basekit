@@ -35,7 +35,7 @@
     },
     { 
         "name": "linker_json",
-        "filename": "${link_it_json_file}"
+        "filename": "${linker_correl_file}"
     },
     {
         "name": "linker_datalist",
