@@ -14,7 +14,7 @@ from matplotlib.pyplot import figure
 
 
 def rama_plot( phi_psi, suptitle="Ramachandran Plot", titles=None,
-               xlabel="Psi", ylabel="Psi", image_file="rama.png" ):
+               xlabel="Psi", ylabel="Phi", image_file="rama.png" ):
     """
         phi_psi: 
             [ (phi1, psi1), (phi2, psi2), ... ] 
@@ -31,7 +31,8 @@ def rama_plot( phi_psi, suptitle="Ramachandran Plot", titles=None,
 
     nrows = int( round( math.sqrt(n) ) )
     ncols = int( math.ceil( math.sqrt(n) ) )
-    figsize = ( nrows*5, ncols*5 )
+    print "nrows, ncols", nrows, ncols, n
+    figsize = ( ncols*5, nrows*5 )
 
     fig, axes = plt.subplots( nrows=nrows, ncols=ncols, figsize=figsize)
     fig.suptitle( suptitle )
@@ -40,7 +41,8 @@ def rama_plot( phi_psi, suptitle="Ramachandran Plot", titles=None,
         if n==1:
             ax = axes
         else:
-            ax = axes[ round( i/nrows ), i%nrows ]
+            print int( math.floor( i/ncols ) ), i%ncols
+            ax = axes[ int( math.floor( i/ncols ) ), i%ncols ]
         phi = np.ma.masked_invalid( phi_psi[i][0], copy=False )
         psi = np.ma.masked_invalid( phi_psi[i][1], copy=False )
         _rama_sub_plot( 
