@@ -30,7 +30,7 @@ FI [x8],[x9],[x10]
 
 
 ;minimimale dimension der box, evtl noch durch 2 teilen
-[dim]=(([anzahlas]*[ass])/2)-[abstand]
+[dim]=INT((([anzahlas]*[ass])/2)-[abstand])
 
 
 
@@ -45,10 +45,10 @@ vm
 ;wenn der ausschlag (dim) des loops grösser ist als der abstand der stems dann den nehmen um ecke und boxgröße zu berechnen
 IF ([dim].GT.[abstand]) THEN
 	[hb]=[dim]/2
-	[obenlinks1]=[x3]+[sx]-[hb]
-	[obenlinks2]=[y3]+[sy]-[hb]
-	[obenlinks3]=[z3]+[sz]-[hb]
-	[obenlinks4]=[z4]+[sz]-[hb]
+	[obenlinks1]=INT([x3]+[sx]-[hb])
+	[obenlinks2]=INT([y3]+[sy]-[hb])
+	[obenlinks3]=INT([z3]+[sz]-[hb])
+	[obenlinks4]=INT([z4]+[sz]-[hb])
 	wi 
 	[file]
 	boxil
@@ -60,10 +60,10 @@ IF ([dim].GT.[abstand]) THEN
 	echo {%F7.4%[obenlinks4]}
 ELSE
 	[hb]=[abstand]/2
-	[obenlinks1]=[x3]+[sx]-[hb]
-	[obenlinks2]=[y3]+[sy]-[hb]
-	[obenlinks3]=[z3]+[sz]-[hb]
-	[obenlinks4]=[z4]+[sz]-[hb]
+	[obenlinks1]=INT([x3]+[sx]-[hb])
+	[obenlinks2]=INT([y3]+[sy]-[hb])
+	[obenlinks3]=INT([z3]+[sz]-[hb])
+	[obenlinks4]=INT([z4]+[sz]-[hb])
 	wi 
 	[file]
 	boxil
