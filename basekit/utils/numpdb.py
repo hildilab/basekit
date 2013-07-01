@@ -128,30 +128,33 @@ def numdist( numa1, numa2 ):
 
 
 def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
-               rmsd_cutoff=None, max_cycles=None ):
+               rmsd_cutoff=None, max_cycles=None, align=True ):
     numa1 = npdb1.copy( **copy_dict( sele1, atomname=subset ) )
     numa2 = npdb2.copy( **copy_dict( sele2, atomname=subset ) )
 
-    ali1, ali2 = aligner( 
-        numa1.sequence(), numa2.sequence(),
-        method="global", matrix="BLOSUM62"
-    )
-    as1 = np.ones( numa1.length, bool )
-    as2 = np.ones( numa2.length, bool )
-    i = 0
-    j = 0
-    for x, y in zip( ali1, ali2 ):
-        if x=="-":
-            as2[j] = False
-        else:
-            i += 1
-        if y=="-":
-            as1[i] = False
-        else:
-            j += 1
-
-    coords1 = numa1['xyz'][ as1 ]
-    coords2 = numa2['xyz'][ as2 ]
+    if align:
+        ali1, ali2 = aligner( 
+            numa1.sequence(), numa2.sequence(),
+            method="global", matrix="BLOSUM62"
+        )
+        as1 = np.ones( numa1.length, bool )
+        as2 = np.ones( numa2.length, bool )
+        i = 0
+        j = 0
+        for x, y in zip( ali1, ali2 ):
+            if x=="-":
+                as2[j] = False
+            else:
+                i += 1
+            if y=="-":
+                as1[i] = False
+            else:
+                j += 1
+        coords1 = numa1['xyz'][ as1 ]
+        coords2 = numa2['xyz'][ as2 ]
+    else:
+        coords1 = numa1['xyz']
+        coords2 = numa2['xyz']
 
     if rmsd_cutoff and max_cycles:
         for cycle in xrange( max_cycles ):
@@ -169,8 +172,8 @@ def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
             print "warning: still larger than rmsd_cutoff"
     else:
         sp = Superposition( coords1, coords2 )
-    pos = sp.transform( numa1['xyz'], inplace=inplace )
-    numa1['xyz'] = pos
+    pos = sp.transform( npdb1['xyz'], inplace=inplace )
+    npdb1['xyz'] = pos
     print "RMSD: %f" % sp.rmsd
     return pos
 

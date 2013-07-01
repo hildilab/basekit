@@ -31,7 +31,6 @@ def rama_plot( phi_psi, suptitle="Ramachandran Plot", titles=None,
 
     nrows = int( round( math.sqrt(n) ) )
     ncols = int( math.ceil( math.sqrt(n) ) )
-    print "nrows, ncols", nrows, ncols, n
     figsize = ( ncols*5, nrows*5 )
 
     fig, axes = plt.subplots( nrows=nrows, ncols=ncols, figsize=figsize)
@@ -41,7 +40,6 @@ def rama_plot( phi_psi, suptitle="Ramachandran Plot", titles=None,
         if n==1:
             ax = axes
         else:
-            print int( math.floor( i/ncols ) ), i%ncols
             ax = axes[ int( math.floor( i/ncols ) ), i%ncols ]
         phi = np.ma.masked_invalid( phi_psi[i][0], copy=False )
         psi = np.ma.masked_invalid( phi_psi[i][1], copy=False )

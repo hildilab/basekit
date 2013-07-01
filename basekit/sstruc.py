@@ -4,6 +4,7 @@ from __future__ import division
 
 import re
 import os
+import json
 import argparse
 import operator
 import sqlite3
@@ -64,12 +65,12 @@ class BuildSstrucDbRecords( object ):
     @memoize
     def _numa( self, ss ):
         idx_beg = self.npdb.index( 
-            chain=ss.chain1, resno=ss.resno1, interval=True
+            chain=ss.chain1, resno=ss.resno1, first=True
         )
         idx_end = self.npdb.index( 
-            chain=ss.chain2, resno=ss.resno2, interval=True
+            chain=ss.chain2, resno=ss.resno2, last=True
         )
-        return self.npdb.slice( idx_beg[0], idx_end[-1]+1 ).copy( 
+        return self.npdb.slice( idx_beg, idx_end+1 ).copy( 
             atomname="CA" 
         )
     @memoize
@@ -192,10 +193,13 @@ class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
         _( "next_dist", type="int", default=None, nargs=2, help="" ),
         _( "next_dist", type="int", default=None, nargs=2, help="" ),
         _( "hbond_next_prev", type="checkbox", default=False ),
+        _( "angle_next_prev", type="float", default=None, nargs=2 ),
     ]
     out = [
         _( "query_file", file="query.sql" ),
-        _( "provi_dir", dir="provi" )
+        _( "provi_dir", dir="provi" ),
+        _( "elements_dir", dir="elements" ),
+        _( "elements_provi_file", file="elements.provi" )
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "sstruc.provi"
@@ -228,6 +232,12 @@ class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
             )
         if self.hbond_next_prev:
             where.append( "hbond_next_prev=1" )
+        if self.angle_next_prev:
+            where.append( 
+                "angle_next_prev BETWEEN %i AND %i" % tuple( 
+                    self.angle_next_prev 
+                )
+            )
         where = "\n\tAND ".join( where )
         if self.count:
             print "Count %i" % db.query( where=where, count=True )
@@ -239,6 +249,7 @@ class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
     def _post_exec( self ):
         if self.count:
             return
+        self.elements = []
         pdb_groups = []
         phi = DefaultOrderedDict(list)
         psi = DefaultOrderedDict(list)
@@ -250,22 +261,91 @@ class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
             rec = list(records)
             pdb_file = self._pdb_file( pdb_id )
             npdb = numpdb.NumPdb( pdb_file )
-            self._make_provi( pdb_id, pdb_file, rec )
-            phi, psi = self._get_phi_psi( npdb, rec, phi, psi, window )
-        print zip( phi.values(), psi.values() )
+            rec2 = []
+            for r in rec:
+                try:
+                    C2_O = npdb.copy( 
+                        chain=r.chain2, resno=r.resno2-1, atomname="O" )
+                    Cdd_N = npdb.copy( 
+                        chain=r.chain2, resno=r.resno2+3, atomname="N" )
+                    if numpdb.numdist( C2_O, Cdd_N ) <= 3.9:
+                        rec2.append( r )
+                        self._make_element( pdb_id, npdb, r )
+                except Exception as e:
+                    print e
+            if rec2:
+                self._make_provi( pdb_id, pdb_file, rec2 )
+                phi, psi = self._get_phi_psi( npdb, rec2, phi, psi, window )
         rama_plot( 
             zip( phi.values(), psi.values() ),
             titles = map( str, window )
         )
+        self._superpose_elements()
     def _pdb_file( self, pdb_id ):
         return os.path.join( 
             self.pdb_archive, pdb_id[1:3], "%s.pdb" % pdb_id
         )
+    def _make_element( self, pdb_id, npdb, r ):
+        
+        idx_beg = npdb.index( 
+            chain=r.chain1, resno=r.resno1-r.prev_dist, first=True
+        )
+        idx_end = npdb.index( 
+            chain=r.chain2, resno=r.resno2+r.next_dist, last=True
+        )
+        numa = npdb.slice( idx_beg, idx_end+1 )
+        self.elements.append( ( r, numa ) )
+    def _superpose_elements( self ):
+        if not self.elements:
+            return
+        provi_elements = []
+        r1, numa1 = self.elements[0]
+        sele1 = {
+            "chain": r1.chain2, "resno": [ r1.resno2-4, r1.resno2 ]
+        }
+        element_file = os.path.join(
+            self.elements_dir, "%s_%i.pdb" % ( r1.pdb_id, r1.no )
+        )
+        numa1.write( element_file )
+        provi_elements.append({ 
+            "filename": self.relpath( element_file )
+        })
+        for r, numa in self.elements[1:]:
+            sele = {
+                "chain": r.chain2, "resno": [ r.resno2-4, r.resno2 ]
+            }
+            numpdb.superpose(
+                numa, numa1, sele, sele1, align=False
+            )
+            element_file = os.path.join(
+                self.elements_dir, "%s_%i.pdb" % ( r.pdb_id, r.no )
+            )
+            numa.write( element_file )
+            provi_elements.append({ 
+                "filename": self.relpath( element_file ),
+                "params": { "load_as": "append" }
+            })
+        with open( self.elements_provi_file, "w" ) as fp:
+            json.dump( provi_elements, fp, indent=4 )
     def _make_provi( self, pdb_id, pdb_file, records ):
         script = []
         for r in records:
-            s = "color { chain='%s' and %s-%s } tomato;" % ( 
-                r.chain1, r.resno1, r.resno2 
+            p = (
+                r.chain1, r.resno1, r.resno2,
+                r.chain1, r.resno1, r.resno2,
+                r.chain1, r.resno1-r.prev_dist, r.resno2+r.next_dist,
+                r.chain1, r.resno1-r.prev_dist-10, r.resno2+r.next_dist+10,
+            )
+            s = (
+                "center "
+                    "{ chain='%s' and resno>=%i and resno<=%i }; "
+                "color "
+                    "{ chain='%s' and resno>=%i and resno<=%i } tomato; "
+                "contact "
+                    "{ chain='%s' and resno>=%i and resno<=%i } "
+                    "{ not(chain='%s' and resno>=%i and resno<=%i) "
+                        "and not water } "
+                    "vdw 120%% full;" % p
             )
             script.append( s )
         self._make_provi_file(
