@@ -420,18 +420,18 @@ class ParallelMixin( Mixin ):
         _( "interval|i", type="int", default=[ 0, None ], 
             metavar=("BEG", "END"), nargs=2 ),
     ]
-    def _init_parallel( self, file_input, **kwargs ):
+    def _init_parallel( self, input_data, **kwargs ):
         if not hasattr( self, "_parallel_results" ):
             raise Exception( "'_parallel_results' method required" )
         if self.parallel in [ "pdb_archive", "directory", "dir" ]:
-            self.file_input = self.abspath( file_input )
-        elif self.parallel in [ "list" ]:
-            self.file_input = map(
+            self.input_data = self.abspath( input_data )
+        elif self.parallel in [ "list", "file_list" ]:
+            self.input_data = map(
                 self.abspath,
-                re.split( "[\s,]+", file_input.strip() )
+                re.split( "[\s,]+", input_data.strip() )
             )
         else:
-            self.file_input = file_input
+            self.input_data = input_data
         self.tool_kwargs = kwargs
         if self.fileargs and self.parallel:
             self.tool_kwargs[ "fileargs" ] = True
@@ -439,28 +439,31 @@ class ParallelMixin( Mixin ):
             self._parallel_results( self.tool_list )
     def _make_tool_list( self ):
         if self.parallel=="pdb_archive":
-            file_list = get_pdb_files( 
-                self.file_input, pattern=".pdb" )
+            input_list = get_pdb_files( 
+                self.input_data, pattern=".pdb" )
         elif self.parallel in [ "directory", "dir" ]:
-            file_list = map( 
+            input_list = map( 
                 operator.itemgetter(1), 
-                dir_walker( self.file_input, pattern=".+\.pdb" ) 
+                dir_walker( self.input_data, pattern=".+\.pdb" ) 
             )
-        elif self.parallel=="list":
-            file_list = self.file_input
+        elif self.parallel in [ "list", "file_list", "data" ]:
+            input_list = self.input_data
         else:
             raise Exception( 
                 "unknown value '%s' for 'parallel'" % self.parallel 
             )
-        file_list = itertools.islice( 
-            file_list, self.interval[0], self.interval[1]
+        input_list = itertools.islice( 
+            input_list, self.interval[0], self.interval[1]
         )
         tool_list = []
         self.tool_kwargs["run"] = False
-        for input_file in file_list:
-            stem = utils.path.stem( input_file )
+        for i, input_elm in enumerate(input_list):
+            try:
+                stem = utils.path.stem( input_elm )
+            except:
+                stem = str(i)
             output_dir = self.outpath( os.path.join( "parallel", stem ) )
-            tool = self.ParallelClass( input_file, **copy_dict( 
+            tool = self.ParallelClass( input_elm, **copy_dict( 
                 self.tool_kwargs, parallel=False,
                 output_dir=output_dir,
             ))
@@ -484,9 +487,6 @@ class ParallelMixin( Mixin ):
             self._parallel_results( tool_results )
         else:
             fn( self )
-
-
-
 
 
 
