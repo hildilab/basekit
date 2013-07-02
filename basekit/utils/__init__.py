@@ -2,8 +2,10 @@ from __future__ import division
 from __future__ import with_statement
 
 import collections
+from collections import Hashable
 import itertools
 import contextlib
+import functools
 import copy
 import os
 import re
@@ -12,13 +14,107 @@ import job
 import path
 
 
+def class_wraps(cls):
+    """Update a wrapper class `cls` to look like the wrapped."""
+    class Wrapper(cls):
+        """New wrapper that will extend the wrapper `cls` to make it look like `wrapped`.
+
+        wrapped: Original function or class that is beign decorated.
+        assigned: A list of attribute to assign to the the wrapper, by default they are:
+             ['__doc__', '__name__', '__module__', '__annotations__'].
+
+        """
+        def __init__(self, wrapped, assigned=functools.WRAPPER_ASSIGNMENTS):
+            print wrapped
+            self.__wrapped = wrapped
+            for attr in assigned:
+                setattr(self, attr, getattr(wrapped, attr))
+            super(Wrapper, self).__init__(wrapped)
+        def __repr__(self):
+            return repr(self.__wrapped)
+    return Wrapper
+
+
+@functools.wraps
 def memoize(f):
     cache = {}
-    def memf(*x):
+    def memf( *args, **kwargs ):
+        x = tuple((
+            tuple([ 
+                v if isinstance(v, Hashable) else tuple(v)
+                for v in args
+            ]), 
+            tuple([ 
+                ( k, v if isinstance(v, Hashable) else tuple(v) ) 
+                for k, v in kwargs.items()
+            ])
+        ))
         if x not in cache:
-            cache[x] = f(*x)
+            cache[x] = f(*args, **kwargs)
         return cache[x]
     return memf
+
+
+@functools.wraps
+class memoize_m(object):
+    """
+    From: http://code.activestate.com/recipes/577452/
+
+    cache the return value of a method
+    
+    This class is meant to be used as a decorator of methods. The return value
+    from a given method invocation will be cached on the instance whose method
+    was invoked. All arguments more passed to a method decorated with memoize must
+    be hashable.
+    
+    If a memoized method is invoked directly on its class the result will not
+    be cached. Instead the method will be invoked like a static method:
+    class Obj(object):
+        @memoize
+        def add_to(self, arg):
+            return self + arg
+    Obj.add_to(1) # not enough arguments
+    Obj.add_to(1, 2) # returns 3, result is not cached
+    """
+    def __init__(self, func):
+        self.func = func
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self.func
+        return functools.partial(self, obj)
+    def __call__(self, *args, **kwargs):
+        obj = args[0]
+        try:
+            cache = obj.__cache
+        except AttributeError:
+            cache = obj.__cache = {}
+        key = (
+            self.func,
+            tuple([ 
+                v if isinstance(v, Hashable) else tuple(v)
+                for v in args[1:]
+            ]),
+            tuple([ 
+                ( k, v if isinstance(v, Hashable) else tuple(v) ) 
+                for k, v in kwargs.items()
+            ])
+        )
+        try:
+            res = cache[key]
+        except KeyError:
+            res = cache[key] = self.func(*args, **kwargs)
+        return res
+
+
+@functools.wraps
+def memoize1(f):
+    """ Memoization decorator for a function taking a single argument """
+    class memodict(dict):
+        def __missing__(self, key):
+            ret = self[key] = f(key)
+            return ret 
+    return memodict().__getitem__
+
 
 def lazy_property(fn):
     attr_name = '_lazy_' + fn.__name__

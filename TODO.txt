@@ -97,5 +97,6 @@ DOCU
 UNITTEST
 --------
 
+* 1GZM phi/psi: -365652.536444; -49624.4259863
 * http://docs.python-guide.org/en/latest/writing/tests.html
 * http://docs.python.org/2/library/unittest.html
