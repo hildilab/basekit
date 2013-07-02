@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 from __future__ import division
 
 import re
@@ -19,11 +17,9 @@ import numpy as np
 import utils.math
 import utils.path
 from utils import (
-    try_int, get_index, boolean, iter_window, memoize, 
-    copy_dict, dir_walker, DefaultOrderedDict
+    try_int, get_index, boolean, iter_window, memoize, memoize_m,
+    copy_dict, dir_walker, DefaultOrderedDict, Bunch, wrap
 )
-from utils.timer import Timer
-from utils.db import get_pdb_files, create_table
 from utils.tool import (
     _, _dir_init, PyTool, DbTool, RecordsMixin, ParallelMixin,
     ProviMixin, SqliteBackend
@@ -32,6 +28,8 @@ from utils.tool import (
 import utils.numpdb as numpdb
 
 from rama import rama_plot
+from msa import Muscle
+
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "sstruc" )
 
@@ -62,7 +60,7 @@ class BuildSstrucDbRecords( object ):
         # TODO check if in idx interval, but probably ok as is
         # because there is only a resno given, no chain, altloc, insertion
         return y.resno1 <= x.hbond <= y.resno2
-    @memoize
+    @memoize_m
     def _numa( self, ss ):
         idx_beg = self.npdb.index( 
             chain=ss.chain1, resno=ss.resno1, first=True
@@ -73,7 +71,7 @@ class BuildSstrucDbRecords( object ):
         return self.npdb.slice( idx_beg, idx_end+1 ).copy( 
             atomname="CA" 
         )
-    @memoize
+    @memoize_m
     def _axis( self, ss ):
         numa = self._numa( ss )
         if numa.length<3:
@@ -194,18 +192,24 @@ class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
         _( "next_dist", type="int", default=None, nargs=2, help="" ),
         _( "hbond_next_prev", type="checkbox", default=False ),
         _( "angle_next_prev", type="float", default=None, nargs=2 ),
+        _( "compare_pdb", type="file", ext="pdb", default=None ),
+        _( "compare_sele", type="sele", default=None ),
     ]
     out = [
         _( "query_file", file="query.sql" ),
         _( "provi_dir", dir="provi" ),
         _( "elements_dir", dir="elements" ),
-        _( "elements_provi_file", file="elements.provi" )
+        _( "elements_provi_file", file="elements.provi" ),
+        _( "fasta_file", file="elements.fasta" ),
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "sstruc.provi"
     RecordsClass = SstrucDbRecord
     def _init( self, *args, **kwargs ):
         self._init_records( None, **kwargs )
+        self.window = range( -2, 3 )
+        self.compare_element = None
+        self.elements = []
     def func( self ):
         db = SqliteBackend( self.sstruc_db, SstrucDbRecord )
         where = []
@@ -239,9 +243,8 @@ class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
                 )
             )
         where = "\n\tAND ".join( where )
-        if self.count:
-            print "Count %i" % db.query( where=where, count=True )
-        else:
+        print "Record count %i" % db.query( where=where, count=True )
+        if not self.count:
             self.records = db.query( where=where, limit=self.limit )
         with open( self.query_file, "w" ) as fp:
             fp.write( db.q )
@@ -249,59 +252,44 @@ class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
     def _post_exec( self ):
         if self.count:
             return
-        self.elements = []
-        pdb_groups = []
         phi = DefaultOrderedDict(list)
         psi = DefaultOrderedDict(list)
-        window = range( -2, 3 )
+        
+        if self.compare_pdb and self.compare_sele:
+            s = self.compare_sele
+            b = Bunch(
+                chain1=s["chain"], resno1=s["resno"][0],
+                chain2=s["chain"], resno2=s["resno"][1],
+                pdb_id="COMP", no=0
+            )
+            n = numpdb.NumPdb( self.compare_pdb )
+            self.elements = [( b, n )]
+
         it = itertools.groupby( 
             self.records, operator.attrgetter('pdb_id') 
         )
-        for pdb_id, records in it:
-            rec = list(records)
-            pdb_file = self._pdb_file( pdb_id )
-            npdb = numpdb.NumPdb( pdb_file )
-            rec2 = []
-            for r in rec:
-                try:
-                    C2_O = npdb.copy( 
-                        chain=r.chain2, resno=r.resno2-1, atomname="O" )
-                    Cdd_N = npdb.copy( 
-                        chain=r.chain2, resno=r.resno2+3, atomname="N" )
-                    if numpdb.numdist( C2_O, Cdd_N ) <= 3.9:
-                        rec2.append( r )
-                        self._make_element( pdb_id, npdb, r )
-                except Exception as e:
-                    print e
-            if rec2:
-                self._make_provi( pdb_id, pdb_file, rec2 )
-                phi, psi = self._get_phi_psi( npdb, rec2, phi, psi, window )
-        rama_plot( 
-            zip( phi.values(), psi.values() ),
-            titles = map( str, window )
+        sf = SstrucFinderRefine( 
+            [ list(r) for pdb_id, r in it ],
+            pdb_archive=self.pdb_archive,
+            window=self.window,
+            parallel="data"
         )
+        self.elements += sf.elements
+
+        # rama_plot( 
+        #     zip( phi.values(), psi.values() ),
+        #     titles = map( str, window )
+        # )
         self._superpose_elements()
-    def _pdb_file( self, pdb_id ):
-        return os.path.join( 
-            self.pdb_archive, pdb_id[1:3], "%s.pdb" % pdb_id
-        )
-    def _make_element( self, pdb_id, npdb, r ):
-        
-        idx_beg = npdb.index( 
-            chain=r.chain1, resno=r.resno1-r.prev_dist, first=True
-        )
-        idx_end = npdb.index( 
-            chain=r.chain2, resno=r.resno2+r.next_dist, last=True
-        )
-        numa = npdb.slice( idx_beg, idx_end+1 )
-        self.elements.append( ( r, numa ) )
+        self._msa_elements()
+    
     def _superpose_elements( self ):
         if not self.elements:
             return
         provi_elements = []
         r1, numa1 = self.elements[0]
         sele1 = {
-            "chain": r1.chain2, "resno": [ r1.resno2-4, r1.resno2 ]
+            "chain": r1.chain2, "resno": [ r1.resno2-3, r1.resno2 ]
         }
         element_file = os.path.join(
             self.elements_dir, "%s_%i.pdb" % ( r1.pdb_id, r1.no )
@@ -312,7 +300,7 @@ class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
         })
         for r, numa in self.elements[1:]:
             sele = {
-                "chain": r.chain2, "resno": [ r.resno2-4, r.resno2 ]
+                "chain": r.chain2, "resno": [ r.resno2-3, r.resno2 ]
             }
             numpdb.superpose(
                 numa, numa1, sele, sele1, align=False
@@ -323,13 +311,87 @@ class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
             numa.write( element_file )
             provi_elements.append({ 
                 "filename": self.relpath( element_file ),
-                "params": { "load_as": "append" }
+                "params": { 
+                    "load_as": "append",
+                    "script": ( "color "
+                        "{ chain='%s' and resno>=%i and resno<=%i } "
+                        "tomato; " % (r.chain1, r.resno1, r.resno2) )
+                }
             })
         with open( self.elements_provi_file, "w" ) as fp:
             json.dump( provi_elements, fp, indent=4 )
-    def _make_provi( self, pdb_id, pdb_file, records ):
+    def _msa_elements( self ):
+        with open( self.fasta_file, "w" ) as fp:
+            for r, numa in self.elements:
+                fp.write( ">%s_%i\n%s\n" % (
+                    r.pdb_id, r.no, wrap( numa.sequence(), width=80 )
+                ))
+        Muscle( self.fasta_file )
+    
+
+
+
+
+class SstrucFinderRefine( PyTool, ParallelMixin, ProviMixin ):
+    args = [
+        _( "sstruc_records", type="list" ),
+        _( "pdb_archive", type="dir", default="" ),
+        _( "window", type="list", default=range(-2, 3) ),
+    ]
+    tmpl_dir = TMPL_DIR
+    provi_tmpl = "sstruc.provi"
+    def _init( self, *args, **kwargs ):
+        self._init_parallel( self.sstruc_records, **kwargs )
+    def _parallel_results( self, tool_list ):
+        self.elements = []
+        for t in tool_list:
+            self.elements += t.elements
+    def func( self ):
+        self.sstruc_refined = []
+        self.elements = []
+        self.phi = []
+        self.psi = []
+        self.pdb_id = self.sstruc_records[0].pdb_id
+        self.pdb_file = self._pdb_file( self.pdb_id )
+        self.npdb = numpdb.NumPdb( self.pdb_file )
+        for r in self.sstruc_records:
+            try:
+                C3_O = self.npdb.copy( 
+                    chain=r.chain2, resno=r.resno2-2, atomname="O" )
+                C2_O = self.npdb.copy( 
+                    chain=r.chain2, resno=r.resno2-1, atomname="O" )
+                Cd_N = self.npdb.copy( 
+                    chain=r.chain2, resno=r.resno2+2, atomname="N" )
+                Cdd_N = self.npdb.copy( 
+                    chain=r.chain2, resno=r.resno2+3, atomname="N" )
+                Cddd_N = self.npdb.copy( 
+                    chain=r.chain2, resno=r.resno2+4, atomname="N" )
+                if numpdb.numdist( C2_O, Cdd_N ) <= 3.9 or \
+                        numpdb.numdist( C3_O, Cd_N ) <= 3.9:
+                    self.sstruc_refined.append( r )
+            except Exception as e:
+                print e
+        if self.sstruc_refined:
+            self._make_provi()
+            # self._make_phi_psi()
+            self._make_element()
+    def _pdb_file( self, pdb_id ):
+        return os.path.join( 
+            self.pdb_archive, pdb_id[1:3], "%s.pdb" % pdb_id
+        )
+    def _make_element( self ):
+        for r in self.sstruc_refined:
+            idx_beg = self.npdb.index( 
+                chain=r.chain1, resno=r.resno1-r.prev_dist, first=True
+            )
+            idx_end = self.npdb.index( 
+                chain=r.chain2, resno=r.resno2+r.next_dist, last=True
+            )
+            numa = self.npdb.slice( idx_beg, idx_end+1 )
+            self.elements.append( ( r, numa ) )
+    def _make_provi( self ):
         script = []
-        for r in records:
+        for r in self.sstruc_refined:
             p = (
                 r.chain1, r.resno1, r.resno2,
                 r.chain1, r.resno1, r.resno2,
@@ -349,72 +411,16 @@ class SstrucFinder( PyTool, RecordsMixin, ProviMixin ):
             )
             script.append( s )
         self._make_provi_file(
-            output_dir=self.provi_dir,
-            prefix="%s_" % pdb_id,
-            pdb_file=os.path.relpath( pdb_file, self.provi_dir ),
+            prefix="%s_" % self.pdb_id,
+            pdb_file=self.relpath( self.pdb_file ),
             script=" ".join( script )
         )
-    def _get_phi_psi( self, npdb, records, phi, psi, window ):
-        for r in records:
-            for i in window:
-                numa = npdb.copy( chain=r.chain2, resno=r.resno2+i )
+    def _make_phi_psi( self ):
+        for r in self.sstruc_refined:
+            for i in self.window:
+                numa = self.npdb.copy( chain=r.chain2, resno=r.resno2+i )
                 try:
-                    phi[i].append( numa['phi'][0] )
-                    psi[i].append( numa['psi'][0] )
+                    self.phi[i].append( numa['phi'][0] )
+                    self.psi[i].append( numa['psi'][0] )
                 except Exception as e:
                     print i, e
-        return phi, psi
-
-
-        
-
-
-
-
-def sstruc_test( pdb_file ):
-    pass
-
-class SstrucTest( PyTool ):
-    args = [
-        _( "pdb_file", type="file", ext="pdb" )
-    ]
-    no_output = True
-    def func( self ):
-        sstruc_test( self.pdb_file )
-
-
-
-
-
-def sstruc2jmol( sstruc ):
-    ret = ""
-    for i, ss in enumerate( sstruc ):
-        ret += "draw ID 'v%i' vector {%s} {%s};" % (
-            i,
-            "%0.2f %0.2f %0.2f" % tuple(ss[8]),
-            "%0.2f %0.2f %0.2f" % tuple(ss[7])
-        )
-    return ret
-
-
-
-
-def create_provi( output_dir, template, row ):
-    pdb_path = row[0]
-    sele = "{ chain='%s' and %s-%s }" % ( row[3], row[4], row[6] )
-    pdb_fdir, pdb_fname = os.path.split( pdb_path )
-    fname = '%s_%s%s-%s.provi' % ( pdb_fname[0:4], row[3], row[4], row[6] )
-    fpath = os.path.join( output_dir, fname )
-    npdb = numpdb.NumPdb( pdb_path )
-    d = {
-        "pdb_file": pdb_path,
-        "script": "select %s; color {selected} tomato; center {selected};%s" % ( 
-            sele, 
-            numpdb.sstruc2jmol( 
-                filter( lambda x: x[10] in [row[18]-1, row[18], row[18]+1], npdb.sstruc )
-            ) 
-        )
-    }
-    create_json( d, fpath, template )
-
-

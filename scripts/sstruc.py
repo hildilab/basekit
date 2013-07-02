@@ -2,7 +2,7 @@
 
 from basekit.utils.tool import parse_subargs
 from basekit.sstruc import (
-	Sstruc, SstrucInfo, SstrucFinder, SstrucTest
+	Sstruc, SstrucInfo, SstrucFinder
 )
 
 
@@ -10,7 +10,6 @@ from basekit.sstruc import (
 
 def main():
     tools = {
-    	"test": SstrucTest,
         "pdb": Sstruc,
         "info": SstrucInfo,
         "find": SstrucFinder
