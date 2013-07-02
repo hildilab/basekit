@@ -14,7 +14,8 @@ np.seterr( all="raise" )
 import basekit.utils.path
 from basekit.utils.align import aligner
 from basekit.utils import (
-    try_int, get_index, copy_dict, iter_window, iter_stride
+    try_int, get_index, copy_dict, iter_window, iter_stride,
+    memoize_m
 )
 from math import vec_dihedral, mag, axis, Superposition, rmsd
 from bio import AA1, AA3
@@ -137,24 +138,28 @@ def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
             numa1.sequence(), numa2.sequence(),
             method="global", matrix="BLOSUM62"
         )
-        as1 = np.ones( numa1.length, bool )
-        as2 = np.ones( numa2.length, bool )
+        ali_sele1 = np.ones( numa1.length, bool )
+        ali_sele2 = np.ones( numa2.length, bool )
         i = 0
         j = 0
         for x, y in zip( ali1, ali2 ):
             if x=="-":
-                as2[j] = False
+                ali_sele2[j] = False
             else:
                 i += 1
             if y=="-":
-                as1[i] = False
+                ali_sele1[i] = False
             else:
                 j += 1
-        coords1 = numa1['xyz'][ as1 ]
-        coords2 = numa2['xyz'][ as2 ]
+        coords1 = numa1['xyz'][ ali_sele1 ]
+        coords2 = numa2['xyz'][ ali_sele2 ]
     else:
         coords1 = numa1['xyz']
         coords2 = numa2['xyz']
+
+    if len( coords1 ) != len( coords2 ):
+        print "length differ, cannot superpose"
+        return None
 
     if rmsd_cutoff and max_cycles:
         for cycle in xrange( max_cycles ):
@@ -346,6 +351,7 @@ class NumAtoms:
         self._coords = coords
         self.flag = flag
         self.length = len( atoms )
+        self._memo = {}
     def __getitem__( self, key ):
         if key=='xyz':
             return self._coords
@@ -401,7 +407,9 @@ class NumAtoms:
         if invert:
             np.logical_not( sele, sele )
         return sele
-    def slice( self, begin, end, flag=None ):
+    def slice( self, begin, end=None, flag=None ):
+        if not end:
+            end = begin + 1
         return NumAtoms( 
             self._atoms[begin:end], 
             self._coords[begin:end], flag=flag 
@@ -433,19 +441,25 @@ class NumAtoms:
             return indices[0], indices[-1]
         else:
             return indices
+    @memoize_m
     def iter_chain( self, **sele ):
+        memo = []
         coords, atoms = self._select( **sele )
-        if len(atoms)==0: return
-        chain = atoms['chain'][0]
-        k = 0
-        l = 0
-        for a in BORDER( atoms ):
-            if chain!=a['chain']:
-                yield self.slice( k, l )
-                chain = a['chain']
-                k = l
-            l += 1
+        if len(atoms)>0:
+            chain = atoms['chain'][0]
+            k = 0
+            l = 0
+            for a in BORDER( atoms ):
+                if chain!=a['chain']:
+                    numa = self.slice( k, l )
+                    memo.append( numa )
+                    chain = a['chain']
+                    k = l
+                l += 1
+        return memo
+    @memoize_m
     def iter_sstruc( self, **sele ):
+        memo = []
         for numatoms in self.iter_chain( **sele ):
             sstruc = numatoms['sstruc'][0]
             atoms = numatoms._atoms
@@ -453,13 +467,16 @@ class NumAtoms:
             l = 0
             for a in BORDER( atoms ):
                 if sstruc!=a['sstruc']:
-                    yield numatoms.slice( k, l )
+                    memo.append( numatoms.slice( k, l ) )
                     k = l
                     sstruc = a['sstruc']
                 l += 1
+        return memo
+    @memoize_m
     def _iter_resno( self, **sele ):
+        memo = []
         for numatoms in self.iter_chain( **sele ):
-            res = ( 
+            res = (
                 numatoms['resno'][0], 
                 numatoms['insertion'][0],
                 numatoms['altloc'][0]
@@ -468,70 +485,63 @@ class NumAtoms:
             l = 0
             for a in BORDER( numatoms._atoms ):
                 if res!=( a['resno'], a['insertion'], a['altloc'] ):
-                    numa = numatoms.slice( k, l )
-                    yield numa
+                    memo.append( numatoms.slice( k, l ) )
                     k = l
                     res = ( a['resno'], a['insertion'], a['altloc'] )
                 l += 1
+        return memo
+    @memoize_m
     def iter_resno( self, **sele ):
-        for numatoms in self.iter_chain( **sele ):
-            res = ( 
-                numatoms['resno'][0], 
-                numatoms['insertion'][0],
-                numatoms['altloc'][0]
-            )
-            numa_prev = None
-            k = 0
-            l = 0
-            it = BORDER( numatoms._atoms )
-            for a in it:
-                if res!=( a['resno'], a['insertion'], a['altloc'] ):
-                    if not numatoms['incomplete'][k]:
-                        numa = numatoms.slice( k, l, flag=True )
-                        if numa_prev:
-                            if numa_prev['resno'][0]==numa['resno'][0]-1:
-                                flag = False
-                            elif numdist( 
-                                    numa_prev.copy( atomname="C" ), 
-                                    numa.copy( atomname="N" ) ) > 1.4:
-                                flag = True
-                            else:
-                                flag = False
-                            numa.flag = flag
-                        yield numa
-                        numa_prev = numa
+        memo = []
+        numa_prev = None
+        for numa in self._iter_resno( **sele ):
+            numa0 = numa[0]
+            if not numa0['incomplete']:
+                numa.flag = True
+                if numa_prev:
                     # skip any additional altloc
-                    if res[0]==a['resno'] and \
-                            res[1]==a['insertion'] and \
-                            res[2]!=a['altloc']:
-                        res = ( a['resno'], a['insertion'], a['altloc'] )
-                        for a in it:
-                            l += 1
-                            if res!=( a['resno'], a['insertion'], a['altloc'] ):
-                                break
-                    k = l
-                    res = ( a['resno'], a['insertion'], a['altloc'] )
-                l += 1
+                    if numa0['resno']==numa0_prev['resno'] and \
+                            numa0['insertion']==numa0_prev['insertion'] and \
+                            numa0['altloc']!=numa0_prev['altloc']:
+                        continue
+                    if numa0_prev['resno']==numa0['resno']-1:
+                        numa.flag = False
+                    elif numdist(
+                            # assuming the first three atoms are N, CA, C
+                            numa_prev.slice( 2 ), 
+                            numa.slice( 0 ) ) > 1.4:
+                            # numa_prev.copy( atomname="C" ), 
+                            # numa.copy( atomname="N" ) ) > 1.4:
+                        numa.flag = True
+                    else:
+                        numa.flag = False
+                memo.append( numa )
+                numa_prev = numa
+                numa0_prev = numa0
+        return memo
+    @memoize_m
     def iter_resno2( self, window, **sele ):
+        memo = []
         # (TODO) assumes the first a has a.flag==True
-        it = self.iter_resno( **sele )
+        it = iter( self.iter_resno( **sele ) )
         for a in it:
             if a.flag:
                 result = [ a ]
                 for b in it:
                     if b.flag: 
                         result = [ b ]
-                    else: 
+                    else:
                         result.append( b )
                     if len( result ) == window:
                         break
                 if len( result ) == window:
                     result = tuple(result)
                 else:
-                    return
+                    break
             else:
                 result = result[1:] + (a,)
-            yield result
+            memo.append( result )
+        return memo
     def axis( self, **sele ):
         try:
             return axis( self.get( 'xyz', **sele ) )
@@ -570,6 +580,7 @@ class NumAtoms:
 
 
 class NumPdb:
+    numatoms = None
     def __init__( self, pdb_path, features=None ):
         self.pdb_path = pdb_path
         self.pdb_id = basekit.utils.path.stem( pdb_path )
@@ -670,8 +681,8 @@ class NumPdb:
         self._coords = coords
         self._header = header
         self.numatoms = NumAtoms( self._atoms, self._coords )
-
         self.length = len( atoms )
+
         if self.features["configuration"]:
             self.__calc_configuration()
         if self.features["detect_incomplete"]:
@@ -685,13 +696,14 @@ class NumPdb:
     def __calc_incomplete( self ):
         bb_subset = ATOMS['backbone'].issubset
         try:
+            numa = False
             for numa in self._iter_resno():
                 if not bb_subset( numa["atomname"] ):
                     numa['incomplete'] = True
-                    # print numa._atoms
+                    #print numa._atoms
         except Exception as e:
             LOG.error( "[%s] calc incomplete (%s) => %s" % ( 
-                self.pdb_id, e, numa['atomno'][0] 
+                self.pdb_id, e, numa and numa['atomno'][0] 
             ))
     def __calc_sstruc( self ):
         for ss in self._sstruc:
