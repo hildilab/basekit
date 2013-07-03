@@ -1,0 +1,8 @@
+[
+    { 
+        "filename": "${pdb_file}"
+    },
+    { 
+        "filename":  "${vert_file}"
+    }
+]

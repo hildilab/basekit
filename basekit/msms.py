@@ -10,7 +10,7 @@ import os
 
 import utils.path
 from utils import copy_dict
-from utils.tool import _, _dir_init, CmdTool
+from utils.tool import _, _dir_init, CmdTool, ProviMixin
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "msms" )
 
@@ -30,7 +30,7 @@ def pdb_select( input_pdb, output_pdb ):
 
 
 
-class Msms( CmdTool ):
+class Msms( CmdTool, ProviMixin ):
     """A wrapper around the MSMS program."""
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
@@ -39,8 +39,11 @@ class Msms( CmdTool ):
     out = [
         _( "area_file", file="area.area" ),
         _( "face_file", file="tri_surface.face" ),
-        _( "vert_file", file="tri_surface.vert" )
+        _( "vert_file", file="tri_surface.vert" ),
+        _( "provi_file", file="msms.provi" )
     ]
+    tmpl_dir = TMPL_DIR
+    provi_tmpl = "msms.provi"
     def _init( self, *args, **kwargs ):
         self.pdb2xyzr = Pdb2xyzr( 
             self.pdb_file, **copy_dict( kwargs, run=False ) 
@@ -53,6 +56,11 @@ class Msms( CmdTool ):
         self.output_files.extend( self.pdb2xyzr.output_files )
     def _pre_exec( self ):
         self.pdb2xyzr()
+    def _post_exec( self ):
+        self._make_provi_file(
+            pdb_file=self.relpath( self.pdb_file ),
+            vert_file=self.relpath( self.vert_file )
+        )
 
 
 
