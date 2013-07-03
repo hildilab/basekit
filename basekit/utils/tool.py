@@ -495,6 +495,32 @@ class Tool( object ):
     def __init__( self, *args, **kwargs ):
         self.name = self.__class__.__name__.lower()
 
+        # hidden kwargs
+        self.pre_exec = kwargs.get("pre_exec", True)
+        self.post_exec = kwargs.get("post_exec", True)
+
+        # general
+        self.timeout = kwargs.get("timeout", None)
+        self.fileargs = kwargs.get("fileargs", False)
+        self.verbose = kwargs.get("verbose", False)
+        self.debug = kwargs.get("debug", False)
+        self.output_dir = os.path.abspath( 
+            kwargs.get("output_dir", ".") 
+        ) + os.sep
+
+        if not self.no_output:
+            if not os.path.exists( self.output_dir ):
+                os.makedirs( self.output_dir )
+            self.args_file = os.path.join( 
+                self.output_dir, "%s.json" % self.name 
+            )
+            if self.fileargs:
+                with open( self.args_file, "r" ) as fp:
+                    args, kwargs = json.load( fp )
+            else:
+                with open( self.args_file, "w" ) as fp:
+                    json.dump( ( args, kwargs ), fp, indent=4 )
+
         self.input_files_dict = { "cls": self }
         args_iter = iter(args)
         for name, params in self.args.iteritems():
@@ -508,32 +534,6 @@ class Tool( object ):
                 self.input_files_dict[ name ] = utils.Bunch(
                     stem=utils.path.stem( value )
                 )
-
-        # hidden kwargs
-        self.pre_exec = kwargs.get("pre_exec", True)
-        self.post_exec = kwargs.get("post_exec", True)
-
-        # general
-        self.timeout = kwargs.get("timeout", None)
-        self.fileargs = kwargs.get("fileargs", False)
-        self.verbose = kwargs.get("verbose", False)
-        self.debug = kwargs.get("debug", False)
-        self.output_dir = os.path.abspath( 
-            kwargs.get("output_dir", ".") 
-        ) + os.sep
-        
-        if not self.no_output:
-            if not os.path.exists( self.output_dir ):
-                os.makedirs( self.output_dir )
-            self.args_file = os.path.join( 
-                self.output_dir, "%s.json" % self.name 
-            )
-            if self.fileargs:
-                with open( self.args_file, "r" ) as fp:
-                    args, kwargs = json.load( fp )
-            else:
-                with open( self.args_file, "w" ) as fp:
-                    json.dump( ( args, kwargs ), fp, indent=4 )
         
         self.output_files = []
         for name, params in self.out.iteritems():
