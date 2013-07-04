@@ -1,6 +1,4 @@
 from setuptools import setup, Extension
-#from distutils.core import setup
-#from distutils.extension import Extension
 
 try:
     from Cython.Distutils import build_ext
@@ -33,5 +31,5 @@ setup(
         'basekit.utils',
         'basekit.utils.align'
     ],
-    install_requires = [ 'numpy', 'matplotlib' ]
+    install_requires = [ 'numpy', 'matplotlib', 'poster' ]
 )
