@@ -286,13 +286,14 @@ class CsvBackend( RecordsBackend ):
     def write( self, records ):
         with open( self.file_name, "w" ) as fp:
             cw = csv.writer( fp, delimiter=',')
+            cw.writerow( self.cls._fields )
             for r in records:
                 cw.writerow( r )
     def read( self ):
         with open( self.file_name, "r" ) as fp:
-            return map( 
-                self.cls._make, csv.reader( fp, delimiter=',') 
-            ) 
+            cr = csv.reader( fp, delimiter=',')
+            header = cr.next()
+            return map( self.cls._make, cr )
 
 class JsonBackend( RecordsBackend ):
     name = "json"
