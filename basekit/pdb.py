@@ -211,7 +211,6 @@ class PdbEdit( PyTool ):
         if self.shift:
             shift = np.array( self.shift[0:3] )
             npdb._coords += shift
-            print npdb._coords.mean( axis=0 )
 
         if self.box:
             corner1 = np.array( self.box[0:3] )

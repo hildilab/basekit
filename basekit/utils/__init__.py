@@ -228,6 +228,7 @@ def iter_consume( iterator, n ):
 
 def dir_walker( directory, pattern ):
     for root, dirs, files in os.walk(directory):
+        files.sort()
         for name in files:
             fpath = os.path.join(root, name)
             m = re.match( pattern, name )
