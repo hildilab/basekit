@@ -176,25 +176,52 @@ class PdbSplit( PyTool ):
 
 
 
-class PdbBox( PyTool ):
-    """Cuts away all atoms that are not within the given box"""
+class PdbEdit( PyTool ):
+    """ Edits a pdb file. Manipulations are done in this order:
+        center, shift, box.
+    """
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
-        _( "top_left", type="float", nargs=3 ),
-        _( "extent", type="float", nargs=3 )
+        _( "center", type="checkbox", default=False ),
+        _( "shift", type="float", nargs=3, default=None,
+            metavar=("X", "Y", "Z") ),
+        _( "box", type="float", nargs=6, default=None,
+            help="Two sets of 3d coordinates; first one corner, "
+                "then the extent at which the opposing corner is. "
+                "Outputs only the atoms within the box.",
+            metavar=("X", "Y", "Z", "EX", "EY", "EZ") ),
     ]
     out = [
-        _( "boxed_pdb_file", file="boxed.pdb" )
+        _( "edited_pdb_file", file="edited.pdb" )
     ]
     def func( self ):
-        npdb = numpdb.NumPdb( self.pdb_file )
-        top_left = np.array( self.top_left )
-        extent = np.array( self.extent )
-        sele = (
-            ( npdb._coords>top_left ) & 
-            ( npdb._coords<(top_left+extent) )
-        ).all( axis=1 )
-        npdb.copy( sele=sele ).write( self.boxed_pdb_file )
+        npdb = numpdb.NumPdb( self.pdb_file, {
+            "phi_psi": False,
+            "sstruc": False,
+            "backbone_only": False,
+            "protein_only": False,
+            "detect_incomplete": False,
+            "configuration": False
+        })
+        sele = None
+
+        if self.center:
+            npdb._coords -= npdb._coords.mean( axis=0 )
+
+        if self.shift:
+            shift = np.array( self.shift[0:3] )
+            npdb._coords += shift
+            print npdb._coords.mean( axis=0 )
+
+        if self.box:
+            corner1 = np.array( self.box[0:3] )
+            corner2 = corner1 + np.array( self.box[3:6] )
+            sele = (
+                ( npdb._coords>corner1 ) & 
+                ( npdb._coords<corner2 )
+            ).all( axis=1 )
+
+        npdb.copy( sele=sele ).write( self.edited_pdb_file )
 
 
 

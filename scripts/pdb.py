@@ -5,7 +5,7 @@
 from basekit.utils.tool import parse_subargs
 from basekit.pdb import (
 	PdbDownload, PdbSplit, PdbUnzip, PdbHetDictionary, 
-	PdbSuperpose, PdbBox, NumpdbTest
+	PdbSuperpose, PdbEdit, NumpdbTest
 )
 
 
@@ -18,7 +18,7 @@ def main():
         "unzip": PdbUnzip,
         "het": PdbHetDictionary,
         "superpose": PdbSuperpose,
-        "box": PdbBox,
+        "edit": PdbEdit,
         "test": NumpdbTest
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
