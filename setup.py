@@ -16,11 +16,13 @@ setup(
     ext_modules = [ 
         Extension(
             "basekit/utils/cgeom", 
-            sources = [ "basekit/utils/cgeom.c" ]
+            sources = [ "basekit/utils/cgeom.c" ],
+            include_dirs = [ np_include ]
         ),
         Extension(
             "basekit/utils/align/calign", 
-            sources = [ "basekit/utils/align/calign.c" ]
+            sources = [ "basekit/utils/align/calign.c" ],
+            include_dirs = [ np_include ]
         )
     ],
     url = 'www.weirdbyte.de',

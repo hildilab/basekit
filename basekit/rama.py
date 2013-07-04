@@ -23,7 +23,6 @@ def rama_plot( phi_psi, suptitle="Ramachandran Plot", titles=None,
             [ title1, title2, ... ] 
             or title1
     """
-
     phi_psi = listify( phi_psi )
     titles = listify( titles )
     n = len( phi_psi )
