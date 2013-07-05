@@ -22,7 +22,7 @@ def add_prefix( file_name, prefix="" ):
 def add_suffix( file_name, suffix="" ):
 	return join( 
         dirname( file_name ),
-        stem( file_name ) + suffix + ext( filename )
+        stem( file_name ) + suffix + ext( file_name )
     )
 
 def change_ext( file_name, extension="" ):
