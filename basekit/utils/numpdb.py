@@ -17,8 +17,8 @@ from basekit.utils import (
     try_int, get_index, copy_dict, iter_window, iter_stride,
     memoize_m
 )
-from math import vec_dihedral, mag, axis, Superposition, rmsd
-from bio import AA1, AA3
+from math import mag, axis, Superposition, rmsd
+from bio import AA1
 
 try:
     from cgeom import dihedral
@@ -517,6 +517,7 @@ class NumAtoms:
     def iter_resno( self, **sele ):
         memo = []
         numa_prev = None
+        numa0_prev = None
         for numa in self._iter_resno( **sele ):
             numa0 = numa[0]
             if not numa0['incomplete']:
