@@ -10,9 +10,6 @@ import copy
 import os
 import re
 
-import job
-import path
-
 
 def class_wraps(cls):
     """Update a wrapper class `cls` to look like the wrapped."""

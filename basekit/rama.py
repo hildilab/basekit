@@ -1,16 +1,16 @@
 from __future__ import division
 
 
-import os
 import math
 
 from utils import listify, flatten, get_index
 
 import numpy as np
 
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from matplotlib.pyplot import figure
 
 
 def rama_plot( phi_psi, suptitle="Ramachandran Plot", titles=None,

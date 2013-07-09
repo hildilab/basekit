@@ -1,8 +1,8 @@
 from __future__ import with_statement
 
 import os
-import re
 import urllib2
+import collections
 
 from poster.encode import multipart_encode
 from poster.streaminghttp import register_openers

@@ -1,27 +1,21 @@
 from __future__ import division
 
-import re
 import os
 import json
-import argparse
 import operator
-import sqlite3
-import functools
 import itertools
 import collections
-import string
-import textwrap
 
 import numpy as np
 
 import utils.math
 import utils.path
 from utils import (
-    try_int, get_index, boolean, iter_window, memoize, memoize_m,
-    copy_dict, dir_walker, DefaultOrderedDict, Bunch, wrap
+    try_int, get_index, boolean, iter_window, memoize_m,
+    copy_dict, DefaultOrderedDict, Bunch, wrap
 )
 from utils.tool import (
-    _, _dir_init, PyTool, DbTool, RecordsMixin, ParallelMixin,
+    _, _dir_init, PyTool, RecordsMixin, ParallelMixin,
     ProviMixin, SqliteBackend
 )
 

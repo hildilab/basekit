@@ -36,7 +36,7 @@ def parse_het_dictionary( het_file ):
     print len(het_dict)
     aminoacid_list = []
     for key, atom_list in het_dict.iteritems():
-        if ATOMS['backbone'].issubset( atom_list ):
+        if numpdb.ATOMS['backbone'].issubset( atom_list ):
             aminoacid_list.append( key )
     print len(aminoacid_list)
     return aminoacid_list
@@ -206,18 +206,19 @@ class PdbEdit( PyTool ):
         sele = None
 
         if self.center:
-            npdb._coords -= npdb._coords.mean( axis=0 )
+            npdb['xyz'] -= npdb['xyz'].mean( axis=0 )
 
         if self.shift:
             shift = np.array( self.shift[0:3] )
-            npdb._coords += shift
+            print shift
+            npdb['xyz'] += shift
 
         if self.box:
             corner1 = np.array( self.box[0:3] )
             corner2 = corner1 + np.array( self.box[3:6] )
             sele = (
-                ( npdb._coords>corner1 ) & 
-                ( npdb._coords<corner2 )
+                ( npdb['xyz']>corner1 ) & 
+                ( npdb['xyz']<corner2 )
             ).all( axis=1 )
 
         npdb.copy( sele=sele ).write( self.edited_pdb_file )
