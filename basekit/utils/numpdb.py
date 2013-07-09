@@ -43,12 +43,15 @@ DATA_DIR = os.path.join( BASEKIT_DIR, "data", "pdb" )
 
 # https://pypi.python.org/pypi/Bottleneck
 # http://stutzbachenterprises.com/blist/
+# http://wiki.python.org/moin/PythonSpeed/PerformanceTips
 
 
 # http://sourceforge.net/p/pymmlib/code/HEAD/tree/trunk/pymmlib/mmLib/Superposition.py
+# http://sourceforge.net/p/pymmlib/code/1197/tree/
 # https://github.com/bryan-lunt/pdb_tools
 # https://github.com/biopython/biopython/tree/master/Bio/PDB
 # http://cci.lbl.gov/~rwgk/tmp/pdb-v3.2/2009_04_14/news.html
+# http://sourceforge.net/p/cctbx/code/17756/tree/trunk/iotbx/pdb/hierarchy.py
 # http://www.csb.pitt.edu/ProDy/_modules/prody/proteins/pdbfile.html
 
 
@@ -248,11 +251,33 @@ PDB_DEFAULTS = {
     "element": "",
     "charge": ""
 }
-PDB_ATOM_TMPL = "{record:<6}{atomno:>5} {atomname:>4}{altloc:>1}{resname:>3} " \
-                "{chain:>1}{resno:>4}{insertion:>1}   " \
-                "{x:8.3f}{y:8.3f}{z:8.3f}" \
-                "{occupancy:6.2f}{bfac:6.2f}      " \
-                "{segment:<4}{element:>2}{charge:>2}\n"
+PDB_ATOM_TMPL = (
+    "{record:<6}{atomno:>5} {atomname:>4}{altloc:>1}{resname:>3} "
+    "{chain:>1}{resno:>4}{insertion:>1}   "
+    "{x:8.3f}{y:8.3f}{z:8.3f}{occupancy:6.2f}{bfac:6.2f}      "
+    "{segment:<4}{element:>2}{charge:>2}\n"
+)
+
+PDB_DEFAULTS2 = {
+    "record": "ATOM", "atomno": 1, "atomname": " C  ", "altloc": "",
+    "resname": "GLY", "chain": "", "resno": 1, "insertion": "",
+    "x": 0.0, "y": 0.0, "z": 0.0,
+}
+PDB_ATOM_TMPL2 = (
+    "{record:<6}{atomno:>5} {atomname:>4}{altloc:>1}{resname:>3} "
+    "{chain:>1}{resno:>4}{insertion:>1}   {x:8.3f}{y:8.3f}{z:8.3f}"
+    "                          \n"
+)
+
+PDB_DEFAULTS3 = {
+    "atomno": 1, "atomname": " C  ",
+    "resname": "GLY", "chain": "", "resno": 1,
+    "x": 0.0, "y": 0.0, "z": 0.0,
+}
+PDB_ATOM_TMPL3 = ( 
+    "ATOM  {atomno:>5} {atomname:>4} {resname:>3} {chain:>1}{resno:>4}    "
+    "{x:8.3f}{y:8.3f}{z:8.3f}                          \n"
+)
 
 def numdefaults( natom, defaults ):
     d = {}
@@ -263,10 +288,8 @@ def numdefaults( natom, defaults ):
             d[k] = v
     return d
 
-def pdb_line( natom ):
-    return PDB_ATOM_TMPL.format( 
-        **numdefaults( natom, PDB_DEFAULTS )
-    )
+def pdb_line( natom, tpl=PDB_ATOM_TMPL3, defaults=PDB_DEFAULTS3 ):
+    return tpl.format( **numdefaults( natom, defaults ) )
 
 def xyzr_line( natom ):
     pass
@@ -566,7 +589,7 @@ class NumAtoms:
         coords, atoms = self._select( **sele )
         if order=='original':
             atoms = np.sort( atoms, order='atomno' )
-        with open( file_name, "w" ) as fp:
+        with open( file_name, "wb" ) as fp:
             for natom in atoms:
                 fp.write( pdb_line( natom ) )
             fp.write( "END" )
@@ -625,7 +648,7 @@ class NumPdb:
         header = []
         header_append = header.append
 
-        with open( self.pdb_path, "r" ) as fp:
+        with open( self.pdb_path, "rb" ) as fp:
             backbone = ATOMS['backbone']
             nucleotides = RESIDUES['nucleotides']
             aminoacids = RESIDUES['aminoacids']
