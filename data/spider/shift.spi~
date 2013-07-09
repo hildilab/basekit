@@ -1,0 +1,28 @@
+;map informationen
+;boxgroesse
+[bs]=135
+;origin
+[orx]=0
+[ory]=0
+[orz]=0
+;pixelsize
+[ps]=2.71
+;shift damit das ganze wieder in der mitte sitzt
+[shx]=([orx]-([bs]/2))*[ps]
+[shy]=([ory]-([bs]/2))*[ps]
+[shz]=([orz]-([bs]/2))*[ps]
+
+[file]='${mrc_file}' 
+cp from mrc
+[file]
+_1
+N N
+
+cp to mrc
+_1
+shift.mrc
+32       0
+*
+[ps] [ps] [ps]
+[shx] [shy] [shz]
+en

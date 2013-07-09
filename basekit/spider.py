@@ -11,7 +11,7 @@ from utils.tool import _, _dir_init, PyTool, CmdTool, ScriptMixin, ProviMixin
 from utils.numpdb import NumPdb, numsele
 
 from pdb import PdbSplit
-
+from pdb import PdbEdit
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "spider" )
 SPIDER_CMD = "spider" 
@@ -38,8 +38,34 @@ class Spider( CmdTool, ScriptMixin ):
             "@%s" % self.relpath( self.script_file, no_ext=True )
         ]
 
-
-
+class SpiderShift( Spider ):
+    """Shifts and converts mrc file and pdb"""
+    args = [
+        _( "mrc_file", type="file", ext="map" ),
+        #_( "pdb_file", type="file", ext="pdb" ),
+        _( "pixelsize", type="slider", range=[1, 10], fixed=True ),
+        _( "boxsize", type="slider", range=[1, 500], fixed=True ),
+        _( "originx", type ="slider", range=[-500,500]),
+        _( "originy", type ="slider", range=[-500,500]),
+        _( "originz", type ="slider", range=[-500,500]),
+    ]
+    out = [
+        _( "map_shift", file="shift.mrc" )
+    ]  
+    script_tmpl = "shift.spi"
+    def _init( self, *args, **kwargs ):
+        super(SpiderShift, self)._init( "__tmpl__" )
+    def _pre_exec( self ):
+        self._make_script_file(    
+            mrc_file=self.relpath( self.mrc_file ),
+            pixelsize=self.pixelsize,
+            boxsize=self.boxsize,
+            originx=self.originx,
+            originy=self.originy,
+            originz=self.originz,
+        )
+    #def shift_pdb_input ( self ):
+     #   PdbEdit(self.)
 class SpiderConvert( Spider ):
     """Simple tool that converts mrc files to the spider format"""
     args = [
@@ -215,8 +241,15 @@ class LoopCrosscorrel( PyTool ):
     ]
     tmpl_dir = TMPL_DIR
     def _init( self, *args, **kwargs ):
+        self.spider_shift = SpiderShift(
+            self.mrc_file,self.pixelsize, self.boxsize,
+            self.originx,self.originy,self.originz,
+            **copy_dict( 
+                kwargs, run=False, output_dir=self.subdir("shift") 
+            )
+        )
         self.spider_convert = SpiderConvert( 
-            self.mrc_file, 
+            self.spider_shift.map_shift, 
             **copy_dict( 
                 kwargs, run=False, output_dir=self.subdir("convert") 
             )

@@ -4,7 +4,7 @@
 
 from basekit.utils.tool import parse_subargs
 from basekit.spider import (
-    Spider, SpiderConvert, SpiderDeleteFilledDensities, 
+    Spider, SpiderShift, SpiderConvert, SpiderDeleteFilledDensities, 
     SpiderBox, SpiderReConvert, SpiderCrosscorrelation, LoopCrosscorrel
 )
 
@@ -12,7 +12,8 @@ from basekit.spider import (
 
 def main():
     tools = {
-        "script": Spider, 
+        "script": Spider,
+        "shift": SpiderShift,
         "convert": SpiderConvert, 
         "delFilledDens": SpiderDeleteFilledDensities, 
         "box": SpiderBox,
