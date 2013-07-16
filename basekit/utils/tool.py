@@ -7,10 +7,9 @@ import sys
 import os
 import re
 import argparse
-import functools
 import operator
 import itertools
-import inspect
+import cStringIO
 import json
 import cPickle as pickle
 import csv
@@ -24,10 +23,9 @@ import multiprocessing
 import basekit.utils.numpdb as numpdb
 from basekit import utils
 from basekit.utils import (
-    try_int, get_index, boolean, working_directory, dir_walker, copy_dict,
+    get_index, boolean, working_directory, dir_walker, copy_dict,
     DefaultOrderedDict
 )
-from basekit.utils.timer import Timer
 from basekit.utils.job import run_command
 from basekit.utils.db import get_pdb_files
 
@@ -417,7 +415,7 @@ def call( tool ):
 class ParallelMixin( Mixin ):
     args = [
         _( "parallel|p", type="select", default=False,
-            options=[ "directory", "pdb_archive", "list" ] ),
+            options=[ "", "directory", "pdb_archive", "list" ] ),
         _( "interval|i", type="int", default=[ 0, None ], 
             metavar=("BEG", "END"), nargs=2 ),
     ]
@@ -625,7 +623,17 @@ class PyTool( Tool ):
         if not hasattr( self, "func" ):
             raise Exception("A PyTool needs a 'func' attribute")
     def _run( self ):
-        return self.func()
+        if self.verbose:
+            return self.func()
+        else:
+            stdout, stderr = sys.stdout, sys.stderr
+            log = cStringIO.StringIO()
+            sys.stdout = log
+            sys.stderr = log
+            try:
+                return self.func()
+            finally:
+                sys.stdout, sys.stderr = stdout, stderr
 
 
 class CmdTool( Tool ):

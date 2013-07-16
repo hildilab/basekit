@@ -288,7 +288,7 @@ def numdefaults( natom, defaults ):
             d[k] = v
     return d
 
-def pdb_line( natom, tpl=PDB_ATOM_TMPL3, defaults=PDB_DEFAULTS3 ):
+def pdb_line( natom, tpl=PDB_ATOM_TMPL, defaults=PDB_DEFAULTS ):
     return tpl.format( **numdefaults( natom, defaults ) )
 
 def xyzr_line( natom ):

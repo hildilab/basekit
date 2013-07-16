@@ -210,7 +210,6 @@ class PdbEdit( PyTool ):
 
         if self.shift:
             shift = np.array( self.shift[0:3] )
-            print shift
             npdb['xyz'] += shift
 
         if self.box:
