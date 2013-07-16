@@ -5,7 +5,7 @@
 from basekit.utils.tool import parse_subargs
 from basekit.spider import (
     Spider, SpiderShift, SpiderConvert, SpiderDeleteFilledDensities, 
-    SpiderBox, SpiderReConvert, SpiderCrosscorrelation, LoopCrosscorrel
+    SpiderBox, SpiderReConvert, SpiderCrosscorrelation, LoopCrosscorrel, SpiderPdbBox
 )
 
 
@@ -19,7 +19,8 @@ def main():
         "box": SpiderBox,
         "reconvert": SpiderReConvert,
         "crosscorrel": SpiderCrosscorrelation,
-        "loopcorrel": LoopCrosscorrel
+        "loopcorrel": LoopCrosscorrel,
+        "pdbbox": SpiderPdbBox
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )

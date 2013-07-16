@@ -7,11 +7,8 @@
 [orz]=${originz}
 ;pixelsize
 [ps]=${pixelsize}
-;shift damit das ganze wieder in der mitte sitzt
-[shx]=([orx]-([bs]/2))*[ps]
-[shy]=([ory]-([bs]/2))*[ps]
-[shz]=([orz]-([bs]/2))*[ps]
-
+;den origin in die ins zentrum der box setzen
+[x]=(([bs]/2)*(-1))*[ps]
 [file]='${mrc_file}' 
 cp from mrc
 [file]
@@ -24,5 +21,8 @@ shift.mrc
 32       0
 *
 [ps] [ps] [ps]
-[shx] [shy] [shz]
+[x] [x] [x]
+
+sd 1, [shx] [shy] [shz]
+shift
 en

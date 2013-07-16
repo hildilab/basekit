@@ -146,6 +146,7 @@ class LinkItDensity( PyTool, ProviMixin ):
         _( "seq", type="text" ),
         _( "pixelsize", type="slider", range=[1, 10], fixed=True ),
         _( "resolution", type="slider", range=[1, 10], fixed=True ),
+        #erweitern um origin
         _( "cutoff", type="float", default=5 ),
         _( "max_loops", type="slider", range=[0, 200], default=100 )
     ]
@@ -161,7 +162,7 @@ class LinkItDensity( PyTool, ProviMixin ):
         )
         self.loop_correl = LoopCrosscorrel(
             self.mrc_file, self.pdb_file, self.link_it.pdb_linker_file2, 
-            self.res1, self.res2, len(self.seq), 
+            self.res1, self.res2, len(self.seq), #ori
             self.pixelsize, self.resolution,
             **copy_dict( 
                 kwargs, run=False, output_dir=self.subdir("loop_correl"),

@@ -1,5 +1,6 @@
 ; author: jochen ismer
-
+vm
+echo "BOX:SPI"
 ;roation einarbeiten? eigentlich nciht weil map und pdb j aübereinsstimmen sollen
 ;Die Stemkoordinaten aus dem File auslesen
 UD IC 1,[x1],[y1],[z1],[x2],[y2],[z2],[anzahlas],[ps],[rs]
