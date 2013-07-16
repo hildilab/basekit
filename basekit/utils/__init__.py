@@ -233,7 +233,9 @@ def dir_walker( directory, pattern ):
                 yield (m, fpath)
 
 @contextlib.contextmanager 
-def working_directory(directory): 
+def working_directory(directory):
+    if not directory:
+        directory = "."
     original_directory = os.getcwd()
     try: 
         os.chdir(directory) 
