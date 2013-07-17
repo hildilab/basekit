@@ -110,11 +110,12 @@ class SpiderPdbBox( PyTool ):
             ol2 = float (rs [4])
             ol3 = float (rs [5])
             ps = float (rs [7])
+            obs = bs*ps
             x =  (ol1 - (self.boxsize/2)) * ps - 1 
             y =  (ol2 - (self.boxsize/2)) * ps - 1
             z =  (ol3 - (self.boxsize/2)) * ps - 1
-            #print [x,y,z, bs]
-        PdbEdit (self.pdb_file, box = [ x, y, z, bs, bs, bs ] )
+            print [x,y,z, bs]
+        PdbEdit (self.pdb_file, box = [ x, y, z, obs, obs, obs ] )
     
 class SpiderDeleteFilledDensities( Spider ):
     args = [
@@ -327,7 +328,7 @@ class LoopCrosscorrel( PyTool ):
         )
         self.spider_crosscorrelation = SpiderCrosscorrelation(
             self.spider_convert.map_file, 
-            self.spider_box.box_map_file, 
+            self.spider_delete_filled_densities.empty_map_file, 
             self.spider_box.box_file, 
             self.loop_file,
             **copy_dict( 
@@ -347,7 +348,7 @@ class LoopCrosscorrel( PyTool ):
         self.spider_shift()
         self.spider_convert()
         self.spider_box()
-        self.spider_pdb_box ()
+        self.pdb_box ()
         self.spider_delete_filled_densities()
         self.spider_reconvert()
         self.spider_crosscorrelation()

@@ -17,7 +17,7 @@ from utils.numpdb import NumPdb, numsele
 
 import provi_prep as provi
 from spider import LoopCrosscorrel
-
+from pdb import PdbEdit
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "linker" ) 
 
@@ -146,24 +146,29 @@ class LinkItDensity( PyTool, ProviMixin ):
         _( "seq", type="text" ),
         _( "pixelsize", type="slider", range=[1, 10], fixed=True ),
         _( "resolution", type="slider", range=[1, 10], fixed=True ),
-        #erweitern um origin
+        _( "boxsize", type="slider", range=[1, 500], fixed=True ),
+        _( "originx", type ="slider", range=[-500,500]),
+        _( "originy", type ="slider", range=[-500,500]),
+        _( "originz", type ="slider", range=[-500,500]),
         _( "cutoff", type="float", default=5 ),
         _( "max_loops", type="slider", range=[0, 200], default=100 )
     ]
     out = [
-        _( "linker_correl_file", file="linker_correl.json" )
+        _( "linker_correl_file", file="linker_correl.json" ),
+        _( "edited_pdb_file", file="edited.pdb" )
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "link_it_density.provi"
     def _init( self, *args, **kwargs ):
         self.link_it = LinkIt( 
-            self.pdb_file, self.res1, self.res2, self.seq,
+            self.edited_pdb_file, self.res1, self.res2, self.seq,
             **copy_dict( kwargs, run=False, output_dir=self.subdir("link_it") )
         )
         self.loop_correl = LoopCrosscorrel(
             self.mrc_file, self.pdb_file, self.link_it.pdb_linker_file2, 
-            self.res1, self.res2, len(self.seq), #ori
+            self.res1, self.res2, len(self.seq),
             self.pixelsize, self.resolution,
+            self.boxsize, self.originx, self.originy, self.originz,
             **copy_dict( 
                 kwargs, run=False, output_dir=self.subdir("loop_correl"),
                 max_loops=self.max_loops,
@@ -174,6 +179,12 @@ class LinkItDensity( PyTool, ProviMixin ):
             self.loop_correl.output_files,
         ))
     def func( self ):
+        shx = (self.originx -(self.boxsize/2)) * self.pixelsize
+        shy = (self.originy -(self.boxsize/2)) * self.pixelsize
+        shz = (self.originz -(self.boxsize/2)) * self.pixelsize
+        PdbEdit( 
+            self.pdb_file, shift= [shx, shy, shz]
+        )    
         self.link_it()
         self.loop_correl()
     def _post_exec( self ):
