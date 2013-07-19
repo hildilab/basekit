@@ -34,7 +34,10 @@ class Msms( CmdTool, ProviMixin ):
     """A wrapper around the MSMS program."""
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
-        _( "density", type="slider", range=[1, 10], fixed=True, default=1.0 )
+        _( "density", type="float", range=[0.5, 10], step=0.5, default=1.0 ),
+        _( "hdensity", type="float", range=[1.0, 20], step=1.0, default=3.0 ),
+        _( "all_components", type="checkbox", default=False ),
+        _( "no_area", type="checkbox", default=False ),
     ]
     out = [
         _( "area_file", file="area.area" ),
@@ -51,8 +54,13 @@ class Msms( CmdTool, ProviMixin ):
         self.cmd = [ 
             MSMS_CMD, "-if", self.pdb2xyzr.xyzr_file, 
             "-af", "area", "-of", "tri_surface", 
-            "-density", str(self.density)
+            "-density", str(self.density),
+            "-hdensity", str(self.hdensity),
         ]
+        if self.all_components:
+            self.cmd.append( "-all_components" )
+        if self.no_area:
+            self.cmd.append( "-no_area" )
         self.output_files.extend( self.pdb2xyzr.output_files )
     def _pre_exec( self ):
         self.pdb2xyzr()
@@ -71,7 +79,7 @@ class Pdb2xyzr( CmdTool ):
     ]
     out = [
         _( "pdb_prep_file", file="{pdb_file.stem}_prep.pdb" ),
-        _( "xyzr_file", file="{pdb_file.stem}.vol" )
+        _( "xyzr_file", file="{pdb_file.stem}.xyzr" )
     ]
     def _init( self, *args, **kwargs ):
         self.cmd = [ 
