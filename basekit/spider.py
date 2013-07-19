@@ -2,13 +2,14 @@ from __future__ import with_statement
 from __future__ import division
 
 import os
+import struct
 import json
 import itertools
-from string import Template
+import collections
 
 from utils import copy_dict
-from utils.tool import _, _dir_init, PyTool, CmdTool, ScriptMixin, ProviMixin
-from utils.numpdb import NumPdb, numsele
+from utils.tool import _, _dir_init, PyTool, CmdTool, ScriptMixin
+from utils.numpdb import NumPdb
 
 from pdb import PdbSplit
 from pdb import PdbEdit
@@ -18,6 +19,83 @@ SPIDER_CMD = "spider"
 
 
 # 2010 Cryo-EM Modeling Challenge: http://ncmi.bcm.edu/challenge
+
+
+MrcHeader = collections.namedtuple( "MrcHeader", [
+    "nx", "ny", "nz", "mode", 
+    "nxstart", "nystart", "nzstart",
+    "mx", "my", "mz",
+    "xlen", "ylen", "zlen",
+    "alpha", "beta", "gamma",
+    "mapc", "mapr", "maps",
+    "amin", "amax", "amean",
+    "ispg", "next", "createid", 
+    "extra_data1", "nint", "nreal", 
+    "extra_data2", "imod_stamp", "imod_flags",
+    "idtype", "lens", "nd1", "nd2", "vd1", "vd2",
+    "current_tilt_x", "current_tilt_y", "current_tilt_z",
+    "original_tilt_x", "original_tilt_y", "original_tilt_z",
+    "xorg", "yorg", "zorg",
+    "cmap", "stamp", "rms", "nlabl",
+    "label1", "label2", "label3", "label4", "label5", 
+    "label6", "label7", "label8", "label9", "label10"
+])
+def mrc_header( mrc_file ):
+    """ http://bio3d.colorado.edu/imod/doc/mrc_format.txt
+    """
+    byteorder = {
+        0x1111: '>',    # big,
+        0x4444: '<'     # little
+    }
+    with open( mrc_file, "rb" ) as fp:
+        header = fp.read( 1024 )
+    stamp = struct.unpack( "i", header[212:216] )[0]
+    if header[208:212]!="MAP ":
+        raise Exception("can only read new style mrc files")
+    if stamp not in byteorder:
+        raise Exception("could not deduce byteorder")
+    h = struct.unpack(
+        (
+            byteorder.get( stamp )+
+            "3i"    # number of cols, rows, sections
+            "i"     # mode
+            "3i"    # xyz start
+            "3i"    # grid size
+            "3f"    # cell size
+            "3f"    # cell angles
+            "3i"    # map col row section
+            "3f"    # min max mean
+            "2i"    # space group, no bytes in ext header
+            "h"     # create id
+            "30s"   # extra data
+            "2h"    # nint, nreal
+            "20s"   # extra data
+            "2i"    # imodStamp, imodFlag
+            "6h"    # idtype, lens, nd1, nd2, vd1, vd2
+            "6f"    # tiltangles
+            "3f"    # origin of image
+            "4s"    # "MAP "
+            "i"     # First two bytes have 
+                    # 17 and 17 for big-endian or 
+                    # 68 and 65 for little-endian
+            "f"     # RMS deviation of densities from mean density
+            "i"     # Number of labels with useful data
+            +("80s"*10)  # 10 labels of 80 charactors
+        ),
+        header
+    )
+    return MrcHeader._make( h )
+
+
+
+class MrcHeaderPrinter( PyTool ):
+    args = [
+        _( "mrc_file", type="file", ext="mrc" )
+    ]
+    def func( self, *args, **kwargs ):
+        header = mrc_header( self.mrc_file )
+        for name, value in zip(header._fields, header):
+            print "%20s\t%s" % ( name, value )
 
 
 class Spider( CmdTool, ScriptMixin ):
@@ -116,7 +194,8 @@ class SpiderPdbBox( PyTool ):
             z =  (ol3 - (self.boxsize/2)) * ps - 1
             print [x,y,z, bs]
         PdbEdit (self.pdb_file, box = [ x, y, z, obs, obs, obs ] )
-    
+
+
 class SpiderDeleteFilledDensities( Spider ):
     args = [
         _( "map_file", type="file", ext="cpv" , help= "boxil.cpv" ),
@@ -143,7 +222,6 @@ class SpiderDeleteFilledDensities( Spider ):
             boxsize=self.boxsize,
             tmp_dir=self.relpath( self.output_dir ) + os.sep
         )
-
 
 
 class SpiderBox( Spider ):
@@ -268,14 +346,14 @@ class LoopCrosscorrel( PyTool ):
         _( "loop_file", type="file", ext="pdb" ),
         _( "res1", type="sele" ),
         _( "res2", type="sele" ),
-        _( "length", type="slider", range=[1, 30] ),
-        _( "pixelsize", type="slider", range=[1, 10], fixed=True ),
-        _( "resolution", type="slider", range=[1, 10], fixed=True ),
-        _( "boxsize", type="slider", range=[1, 500], fixed=True ),
-        _( "originx", type ="slider", range=[-500,500]),
-        _( "originy", type ="slider", range=[-500,500]),
-        _( "originz", type ="slider", range=[-500,500]),
-        _( "max_loops", type="slider", range=[0, 200], default=100 )
+        _( "length", type="int", range=[1, 30] ),
+        _( "pixelsize", type="float", range=[1, 10], step=0.1 ),
+        _( "resolution", type="float", range=[1, 10], step=0.1 ),
+        _( "boxsize", type="float", range=[1, 500] ),
+        _( "originx", type="float", range=[-500, 500] ),
+        _( "originy", type="float", range=[-500, 500] ),
+        _( "originz", type="float", range=[-500, 500] ),
+        _( "max_loops", type="int", range=[0, 200], default=100 )
     ]
     out = [
         _( "cropped_pdb", file="cropped.pdb" )

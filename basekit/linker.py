@@ -144,14 +144,14 @@ class LinkItDensity( PyTool, ProviMixin ):
         _( "res1", type="sele" ),
         _( "res2", type="sele" ),
         _( "seq", type="text" ),
-        _( "pixelsize", type="slider", range=[1, 10], fixed=True ),
-        _( "resolution", type="slider", range=[1, 10], fixed=True ),
-        _( "boxsize", type="slider", range=[1, 500], fixed=True ),
-        _( "originx", type ="slider", range=[-500,500]),
-        _( "originy", type ="slider", range=[-500,500]),
-        _( "originz", type ="slider", range=[-500,500]),
+        _( "pixelsize", type="float", range=[1, 10], step=0.1 ),
+        _( "resolution", type="float", range=[1, 10], step=0.1 ),
+        _( "boxsize", type="float", range=[1, 500] ),
+        _( "originx", type ="float", range=[-500, 500]),
+        _( "originy", type ="float", range=[-500, 500]),
+        _( "originz", type ="float", range=[-500, 500]),
         _( "cutoff", type="float", default=5 ),
-        _( "max_loops", type="slider", range=[0, 200], default=100 )
+        _( "max_loops", type="int", range=[0, 200], default=100 )
     ]
     out = [
         _( "linker_correl_file", file="linker_correl.json" ),

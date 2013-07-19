@@ -4,14 +4,17 @@
 
 from basekit.utils.tool import parse_subargs
 from basekit.spider import (
+    MrcHeaderPrinter,
     Spider, SpiderShift, SpiderConvert, SpiderDeleteFilledDensities, 
-    SpiderBox, SpiderReConvert, SpiderCrosscorrelation, LoopCrosscorrel, SpiderPdbBox
+    SpiderBox, SpiderReConvert, SpiderCrosscorrelation, LoopCrosscorrel, 
+    SpiderPdbBox
 )
 
 
 
 def main():
     tools = {
+        "mrc": MrcHeaderPrinter,
         "script": Spider,
         "shift": SpiderShift,
         "convert": SpiderConvert, 
