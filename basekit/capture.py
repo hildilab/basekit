@@ -14,6 +14,7 @@ import utils.path
 from utils.tool import (
     _, _dir_init, PyTool, RecordsMixin, ParallelMixin, ProviMixin
 )
+from utils.numpdb import NumPdb
 
 
 
@@ -71,7 +72,8 @@ class Capture( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
     """
     args = [
         _( "pdb_input", type="file", ext="pdb" ),
-        _( "parse_only", type="checkbox", default=False )
+        _( "parse_only", type="checkbox", default=False ),
+        _( "occupancy_one", type="checkbox", default=False ),
     ]
     out = [
         _( "capture_file", file="CaPTURE_{pdb_input.stem}.txt" ),
@@ -91,6 +93,13 @@ class Capture( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             parse_capture( self.capture_file )
         ]
         self.write()
+    def _pre_exec( self ):
+        if self.occupancy_one:
+            occ_file = "occupancy_one.pdb"
+            npdb = NumPdb( self.pdb_input )
+            npdb['occupancy'] = 1.0
+            npdb.write( occ_file )
+            self.pdb_input = self.outpath( occ_file )
     def _post_exec( self ):
         script = []
         for r in self.records:
