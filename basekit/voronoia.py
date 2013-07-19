@@ -23,12 +23,12 @@ class Voronoia( CmdTool, ProviMixin ):
     """A wrapper around the 'voronoia' aka 'get_volume' programm."""
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
-        _( "ex", type="slider", range=[1, 5], factor=10, 
-            fixed=True, default=0.1 ),
+        _( "ex", type="float", range=[0.1, 0.5], step=0.1, default=0.1 ),
         _( "radii", type="select", options=["protor"], default="protor" )
     ]
     out = [
-        _( "vol_file", file="{pdb_file.stem}.vol" )
+        _( "vol_file", file="{pdb_file.stem}.vol" ),
+        _( "log_file", file="{pdb_file.stem}.log" ),
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "voronoia.provi"
@@ -37,6 +37,8 @@ class Voronoia( CmdTool, ProviMixin ):
             "wine", VOLUME_CMD, 
             "ex:%0.1f"%float(self.ex), 
             "rad:%s"%self.radii,
+            "x:yes",
+            "l:%s" %self.log_file,
             "i:%s"%self.pdb_file, 
             "o:%s"%self.vol_file
         ]
