@@ -643,6 +643,8 @@ class CmdTool( Tool ):
             raise Exception("A CmdTool needs a 'cmd' attribute")
     def _run( self ):
         cmd = self.cmd
+        if self.verbose:
+            print " ".join( cmd )
         if self.timeout:
             cmd = [ TIMEOUT_CMD, self.timeout ] + cmd
         log_file = "%s_cmd.log" % self.name

@@ -586,13 +586,14 @@ class NumAtoms:
         return np.sum( coords, axis=0 ) / len(coords)
     def dist( self, sele1, sele2 ):
         return mag( self.center( **sele1 ) - self.center( **sele2 ) )
-    def write( self, file_name, order='original', **sele ):
+    def write( self, file_name, order='original', 
+               tpl=PDB_ATOM_TMPL, defaults=PDB_DEFAULTS, **sele ):
         coords, atoms = self._select( **sele )
         if order=='original':
             atoms = np.sort( atoms, order='atomno' )
         with open( file_name, "wb" ) as fp:
             for natom in atoms:
-                fp.write( pdb_line( natom ) )
+                fp.write( pdb_line( natom, tpl=tpl, defaults=defaults ) )
             fp.write( "END" )
             # for numa in self.iter_resno( **sele ):
             #     for a in numa._atoms:
