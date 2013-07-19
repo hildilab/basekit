@@ -6,6 +6,7 @@ import copy
 import importlib
 import collections
 import json
+import tempfile
 
 import utils.path
 from utils import (
@@ -46,16 +47,21 @@ def decode_project_json( pairs ):
 
 
 def read_project_file( project_file ):
+    temp = tempfile.SpooledTemporaryFile()
     with open( project_file, "r" ) as fp:
-        try:
-            with working_directory( os.path.dirname( project_file ) ):
-                return json.load( 
-                    fp, object_pairs_hook=decode_project_json
-                )
-        except ValueError as e:
-            print "Error reading project json file (%s). %s" % (
-                os.path.basename( project_file ), e
+        for line in fp:
+            if not line.strip().startswith("//"):
+                temp.write( line )
+    temp.seek(0)
+    try:
+        with working_directory( os.path.dirname( project_file ) ):
+            return json.load( 
+                temp, object_pairs_hook=decode_project_json
             )
+    except ValueError as e:
+        print "Error reading project json file (%s). %s" % (
+            os.path.basename( project_file ), e
+        )
 
 
 def get_tool( t ):
@@ -277,7 +283,7 @@ class ProjectRun( PyTool ):
                             if isinstance( v, basestring ):
                                 v = v.format( 
                                     dir=get_wd( self.project, p ),
-                                    **p
+                                    **kwargs
                                 )
                             d[ k ].append( v )
                     del kwargs["__append__"]
@@ -287,7 +293,10 @@ class ProjectRun( PyTool ):
                     if v=="$part_name_list":
                         kwargs[ k ] = parts.keys()
                     elif isinstance( v, basestring ):
-                        kwargs[ k ] = v.format( tid=tid )
+                        kwargs[ k ] = v.format( 
+                            pid="|".join( parts.keys() ), 
+                            tid=tid, **kwargs
+                        )
 
                 if self.print_args:
                     print "      `-- WD: %s" % wd
@@ -296,9 +305,6 @@ class ProjectRun( PyTool ):
                 if not self.simulate:
                     ret = self.call_tool( tool, kwargs, wd )
                     print "      `-- TOOL: %s" % ret
-                else:
-                    print tid, wd
-                    print json.dumps( kwargs, indent=4 )
 
             else:
                 for pid, p in self.project["parts"].iteritems():
@@ -309,6 +315,22 @@ class ProjectRun( PyTool ):
                     kwargs = self.get_kwargs( tid, t, p )
                     wd = get_wd( self.project, p )
                     
+                    for k, v in kwargs.iteritems():
+                        if isinstance( v, basestring ):
+                            if v.startswith("$") and "__variables__" in p:
+                                for var, d in p["__variables__"].iteritems():
+                                    if v==var: 
+                                        kwargs[ k ] = d
+                                        break
+                                else:
+                                    print "%s not found in __variables__" % v
+                            else:
+                                kwargs[ k ] = v.format( 
+                                    pid=pid, tid=tid, **kwargs 
+                                )
+                    if "__variables__" in kwargs:
+                        del kwargs["__variables__"]
+
                     if self.print_args:
                         print "      `-- WD: %s" % wd
                         print json.dumps( kwargs, indent=4 )
@@ -316,9 +338,6 @@ class ProjectRun( PyTool ):
                     if not self.simulate:
                         ret = self.call_tool( tool, kwargs, wd )
                         print "      `-- TOOL: %s" % ret
-                    else:
-                        print tid, wd
-                        print json.dumps( kwargs, indent=4 )
     def get_kwargs( self, tid, t, p ):
         kwargs = {
             "analyze_only": self.analyze_only,
@@ -328,8 +347,8 @@ class ProjectRun( PyTool ):
         kwargs.update( self.project.get("defaults", {}) )
         kwargs.update( t )
         kwargs.update( p )
-        if "__tool_defaults__" in p:
-            kwargs.update( p["__tool_defaults__"].get( tid, {} ) )
+        if "__tool_defaults__" in kwargs:
+            kwargs.update( kwargs["__tool_defaults__"].get( tid, {} ) )
         copy.deepcopy( kwargs )
         if "__tool_defaults__" in kwargs:
             del kwargs["__tool_defaults__"]
