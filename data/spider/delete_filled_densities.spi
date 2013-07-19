@@ -2,32 +2,45 @@
 
 ;script zu löschen von dichten die bereits von der PDB structure besetzt sind
 ;input files
+UD IC 1,[bs],[obenlinks1],[obenlinks2],[obenlinks3],[obenlinks4],[ps], [rs]
+${result_file} ;noch variabel machen
+
+
 [pass-band] = 0.15   ; Pass-band frequency
 [stop-band] = 0.25   ; Stop-band frequency
 
-
+;ganze cpv map einlesen und dann unten mit 
 [out1]='usermap'
 [map]='${map_name}'
 [pdb]='${pdb_file}'
 [tmp_dir]='${tmp_dir}'
 [rs]=${resolution}
 [ps]=${pixelsize}
+[obs]=${boxsize} ;boxsize of the usermap
 ;werte für filter
 [f1]=([ps]/[rs])-0.05
 [f2]=([ps]/[rs])+0.05
 ;[path]=''
 ;groesse der box der usermap bestimmen
-FI [X1], [X2], [X3]
-[map]
-12,2,1
+;FI [X1], [X2], [X3]
+;[map] ;hier brauchen wir dann die originale usermap
+;12,2,1
 ;theoretische map erstellen
+
 CP FROM PDB
 [pdb]
 ${pixelsize}  ;pixelsize (wo bekomme ich die her??)
 N
 A
-[X1],[X2],[X3] ;boxgröße sollte die gleiche sein wie bei 
+[obs] [obs] [obs] 
+_14
+
+wi
+_14
 _8
+[bs] [bs] [bs]
+[obenlinks2] [obenlinks1] [obenlinks4]
+
 ;rotieren
  RT 3d
  _8

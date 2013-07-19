@@ -11,7 +11,7 @@ from utils.tool import _, _dir_init, PyTool, CmdTool, ScriptMixin, ProviMixin
 from utils.numpdb import NumPdb, numsele
 
 from pdb import PdbSplit
-
+from pdb import PdbEdit
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "spider" )
 SPIDER_CMD = "spider" 
@@ -38,7 +38,42 @@ class Spider( CmdTool, ScriptMixin ):
             "@%s" % self.relpath( self.script_file, no_ext=True )
         ]
 
-
+class SpiderShift( Spider ):
+    """Shifts and converts mrc file and pdb"""
+    args = [
+        _( "mrc_file", type="file", ext="map" ),
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "pixelsize", type="slider", range=[1, 10], fixed=True ),
+        _( "boxsize", type="slider", range=[1, 500], fixed=True ),
+        _( "originx", type ="slider", range=[-500,500]),
+        _( "originy", type ="slider", range=[-500,500]),
+        _( "originz", type ="slider", range=[-500,500]),
+        #_( "shift", type="float", nargs=3, default=None,
+        #   metavar=("X", "Y", "Z") ),
+    ]
+    out = [
+        _( "map_shift", file="shift.mrc" ),
+        _( "edited_pdb_file", file="edited.pdb" )
+    ]  
+    script_tmpl = "shift.spi"
+    def _init( self, *args, **kwargs ):
+        super(SpiderShift, self)._init( "__tmpl__" )
+    def _pre_exec( self ):
+        self._make_script_file(    
+            mrc_file=self.relpath( self.mrc_file ),
+            pixelsize=self.pixelsize,
+            boxsize=self.boxsize,
+            originx=self.originx,
+            originy=self.originy,
+            originz=self.originz,
+        )
+        
+        shx = (self.originx -(self.boxsize/2)) * self.pixelsize
+        shy = (self.originy -(self.boxsize/2)) * self.pixelsize
+        shz = (self.originz -(self.boxsize/2)) * self.pixelsize
+        PdbEdit( 
+            self.pdb_file, shift= [shx, shy, shz]
+        )    
 
 class SpiderConvert( Spider ):
     """Simple tool that converts mrc files to the spider format"""
@@ -56,15 +91,41 @@ class SpiderConvert( Spider ):
             mrc_file=self.relpath( self.mrc_file )
         )
 
-
-
+class SpiderPdbBox( PyTool ):
+    args = [
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "result_file", type="file" ),
+        _( "boxsize", type="slider", range=[1, 500], fixed=True )
+    ]
+    out = [
+        _( "edited_pdb_file", file="edited.pdb" )
+    ]  
+    def func( self ):
+        with open( self.result_file, "r") as rf:
+            content = rf.readlines ()
+            al = content[1].strip ()
+            rs = al.split ()
+            bs = float (rs [2])
+            ol1 = float (rs [3])
+            ol2 = float (rs [4])
+            ol3 = float (rs [5])
+            ps = float (rs [7])
+            obs = bs*ps
+            x =  (ol1 - (self.boxsize/2)) * ps - 1 
+            y =  (ol2 - (self.boxsize/2)) * ps - 1
+            z =  (ol3 - (self.boxsize/2)) * ps - 1
+            print [x,y,z, bs]
+        PdbEdit (self.pdb_file, box = [ x, y, z, obs, obs, obs ] )
+    
 class SpiderDeleteFilledDensities( Spider ):
     args = [
-        _( "map_file", type="file", ext="cpv" ),
+        _( "map_file", type="file", ext="cpv" , help= "boxil.cpv" ),
         _( "pdb_file", type="file", ext="pdb" ),
+        _( "result_file", type="file" , ext="cpv", help="ergebnisse.cpv"),
         _( "pixelsize", type="slider", range=[1, 10], fixed=True ),
         _( "resolution", type="slider", range=[1, 10], 
-            fixed=True, help="of the map_file" )
+            fixed=True, help="of the map_file" ),
+        _( "boxsize", type="slider", range=[1, 500], fixed=True , help = "of the input map")
     ]
     out = [
         _( "empty_map_file", file="usermap.cpv" )
@@ -76,8 +137,10 @@ class SpiderDeleteFilledDensities( Spider ):
         self._make_script_file( 
             map_name=self.relpath( self.map_file, no_ext=True ), 
             pdb_file=self.relpath( self.pdb_file ),
+            result_file=self.relpath( self.result_file, no_ext=True ),
             pixelsize=self.pixelsize,
             resolution=self.resolution,
+            boxsize=self.boxsize,
             tmp_dir=self.relpath( self.output_dir ) + os.sep
         )
 
@@ -208,6 +271,10 @@ class LoopCrosscorrel( PyTool ):
         _( "length", type="slider", range=[1, 30] ),
         _( "pixelsize", type="slider", range=[1, 10], fixed=True ),
         _( "resolution", type="slider", range=[1, 10], fixed=True ),
+        _( "boxsize", type="slider", range=[1, 500], fixed=True ),
+        _( "originx", type ="slider", range=[-500,500]),
+        _( "originy", type ="slider", range=[-500,500]),
+        _( "originz", type ="slider", range=[-500,500]),
         _( "max_loops", type="slider", range=[0, 200], default=100 )
     ]
     out = [
@@ -215,26 +282,41 @@ class LoopCrosscorrel( PyTool ):
     ]
     tmpl_dir = TMPL_DIR
     def _init( self, *args, **kwargs ):
+        self.spider_shift = SpiderShift(
+            self.mrc_file,self.pdb_file,self.pixelsize, self.boxsize,
+            self.originx,self.originy,self.originz,
+            **copy_dict( 
+                kwargs, run=False, output_dir=self.subdir("shift") 
+            )
+        )
         self.spider_convert = SpiderConvert( 
-            self.mrc_file, 
+            self.spider_shift.map_shift, 
             **copy_dict( 
                 kwargs, run=False, output_dir=self.subdir("convert") 
             )
         )
+        self.spider_box = SpiderBox(
+            self.spider_convert.map_file, 
+            self.spider_shift.edited_pdb_file, self.res1, self.res2, 
+            self.length, self.pixelsize, self.resolution,
+            **copy_dict( kwargs, run=False, output_dir=self.subdir("box") )
+        )
+        self.pdb_box =  SpiderPdbBox(
+           self.spider_shift.edited_pdb_file,
+           self.spider_box.box_file,
+           self.boxsize,
+           **copy_dict( kwargs, run=False, output_dir=self.subdir("pdbbox"))
+        )
         self.spider_delete_filled_densities = SpiderDeleteFilledDensities( 
-            self.spider_convert.map_file, self.cropped_pdb, 
-            self.pixelsize, self.resolution,
+            self.spider_box.box_map_file, self.pdb_box.edited_pdb_file, self.spider_box.box_file,
+            self.pixelsize, self.resolution,self.boxsize,
             **copy_dict( 
                 kwargs, run=False, 
                 output_dir=self.subdir("delete_filled_densities") 
             )
-        )
-        self.spider_box = SpiderBox(
-            self.spider_delete_filled_densities.empty_map_file, 
-            self.cropped_pdb, self.res1, self.res2, 
-            self.length, self.pixelsize, self.resolution,
-            **copy_dict( kwargs, run=False, output_dir=self.subdir("box") )
-        )
+        )   
+
+
         self.spider_reconvert = SpiderReConvert(
             self.spider_box.box_file,
             self.spider_convert.map_file,
@@ -246,7 +328,7 @@ class LoopCrosscorrel( PyTool ):
         )
         self.spider_crosscorrelation = SpiderCrosscorrelation(
             self.spider_convert.map_file, 
-            self.spider_box.box_map_file, 
+            self.spider_delete_filled_densities.empty_map_file, 
             self.spider_box.box_file, 
             self.loop_file,
             **copy_dict( 
@@ -263,9 +345,11 @@ class LoopCrosscorrel( PyTool ):
         )))
     def func( self ):
         self._crop_pdb()
+        self.spider_shift()
         self.spider_convert()
-        self.spider_delete_filled_densities()
         self.spider_box()
+        self.pdb_box ()
+        self.spider_delete_filled_densities()
         self.spider_reconvert()
         self.spider_crosscorrelation()
     def _crop_pdb( self ):
