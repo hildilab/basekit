@@ -54,23 +54,6 @@ DO  [y]=1,[nl]
  vm
  echo "PDB erstellt"
 
-;alte version wo erst rotiert und dann ausgeschnitten wurde:
-;  RT 3d
-; _1
-; _3
-; -90,180,0
- 
-;box ausschneiden
-;VM
-;echo "rotiert"
-; WI 
-; _3
-; _4
-; [bs] [bs] [bs]
-; [obenlinks1] [obenlinks2] [obenlinks3]
-;theoretische maps auf gleiche auflösung filtern wie usermap
-;VM
-;echo "window"
 
 ;ausschneiden
 wi
