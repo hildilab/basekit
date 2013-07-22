@@ -45,7 +45,7 @@ def mrc_header( mrc_file ):
     """
     byteorder = {
         0x1111: '>',    # big,
-        0x4444: '<'     # little
+        0x4144: '<'     # little
     }
     with open( mrc_file, "rb" ) as fp:
         header = fp.read( 1024 )
