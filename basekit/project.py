@@ -283,7 +283,7 @@ class ProjectRun( PyTool ):
                             if isinstance( v, basestring ):
                                 v = v.format( 
                                     dir=get_wd( self.project, p ),
-                                    **kwargs
+                                    **self.get_kwargs( tid, t, p )
                                 )
                             d[ k ].append( v )
                     del kwargs["__append__"]
