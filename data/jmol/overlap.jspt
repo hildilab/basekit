@@ -1,0 +1,19 @@
+
+
+
+# for rotation around alpha 5
+
+
+# for for translation along alpha 5
+
+
+# calc R, G and complex volumes, from that the overlap
+
+
+
+
+# return list of tuples ( rot, trans, overlap )
+
+
+
+
