@@ -22,10 +22,14 @@ FI [x8],[x9],[x10]
 [z1]=[z1]*[psf]
 [z2]=[z2]*[psf]
 [ass]=8*[psf]
+
+
 ;boxsize shift (weil der ursprung woander sitzt
-[sx]=([x8]/2)+1
-[sy]=([x9]/2)+1
-[sz]=([x10]/2)+1
+	[sx]=([x8]/2)+1
+	[sy]=([x9]/2)+1
+	[sz]=([x10]/2)+1
+
+
 ;Den Abstand der Stems ausrechen
 [abstand]=(SQR(([x1]-[x2])**2+([y1]-[y2])**2+([z1]-[z2])**2))
 

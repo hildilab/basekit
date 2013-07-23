@@ -7,6 +7,8 @@
 [orz]=${originz}
 ;pixelsize
 [ps]=${pixelsize}
+
+
 ;den origin in die ins zentrum der box setzen
 [x]=(([bs]/2)*(-1))*[ps]
 [file]='${mrc_file}' 
