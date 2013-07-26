@@ -9,6 +9,10 @@ import logging
 import re
 from string import Template
 
+HOLE_PARTLY_FILLED = 1
+HOLE_NOT_FILLED = 2
+HOLE_PARTLY_FILLED_HETS_REMOVED = 3
+HOLE_FILLED_HETS_REMOVED = 4
 
 logging.basicConfig()
 LOG = logging.getLogger('prep')
@@ -165,6 +169,8 @@ def prep_volume(vol_file, pdb_file):
 
     vol_lines = [None] * len(pdb_coord_dict)
     hole_lines = []
+    nrholes = {}
+    hole_types = []
     
     i = 1
     for l in vol_fp:
@@ -179,6 +185,27 @@ def prep_volume(vol_file, pdb_file):
                 LOG.error( "vol coords not in pdb coords dict. %s" % str(key) )
         elif l.startswith('HOLE NUMBER'):
             hole_lines.append( l )
+        elif l.startswith('NRHOLE'):
+                p = ( ".* (\d+) \(holes partly filled\)"
+                        ".* (\d+) \(holes not filled\)"
+                        ".* (\d+) \(partly filled holes with Hets removed\)"
+                        ".* (\d+) \(filled holes with Hets removed\).*" )
+                m = re.match( p, l )
+                if m:
+                    nrholes = {
+                        "partly_filled": int( m.group(1) ),
+                        "not_filled": int( m.group(2) ),
+                        "partly_filled_hets_removed": int( m.group(3) ),
+                        "filled_hets_removed": int( m.group(4) ),
+                    }
+                    hole_types = ( 
+                        [HOLE_PARTLY_FILLED] * int( m.group(1) ) +
+                        [HOLE_NOT_FILLED] * int( m.group(2) ) +
+                        [HOLE_PARTLY_FILLED_HETS_REMOVED] * int( m.group(3) ) +
+                        [HOLE_FILLED_HETS_REMOVED] * int( m.group(4) )
+                    )
+                else:
+                    raise Exception( "error parsing nrholes record" )
 
     if len(pdb_coord_dict) != len(vol_index_dict):
         LOG.warning( "number of atoms in vol and pdb coord dicts differs." )
@@ -195,7 +222,9 @@ def prep_volume(vol_file, pdb_file):
         neighbours.sort()
         # zero based atomindex
         neighbours = " ".join([ str(nb-1) for nb in neighbours ])
-        holes_out_fp.write( "HOLE_NUMBER_%s %s\n" % (ls[0], neighbours) )
+        holes_out_fp.write( "HOLE_NUMBER_%s_%i %s\n" % (
+            ls[0], hole_types[ int(ls[0])-1 ], neighbours
+        ))
 
     prop_out_fp.write('volume_vdw#-1 volume_vdw_1_4#-1 buried_flag#-1 packing_density#-1\n')
     for i, l in enumerate(vol_lines):

@@ -18,13 +18,17 @@
     },
     {
         "name": "vol_atomsele_org",
-        "filename": "${vol_file_org}.atmsele"
+        "filename": "${vol_file_org}.atmsele",
+        "params": {
+            "subsele": "file=1.1"
+        }
     }, 
     {
         "name": "vol_datalist_org",
         "datalist": "Provi.Bio.Voronoia.VoronoiaDatalist", 
         "params": {
-            "holes_ds": "DATASET_vol_atomsele_org"
+            "holes_ds": "DATASET_vol_atomsele_org",
+            "cavity_color": "skyblue"
         }
     },
     {
@@ -62,13 +66,17 @@
     },
     {
         "name": "vol_atomsele_dow",
-        "filename": "${vol_file_dow}.atmsele"
+        "filename": "${vol_file_dow}.atmsele",
+        "params": {
+            "subsele": "file=2.1"
+        }
     }, 
     {
         "name": "vol_datalist_dow",
         "datalist": "Provi.Bio.Voronoia.VoronoiaDatalist", 
         "params": {
-            "holes_ds": "DATASET_vol_atomsele_dow"
+            "holes_ds": "DATASET_vol_atomsele_dow",
+            "cavity_color": "tomato"
         }
     },
     {

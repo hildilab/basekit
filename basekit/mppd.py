@@ -37,9 +37,10 @@ class MppdPipeline( PyTool, ProviMixin ):
     tmpl_dir = TMPL_DIR
     provi_tmpl = "mppd.provi"
     def _init( self, *args, **kwargs ):
+        self.pdb_id = utils.path.stem( self.pdb_file )
         self.probe_radius = 1.4
         self.opm = Opm(
-            utils.path.stem( self.pdb_file ),
+            self.pdb_id,
             **copy_dict( kwargs, run=False, 
                 output_dir=self.subdir("opm") )
         )
@@ -95,7 +96,7 @@ class MppdPipeline( PyTool, ProviMixin ):
             family="?",
             probe_radius=self.probe_radius,
             pdb_id=utils.path.stem( self.pdb_file ),
-            pdb_file=self.relpath( self.pdb_file ),
+            pdb_file=self.relpath( self.processed_pdb ),
             dowser_file=self.relpath( self.dowser.dowser_file ),
             vol_file_org=self.relpath( self.voronoia_org.vol_file ),
             hbx_file_org=self.relpath( self.hbexplore_org.hbx_file ),
@@ -140,73 +141,72 @@ class MppdPipeline( PyTool, ProviMixin ):
         return npdb_dict, npdb_tm_dict
     def stats( self ):
         npdb_dict, npdb_tm_dict = self.get_npdb_dicts()
-
-        print "\n### membrane planes"
         mplanes = self.opm.get_planes()
         dist = abs( point_plane_dist( mplanes[1][0], mplanes[0] ) )
-        print "distance: %0.2f" % dist
-
-        print "\n### count waters and groups"
-        for suffix, pdb_file in self.water_variants:
-            print "%s: %i (water), %i (aa), %i (hetero)" % (
-                (suffix,) + 
-                count_water( npdb_dict[ suffix ] )
-            )
-            print "`TM: %i (water), %i (aa), %i (hetero)" % (
-                count_water( npdb_tm_dict[ suffix ] )
-            )
-
-        print "\n### count hbonds"
+        segments = [ ("ALL", npdb_dict), ("TM", npdb_tm_dict) ]
+        pr = self.probe_radius
+        mppd_records = []
         for suffix, pdb_file in self.water_variants:
             hbx = self.__dict__[ "hbexplore_%s" % suffix ]
-            print "%s: %i (protein-water), %i (water-water)" % (
-                (suffix,) + 
-                count_hbonds( npdb_dict[ suffix ], hbx )
-            )
-            print "`TM: %i (protein-water), %i (water-water)" % (
-                count_hbonds( npdb_tm_dict[ suffix ], hbx )
-            )
-
-        print "\n### count holes (voronoia)"
-        for suffix, pdb_file in self.water_variants:
             voro = self.__dict__[ "voronoia_%s" % suffix ]
-            print "%s: %i (not filled), %i (partly filled)" % (
-                (suffix,) + 
-                count_holes_voro( npdb_dict[ suffix ], voro ) 
-            )
-            print "`TM: %i (not filled), %i (partly filled)" % (
-                count_holes_voro( npdb_tm_dict[ suffix ], voro ) 
-            )
-
-        print "\n### count holes (msms)"
-        pr = self.probe_radius
-        for suffix, pdb_file in self.water_variants:
             msms = self.__dict__[ "msms_%s" % suffix ]
-            print "%s: %i, %0.2f A^3; %i (SES>H2O), %0.2f A^3" % (
-                (suffix,) + 
-                count_holes_msms( npdb_dict[ suffix ], msms, pr )
-            )
-            print "`TM: %i, %0.2f A^3; %i (SES>H2O), %0.2f A^3" % (
-                count_holes_msms( npdb_tm_dict[ suffix ], msms, pr )
-            )
+            for seg, npdb_d in segments:
+                mppd_records.append( MppdRecord(*(
+                    ( self.pdb_id, suffix, seg, dist ) +
+                    count_water( npdb_d[ suffix ] ) +
+                    ( None, ) +
+                    count_hbonds( npdb_dict[ suffix ], hbx ) +
+                    count_holes_voro( npdb_dict[ suffix ], voro ) +
+                    count_holes_msms( npdb_tm_dict[ suffix ], msms, pr )
+                )))
+        for r in mppd_records:
+            r.info()
 
-        print "\n\n"
 
 
-MppdRecord = collections.namedtuple( "MppdRecord", [
-    "pdb_id", "tags", "mplanes_dist", 
+
+_MppdRecord = collections.namedtuple( "_MppdRecord", [
+    "pdb_id", "source", "segment", "mplanes_dist", 
+    "water_count", "residue_count", "hetero_count", 
     "chain_count", "identical_chains",
-    "water_count", "residue_count", "hetero_count",
-    "hbx_protein_water", "hbx_water_water", "hbx_hetero_water",
+    "hbx_protein_water", "hbx_water_water",
     "voro_not_filled", "voro_partly_filled",
     "msms", "msms_ses", "msms_gt_water", "msms_gt_water_ses"
 ])
+class MppdRecord( _MppdRecord ):
+    def info( self ):
+        print "### %s [ %s, %s ]" % ( 
+            self.pdb_id, self.source, self.segment 
+        )
+        print "distance: %0.2f" % self.mplanes_dist
+        print "counts: %i (water), %i (aa), %i (hetero)" % (
+            self.water_count, self.residue_count, self.hetero_count
+        )
+        print "chains: %i, identical: %s" % (
+            self.chain_count, "??? (TODO)"
+        )
+        print "hbx: %i (protein-water), %i (water-water)" % (
+            self.hbx_protein_water, self.hbx_water_water
+        )
+        print "voro: %i (not filled), %i (partly filled)" % (
+            self.voro_not_filled, self.voro_partly_filled
+        )
+        print "msms: %i, %0.2f A^3; %i (SES>H2O), %0.2f A^3" % (
+            self.msms, self.msms_ses, 
+            self.msms_gt_water, self.msms_gt_water_ses
+        )
+        print ""
+
+
 
 
 def count_water( npdb ):
     water_count = 0
     aa_count = 0
     hetero_count = 0
+    chain_count = len( np.unique( 
+        npdb.copy(resname="HOH", invert=True)["chain"] 
+    ))
     for numa in npdb._iter_resno():
         if numa[0]["resname"]=="HOH" and numa[0]["atomname"]==" O  ":
             water_count += 1
@@ -214,7 +214,7 @@ def count_water( npdb ):
             aa_count += 1
         elif numa[0]["record"]=="HETATM":
             hetero_count += 1
-    return ( water_count, aa_count, hetero_count )
+    return ( water_count, aa_count, hetero_count, chain_count )
 
 
 def count_hbonds( npdb, hbexplore ):
