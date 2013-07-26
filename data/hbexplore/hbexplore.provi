@@ -1,0 +1,17 @@
+[
+    { 
+        "filename": "${pdb_file}"
+    },
+    {
+        "name": "hbx",
+        "filename": "${hbonds_file}"
+    },
+    {
+        "widget": "Provi.Bio.HydrogenBonds.HbondsWidget",
+        "params": {
+            "dataset": "DATASET_hbx", 
+            "parent_id": "tab_widgets", 
+            "tmhelix_atmsele_ds": "DATASET_tmhelix"
+        }
+    }
+]
