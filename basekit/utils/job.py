@@ -16,7 +16,7 @@ except ImportError:
 
 
 
-def run_command( cmd, cwd=".", log=None, verbose=False ):
+def run_command( cmd, cwd=".", log=None, verbose=False, input_file=None ):
     kwargs = {
         "args": map( str, cmd ),
         "cwd": cwd,
@@ -25,6 +25,8 @@ def run_command( cmd, cwd=".", log=None, verbose=False ):
         "env": os.environ,
         "preexec_fn": os.setpgrp
     }
+    if input_file:
+        kwargs["stdin"] = open( input_file, "r" )
     if verbose:
         kwargs.update( stdout=subprocess.PIPE )
         if log:
@@ -43,15 +45,18 @@ def run_command( cmd, cwd=".", log=None, verbose=False ):
                         sys.stdout.write( chunk )
                         fp.write( chunk )
                     time.sleep(.1)
-            return p.returncode
+            ret = p.returncode
         else:
-            return subprocess.call( **kwargs )
+            ret = subprocess.call( **kwargs )
     elif log:
         with open( log, "w" ) as fp:
             kwargs.update( stdout=fp )
-            return subprocess.call( **kwargs )
+            ret = subprocess.call( **kwargs )
     else:
-        return subprocess.call( **kwargs )
+        ret = subprocess.call( **kwargs )
+    if "stdin" in kwargs:
+        kwargs["stdin"].close()
+    return ret
 
 
 
