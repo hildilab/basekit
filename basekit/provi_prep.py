@@ -4,7 +4,6 @@ from __future__ import division
 import argparse
 import os
 import os.path
-import json
 from collections import defaultdict
 import logging
 import re
@@ -301,15 +300,10 @@ def get_pdb_chainresatom_dict(pdb_file):
 def prep_hbexplore(hbexplore_file, pdb_file):
     hbexplore_fp = open(hbexplore_file)
     hbexplore_out_fp = open( "%s.bonds" % (hbexplore_file), "w")
-    
-    chainresatom_dict = get_pdb_chainresatom_dict(pdb_file)
-
-    # list to accumulate all hydrogenbonds
-    hbonds = []
-    id_dict = {}
-    
     hbexplore_out_fp.write('data "connect_atoms"\n')
 
+    chainresatom_dict = get_pdb_chainresatom_dict(pdb_file)
+    id_dict = {}
     hbpart=0
     #   SG  CYS   127      O   ILE   124    3.2597     
     # TOM     18  CB  VAL     2       3.462  14.126   6.256  1.00 14.07      193L 162
