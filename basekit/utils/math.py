@@ -97,6 +97,10 @@ def dihedral( v1, v2, v3, v4 ):
     return torsion
 
 
+def point_plane_dist( point, plane ):
+    v1 = point - plane[0]
+    vn2 = norm( np.cross( plane[1] - plane[0], plane[2] - plane[0] ) )
+    return np.dot( vn2, v1 )
 
 
 def lsq(y):
