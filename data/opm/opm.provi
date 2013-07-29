@@ -1,0 +1,5 @@
+[
+    { 
+        "filename": "${pdb_file}"
+    }
+]

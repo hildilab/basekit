@@ -226,7 +226,7 @@ PDB_DTYPE=[
     ('element', '|S2'),         # 18
     ('charge', '|S2'),          # 19
 ]
-PDB_USECOLS=(1,3,4,5,7,8,9,11,12,13,14,15)
+PDB_USECOLS=(0,1,3,4,5,7,8,9,11,12,13,14,15,18)
 PDB_COLS=( 
 #   0        1        2        3        4        5        6        7
     ( 0, 6), ( 6,11), (11,12), (12,16), (16,17), (17,20), (20,21), (21,22),
@@ -375,6 +375,8 @@ class NumAtoms:
         self.flag = flag
         self.length = len( atoms )
         self._memo = {}
+    def __len__( self ):
+        return len( self._atoms )
     def __getitem__( self, key ):
         if key=='xyz':
             return self._coords
@@ -393,8 +395,8 @@ class NumAtoms:
             # )
         else:
             self._atoms[ key ] = value
-    def sele( self, chain=None, resno=None, atomname=None, 
-              altloc=None, sele=None, invert=None ):
+    def sele( self, chain=None, resno=None, atomname=None, atomno=None,
+              altloc=None, resname=None, sele=None, invert=None ):
         atoms = self._atoms
         if sele==None:
             sele = np.ones( self.length, bool )
@@ -405,14 +407,34 @@ class NumAtoms:
                 sele &= tmps
             else:
                 sele &= atoms['chain']==chain
+        if resname!=None:
+            if ( isinstance( resname, collections.Iterable )
+                    and not isinstance( resname, basestring ) ):
+                print resname
+                tmps = atoms['resname']==resname[0]
+                for an in resname[1:]: tmps |= atoms['resname']==an
+                sele &= tmps
+            else:
+                sele &= atoms['resname']==resname
         if resno!=None:
             if isinstance( resno, collections.Iterable ):
-                sele &= (atoms['resno']>=resno[0]) & (atoms['resno']<=resno[1])
+                sele &= (
+                    (atoms['resno']>=resno[0]) & 
+                    (atoms['resno']<=resno[1])
+                )
             else:
                 sele &= atoms['resno']==resno
+        if atomno!=None:
+            if isinstance( atomno, collections.Iterable ):
+                sele &= (
+                    (atoms['atomno']>=atomno[0]) & 
+                    (atoms['atomno']<=atomno[1])
+                )
+            else:
+                sele &= atoms['atomno']==atomno
         if atomname!=None:
-            if isinstance( atomname, collections.Iterable ) \
-                    and not isinstance( atomname, basestring ):
+            if ( isinstance( atomname, collections.Iterable )
+                    and not isinstance( atomname, basestring ) ):
                 atomname = [ ATOMS.get( a, a ) for a in atomname ]
                 tmps = atoms['atomname']==atomname[0]
                 for an in atomname[1:]: tmps |= atoms['atomname']==an
@@ -514,13 +536,13 @@ class NumAtoms:
                 l += 1
         return memo
     @memoize_m
-    def iter_resno( self, **sele ):
+    def iter_resno( self, incomplete=False, **sele ):
         memo = []
         numa_prev = None
         numa0_prev = None
         for numa in self._iter_resno( **sele ):
             numa0 = numa[0]
-            if not numa0['incomplete']:
+            if incomplete or not numa0['incomplete']:
                 numa.flag = True
                 if numa_prev:
                     # skip any additional altloc
@@ -528,7 +550,9 @@ class NumAtoms:
                             numa0['insertion']==numa0_prev['insertion'] and \
                             numa0['altloc']!=numa0_prev['altloc']:
                         continue
-                    if numa0_prev['resno']==numa0['resno']-1:
+                    if numa0_prev['incomplete'] or numa0['incomplete']:
+                        numa.flag = True
+                    elif numa0_prev['resno']==numa0['resno']-1:
                         numa.flag = False
                     elif numdist(
                             # assuming the first three atoms are N, CA, C
@@ -598,8 +622,23 @@ class NumAtoms:
             # for numa in self.iter_resno( **sele ):
             #     for a in numa._atoms:
             #         fp.write( pdb_line( a ) )
-
-
+    def write2( self, file_name, order='original', **sele ):
+        """ write only the first conformation and 
+            set altloc empty
+        """
+        coords, atoms = self._select( **sele )
+        if order=='original':
+            atoms = np.sort( atoms, order='atomno' )
+        na = NumAtoms( atoms, coords )
+        with open( file_name, "wb" ) as fp:
+            i = 1
+            for numa in na.iter_resno( incomplete=True ):
+                for a in numa._atoms:
+                    a["altloc"] = " "
+                    a["atomno"] = i
+                    fp.write( pdb_line( a ) )
+                    i += 1
+            fp.write( "END" )
 
 
 
@@ -615,7 +654,8 @@ class NumPdb:
             "backbone_only": False,
             "protein_only": True,
             "detect_incomplete": True,
-            "configuration": True
+            "configuration": True,
+            "no_sort": False
         }
         if features: self.features.update( features )
         self._parse()
@@ -677,6 +717,10 @@ class NumPdb:
                         atoms_append( tupl( 
                             [ line[ c[0]:c[1] ] for c in cols ] + extra
                         ))
+                elif line[0:6]=="HETATM":
+                    atoms_append( tupl( 
+                        [ line[ c[0]:c[1] ] for c in cols ] + extra
+                    ))
                 elif line[0:5]=="MODEL":
                     # TODO add model field
                     pass
@@ -693,9 +737,10 @@ class NumPdb:
                 self.__dict__[ "_%s" % name ] = p.get()
 
         atoms = np.array(atoms, dtype=types)
-        atoms.sort( order=[ 
-            'chain', 'resno', 'insertion', 'altloc', 'atomno' 
-        ])
+        if not self.features["no_sort"]:
+            atoms.sort( order=[ 
+                'chain', 'resno', 'insertion', 'altloc', 'atomno' 
+            ])
         coords = np.vstack(( atoms['x'], atoms['y'], atoms['z'] )).T
         # print "may_share_memory: %s" % np.may_share_memory( atoms, coords )
         # print "flags.owndata: %s, %s" % (

@@ -45,6 +45,6 @@ class Muscle( CmdTool ):
     ]
     def _init( self, *args, **kwargs ):
         self.cmd = [ 
-            MUSCLE_CMD, "-in", self.fasta_file, "-out", self.muscle_file,
+            MUSCLE_CMD, "-in", self.fasta_file, "-out", self.muscle_file
         ]
 
