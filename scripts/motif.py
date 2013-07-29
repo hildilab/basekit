@@ -5,14 +5,15 @@
 
 
 from basekit.utils.tool import parse_subargs
-from basekit.motif import CapsMotifFinder, StructureGetter
+from basekit.motif import CapsMotifFinder, StructureGetter, Superpose
 
 
 
 def main():
     tools = {
         "finder": CapsMotifFinder,
-        "strucinfo": StructureGetter
+        "strucinfo": StructureGetter,
+        "superpose": Superpose
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )

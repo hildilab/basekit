@@ -16,7 +16,7 @@ import string, os, sys, argparse, itertools
 from time import gmtime, strftime
 import functools, operator, collections
 import basekit.utils.numpdb as numpdb
-
+from utils import bio
 from collections import defaultdict
 
 import utils.math, utils.path
@@ -30,11 +30,11 @@ from utils.tool import (
     _, PyTool, DbTool, RecordsMixin, ParallelMixin, ProviMixin
 )
 import utils.path
-
+from cStringIO import StringIO
 import utils.numpdb as numpdb
 import json
-
-
+from basekit.msa import Muscle
+import linecache
 
 
 
@@ -48,7 +48,7 @@ TMPL_DIR = os.path.join( PARENT_DIR, "data", "motif" )
 
 
 MotifRecord = collections.namedtuple( 'MotifRecord', [
-    'motif', 'pdb_id', 'chain', 'resno',
+    'motif', 'pdb_id', 'chain', 'resno', 'rmsd',
     'phi_angles', 'psi_angles', 'no'
 ])
 
@@ -57,7 +57,7 @@ StrucRecord = collections.namedtuple( 'StrucRecord', [
     'psi_angles', 'distances', 'no'
 ])
 
-
+SuperposeRecord = collections.namedtuple( 'SuperposeRecord', [ ])
 
 
 class MotifTest(object):
@@ -296,8 +296,6 @@ class AlphaLTest_fitted():
 
 
 
-
-
 motifs_dict = {
     "alpha_beta_motif": AlphaBetaMotifTest(),
     "alpha_L_motif": AlphaLTest(),
@@ -306,12 +304,107 @@ motifs_dict = {
 }
 
 
+def _superpose_test( numa, sele_motif ):
+
+    numa_ref=numpdb.NumPdb("/home/student/Johanna/Projekte/caps/cap-referenceset/2REB.pdb")
+    chain=sele_motif['chain']
+    cd=sele_motif['cd']
+    sele_ref = {
+            "chain": "A", "resno": [ 86-4, 86 ]
+        }
+    sele = {
+            "chain": chain, "resno": [ cd-4, cd ]
+        }
+    old_stdout = sys.stdout
+    sys.stdout = stdout = StringIO()
+    numpdb.superpose(
+            numa, numa_ref, sele, sele_ref, align=False
+        )
+    sys.stdout = old_stdout
+    rmsd = stdout.getvalue().split()[1]
+    sys.stdout = sys.stdout
+    return float(rmsd)
+
+def _superpose_all( numa, sele_motif, numa2, sele_motif2):
+    
+    sele_ref = {
+            "chain": sele_motif2['chain'], "resno": [ sele_motif2['cd']-4, sele_motif2['cd'] ]
+        }
+    sele = {
+            "chain": sele_motif['chain'], "resno": [ sele_motif['cd']-4, sele_motif['cd'] ]
+        }
+    old_stdout = sys.stdout
+    sys.stdout = stdout = StringIO()
+    numpdb.superpose(
+            numa, numa2, sele, sele_ref, align=False
+        )
+    sys.stdout = old_stdout
+    rmsd = stdout.getvalue().split()[1]
+    sys.stdout = sys.stdout
+    return float(rmsd)
 
 
 
-def _make_record( motif, name, motif_line, i ):
+def supallall( motifs_file, pdb_repos, *args ):
+    npdb_dict = {}
+    def get_npdb( pdb_id ):
+        if pdb_id not in npdb_dict:
+            path = pdb_repos+pdb_id+'.pdb'
+            npdb_dict[pdb_id] = numpdb.NumPdb( path, features={
+                "phi_psi": False,
+                "sstruc": False
+            })
+        return npdb_dict[pdb_id]
+    motifs = []
+    with open(motifs_file, 'r') as fo:
+        for motifline in fo:
+            pdb_id1, chain1, cd1 = motifline.split()
+            motifs.append((pdb_id1, chain1, cd1))    
+    arr= np.empty( (len(motifs)*(len(motifs)-1))/2 )
+    k=0; highrmsd=0; j=0
+    for i, mo in enumerate(motifs):
+        pdb_id1, chain1, cd1 = mo
+        n1=get_npdb(pdb_id1)
+        j=i+1
+        while j<len(motifs):
+            pdb_id2, chain2, cd2 = motifs[j]
+            n2=get_npdb(pdb_id2)
+            rmsd=_superpose_all(
+                    n1, {'chain':chain1, 'cd':int(cd1)},
+                    n2 , {'chain':chain2, 'cd':int(cd2) }
+                )
+            if rmsd>highrmsd:
+                highrmsd=rmsd
+            arr[k]=rmsd
+            j += 1
+            k +=1
+    hist2d, phiedges, psiedges = np.histogram2d( arr, arr, bins=25,
+                                                range=[[0,0.25],[0,0.25]]
+                                                #[[0,highrmsd+0.1],[0,highrmsd+0.1]])
+                                                )
+    list_hist=[]
+    for i, line in enumerate(hist2d):
+        list_hist.append(hist2d[i][i])
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    ind = np.arange(len(list_hist))
+    ax.bar(ind, list_hist)
+    ax.set_xticks(ind+0.75)
+    ax.set_xticklabels( phiedges, fontsize=8 )
+    plt.ylabel('#motifs')
+    plt.xlabel('RMSD')
+    fig.autofmt_xdate()
+    a=""
+    for dir in args:a=dir
+    name=a+"superpose"+'_'+strftime("%Y-%m-%d_%H-%M-%S", gmtime())
+    plt.savefig(name, dpi=300)
+    pass
+
+
+
+def _make_record( motif, name, motif_line, i, rmsd ):
     return MotifRecord(
-        motif, name, motif_line[1], motif_line[0], 
+        motif, name, motif_line[1], motif_line[0], rmsd,
         list(motif_line[2][0]), list(motif_line[2][1]), i
     )
 
@@ -326,19 +419,37 @@ def _find_all_motifs( npdb ):
                 motif_data[ name ].append( motif_obj.make_list(*numatoms) )
     return motif_data
 
-def find_motifs( infile, motif_type ):
+def find_motifs( infile, motif_type, m2f, l2f ):
     # generate a numpy-pdb
     # get the motif-dicc and parses the motifs to Motif-Record
     records = []
+    if l2f: fi=open('/home/student/Johanna/Projekte/caps/fasta.fa', 'a')
+    if m2f: fo=open('/home/student/Johanna/Projekte/caps/motifs.txt', 'a')
     npdb=numpdb.NumPdb(infile)
     pdb_id = utils.path.stem( infile )
     for motif in motif_type:
         motif_found=_find_all_motifs(npdb)[motif]
         if motif_found!=[]:
             for i, elem in enumerate(motif_found):
-                records.append(_make_record(motif, pdb_id, elem, i))
-    return records
+                rmsd=_superpose_test( npdb, {'chain':elem[1], 'cd':elem[0]} )
+                resstr=""
+                if l2f:
+                    for i in range(elem[0]-4, elem[0]):
+                        resstr=resstr+bio.AA1.get(npdb.iter_resno2(2)[i-4][0][0]["resname"], "X")
+                    fi.write(">"+pdb_id+"|"+elem[1]+str(elem[0])+"\n")
+                    fi.write(resstr)
+                    fi.write('\n')
+                if m2f:
+                    fo.write(pdb_id+" "+elem[1]+" "+str(elem[0])+"\n")
+                #if rmsd > 0.3 and rmsd < 0.4:
+                #    print pdb_id, rmsd, elem[1], elem[0]
+                #    records.append(_make_record(motif, pdb_id, elem, i, rmsd))
+                #if rmsd < 0.4:
+                #    records.append(_make_record(motif, pdb_id, elem, i, rmsd))
+                records.append(_make_record(motif, pdb_id, elem, i, rmsd))
 
+    return records
+#Muscle('/home/student/Johanna/Projekte/caps/fasta3.fasta')
 
 def _motif_out_record( records ):
     motifdic=defaultdict(list)
@@ -515,7 +626,11 @@ class CapsMotifFinder( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             ', '.join(motifs_dict.keys())+"" ),
         _( "plot", type="select", options=["", "big", "sep"],
             default="", group="plot", help="residue(C3-C'')-plot in one picture "
-            "(= big, 6in1), separatly (=sep) or no plot (=default)" )
+            "(= big, 6in1), separatly (=sep) or no plot (=default)" ),
+        _( "m2f", type="select", options=["True", "False"],
+            default="True", help="save the motifs in a txt-file"),
+        _( "l2f", type="select", options=["True", "False"],
+            default="True", help="get the fasta-files from the inputs")
     ]
     out = [
          _( "jspt_file", file="color_motif.jspt" )
@@ -530,7 +645,7 @@ class CapsMotifFinder( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         self._init_records( utils.path.stem( self.inputs ), **kwargs )
         self._init_parallel( self.inputs, **kwargs )
     def func( self ):
-        self.records = find_motifs(self.inputs, self.motif_type )
+        self.records = find_motifs(self.inputs, self.motif_type, self.m2f, self.l2f ) 
         self.write()
     def _post_exec( self ):
         if self.plot!="":
@@ -563,6 +678,37 @@ class CapsMotifFinder( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             fp.write( "select none; background black;" )
     
 
+
+class Superpose( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
+    """A tool to superpose all found motifs. """
+    args = [
+        _( "motifs_file", type="text" ,
+            help="input: txt-file e.g. '~/Downloads/all-motifs.txt'"),
+        _( "pdb_repos", type="text",
+            help="input: directory, e.g. '~/Downloads'"),
+        _( "ava", type="text", default="True",
+            help="al vs all (=True), or 1 vs rest "
+            "(e.g. ='~/Downloads/3DQB.pdb,A,23'=pdb-file,chain,residue of Ccap)")
+    ]
+    out = [
+        _( "jspt_file", file="color_motif.jspt" )
+    ]
+    RecordsClass = SuperposeRecord
+    tmpl_dir = TMPL_DIR
+    provi_tmpl = "motif.provi"
+    def _init( self, *args, **kwargs ):
+        self._init_records( utils.path.stem( self.motifs_file ), **kwargs )
+        self._init_parallel( self.motifs_file, **kwargs )
+    def func( self ):
+        if self.ava=="True":
+            self.records = supallall(self.motifs_file, self.pdb_repos, self.output_dir )
+        else:
+            pass
+            #self.records = superposeall()
+        #self.write()
+
+
+    
 class StructureGetter( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
     """A tool to get structure informations. """
     args = [
