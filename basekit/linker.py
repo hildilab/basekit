@@ -17,6 +17,7 @@ from utils.numpdb import NumPdb, numsele
 
 import provi_prep as provi
 from spider import LoopCrosscorrel
+from spider import MrcHeaderPrinter, MrcHeader, mrc_header
 from pdb import PdbEdit
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "linker" ) 
@@ -135,7 +136,11 @@ class LinkIt( CmdTool, ProviMixin ):
             else:
                 json.dump( linker_dict, fp, indent=4 )
 
-    
+def getMrc( mrc_file, param ):
+    header = mrc_header( mrc_file )
+    for name, value in zip(header._fields, header):
+        if name==param:
+            return value    
 
 class LinkItDensity( PyTool, ProviMixin ):
     args = [
@@ -144,12 +149,12 @@ class LinkItDensity( PyTool, ProviMixin ):
         _( "res1", type="sele" ),
         _( "res2", type="sele" ),
         _( "seq", type="text" ),
-        _( "pixelsize", type="slider", range=[1, 10], fixed=True ),
+        #_( "pixelsize", type="slider", range=[1, 10], fixed=True ),
         _( "resolution", type="slider", range=[1, 10], fixed=True ),
-        _( "boxsize", type="slider", range=[1, 500], fixed=True ),
-        _( "originx", type ="slider", range=[-500,500]),
-        _( "originy", type ="slider", range=[-500,500]),
-        _( "originz", type ="slider", range=[-500,500]),
+        #_( "boxsize", type="slider", range=[1, 500], fixed=True ),
+        #_( "originx", type ="slider", range=[-500,500]),
+        #_( "originy", type ="slider", range=[-500,500]),
+        #_( "originz", type ="slider", range=[-500,500]),
         _( "cutoff", type="float", default=5 ),
         _( "max_loops", type="slider", range=[0, 200], default=100 )
     ]
@@ -159,6 +164,7 @@ class LinkItDensity( PyTool, ProviMixin ):
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "link_it_density.provi"
+
     def _init( self, *args, **kwargs ):
         self.link_it = LinkIt( 
             self.edited_pdb_file, self.res1, self.res2, self.seq,
@@ -167,8 +173,7 @@ class LinkItDensity( PyTool, ProviMixin ):
         self.loop_correl = LoopCrosscorrel(
             self.mrc_file, self.pdb_file, self.link_it.pdb_linker_file2, 
             self.res1, self.res2, len(self.seq),
-            self.pixelsize, self.resolution,
-            self.boxsize, self.originx, self.originy, self.originz,
+            self.resolution,            
             **copy_dict( 
                 kwargs, run=False, output_dir=self.subdir("loop_correl"),
                 max_loops=self.max_loops,
@@ -179,12 +184,19 @@ class LinkItDensity( PyTool, ProviMixin ):
             self.loop_correl.output_files,
         ))
     def func( self ):
-        shx = (self.originx -(self.boxsize/2)) * self.pixelsize
-        shy = (self.originy -(self.boxsize/2)) * self.pixelsize
-        shz = (self.originz -(self.boxsize/2)) * self.pixelsize
+        boxsize=getMrc(self.mrc_file,'nx' )
+        originx=abs(getMrc(self.mrc_file,'xorg' ))
+        originy=abs(getMrc(self.mrc_file,'yorg' ))
+        originz=abs(getMrc(self.mrc_file,'zorg' ))
+        size=getMrc(self.mrc_file,'xlen' )
+        pixelsize=(size/boxsize)
+        shx = (originx -(boxsize/2)) * pixelsize
+        shy = (originy -(boxsize/2)) * pixelsize
+        shz = (originz -(boxsize/2)) * pixelsize
         PdbEdit( 
             self.pdb_file, shift= [shx, shy, shz]
         )    
+   
         self.link_it()
         self.loop_correl()
     def _post_exec( self ):
