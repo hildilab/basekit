@@ -23,7 +23,7 @@ import multiprocessing
 import basekit.utils.numpdb as numpdb
 from basekit import utils
 from basekit.utils import (
-    boolean, working_directory, dir_walker, copy_dict,
+    get_index, boolean, working_directory, dir_walker, copy_dict,
     DefaultOrderedDict
 )
 from basekit.utils.job import run_command
@@ -531,12 +531,8 @@ class Tool( object ):
             self.__dict__[ name ] = self.__prep_arg( value, params )
             if params["type"]=="file":
                 self.input_files_dict[ name ] = utils.Bunch(
-                    stem=utils.path.stem( value ),
-                    basename=os.path.basename( value ),
-                    ext=utils.path.ext( value )
+                    stem=utils.path.stem( value )
                 )
-            elif params["type"]=="str" and "nargs" not in params:
-                self.input_files_dict[ name ] = value
         
         self.output_files = []
         for name, params in self.out.iteritems():
@@ -563,7 +559,7 @@ class Tool( object ):
             return self.outpath( params["file"] )
         elif "dir" in params:
             return self.subdir( params["dir"] )
-        raise Exception( "do not know how to prep output" )
+        raise "do not know how to prep output"
     def __run( self ):
         with working_directory( self.output_dir ):
             if self.pre_exec: self._pre_exec()
@@ -641,26 +637,18 @@ class PyTool( Tool ):
 
 
 class CmdTool( Tool ):
-    cmd_input = None
     def __init__( self, *args, **kwargs ):
         super(CmdTool, self).__init__( *args, **kwargs )
-        if hasattr( self, "stdout_file" ):
-            raise Exception(
-                "'stdout_file' attribute already defined (%s)" % self.name
-            )
-        self.stdout_file = self.outpath( "%s_cmd.log" % self.name )
         if not hasattr( self, "cmd" ):
             raise Exception("A CmdTool needs a 'cmd' attribute")
     def _run( self ):
         cmd = self.cmd
         if self.verbose:
-            print " ".join( map( str, cmd ) )
+            print " ".join( cmd )
         if self.timeout:
             cmd = [ TIMEOUT_CMD, self.timeout ] + cmd
-        ret = run_command( 
-            cmd, log=self.stdout_file, verbose=self.verbose, 
-            input_file=self.cmd_input
-        )
+        log_file = "%s_cmd.log" % self.name
+        ret = run_command( cmd, log=log_file, verbose=self.verbose )
         return ret
 
 
