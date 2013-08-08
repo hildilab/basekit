@@ -45,10 +45,7 @@ TIMEOUT_CMD = "timeout"
 
 logging.basicConfig()
 LOG = logging.getLogger('tool')
-# LOG.setLevel( logging.ERROR )
-LOG.setLevel( logging.WARNING )
-# LOG.setLevel( logging.DEBUG )
-
+LOG.setLevel( logging.INFO )
 
 
 
@@ -403,7 +400,8 @@ class RecordsMixin( Mixin ):
 
 def call( tool ):
     try:
-        return tool()
+        tool()
+        LOG.info( "[%s] %s" % ( tool.id, tool ) )
     except Exception as e:
         LOG.error( "[%s] %s" % ( tool.id, e ) )
         if tool.debug:
@@ -418,17 +416,21 @@ class ParallelMixin( Mixin ):
             options=[ "", "directory", "pdb_archive", "list" ] ),
         _( "interval|i", type="int", default=[ 0, None ], 
             metavar=("BEG", "END"), nargs=2 ),
+        _( "filter_id|id", type="str", default="" ),
+        _( "nworkers|nw", type="int", default=0 ),
     ]
     def _init_parallel( self, input_data, **kwargs ):
         if not hasattr( self, "_parallel_results" ):
             raise Exception( "'_parallel_results' method required" )
-        if self.parallel in [ "pdb_archive", "directory", "dir" ]:
+        if self.parallel in [ "pdb_archive", "directory", "dir", "file" ]:
             self.input_data = self.abspath( input_data )
-        elif self.parallel in [ "list", "file_list" ]:
+        elif self.parallel in [ "file_list" ]:
             self.input_data = map(
                 self.abspath,
                 re.split( "[\s,]+", input_data.strip() )
             )
+        elif self.parallel in [ "list" ]:
+            self.input_data = re.split( "[\s,]+", input_data.strip() )
         else:
             self.input_data = input_data
         self.tool_kwargs = kwargs
@@ -436,6 +438,8 @@ class ParallelMixin( Mixin ):
             self.tool_kwargs[ "fileargs" ] = True
             self._make_tool_list()
             self._parallel_results( self.tool_list )
+        if not self.nworkers:
+            self.nworkers = multiprocessing.cpu_count()
     def _make_tool_list( self ):
         if self.parallel=="pdb_archive":
             input_list = get_pdb_files( 
@@ -445,6 +449,13 @@ class ParallelMixin( Mixin ):
                 operator.itemgetter(1), 
                 dir_walker( self.input_data, pattern=".+\.pdb" ) 
             )
+        elif self.parallel in [ "file" ]:
+            input_list = []
+            with open( self.input_data, "r" ) as fp:
+                for line in fp:
+                    ls = line.strip()
+                    if ls: 
+                        input_list.append( ls )
         elif self.parallel in [ "list", "file_list", "data" ]:
             input_list = self.input_data
         else:
@@ -468,13 +479,14 @@ class ParallelMixin( Mixin ):
             ))
             tool.id = stem
             tool_list.append( tool )
+        if self.filter_id:
+            tool_list = filter( lambda x: x.id==self.filter_id, tool_list )
         self.tool_list = tool_list
-    def _func_parallel( self, nworkers=None ):
+    def _func_parallel( self ):
         # !important - allows one to abort via CTRL-C
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         multiprocessing.log_to_stderr( logging.ERROR )
-        if not nworkers: nworkers = multiprocessing.cpu_count()
-        p = multiprocessing.Pool( nworkers, maxtasksperchild=50 )
+        p = multiprocessing.Pool( self.nworkers, maxtasksperchild=50 )
         data = p.imap( call, self.tool_list )
         p.close()
         p.join()
@@ -545,6 +557,12 @@ class Tool( object ):
             self.__dict__[ name ] = value
             if "file" in params:
                 self.output_files.append( value )
+
+        if hasattr( self, "stdout_file" ):
+            raise Exception(
+                "'stdout_file' attribute already defined (%s)" % self.name
+            )
+        self.stdout_file = self.outpath( "%s_cmd.log" % self.name )
 
         self._init( *args, **kwargs )
         
@@ -644,11 +662,6 @@ class CmdTool( Tool ):
     cmd_input = None
     def __init__( self, *args, **kwargs ):
         super(CmdTool, self).__init__( *args, **kwargs )
-        if hasattr( self, "stdout_file" ):
-            raise Exception(
-                "'stdout_file' attribute already defined (%s)" % self.name
-            )
-        self.stdout_file = self.outpath( "%s_cmd.log" % self.name )
         if not hasattr( self, "cmd" ):
             raise Exception("A CmdTool needs a 'cmd' attribute")
     def _run( self ):
