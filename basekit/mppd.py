@@ -135,6 +135,12 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 ( "msms_coulomb", Msms, copy_dict( msms_kwargs,
                     probe_radius=self.probe_radius) )
             ]
+
+            def filt( lst, lst_all ):
+                return [ e for e in lst_all if e[0] in lst or not lst ]
+            self.water_variants = filt( self.variants, self.water_variants )
+            self.tool_list = filt( self.tools, self.tool_list )
+
             for suffix, pdb_file in self.water_variants:
                 for prefix, tool, tool_kwargs in self.tool_list:
                     name = "%s_%s" % ( prefix, suffix )
@@ -150,11 +156,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         if not self.analyze_only:
             def do( name ):
                 return name in self.tools or not self.tools
-            def filt( lst, lst_all ):
-                return [ e for e in lst_all if e[0] in lst or not lst ]
-            water_variants = filt( self.variants, self.water_variants )
-            tool_list = filt( self.tools, self.tool_list )
-
+            
             if do( "opm" ):
                 self.opm()
             if do( "proc" ):
@@ -169,8 +171,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             if do( "final" ):
                 self.make_final_pdb()
 
-            for suffix, pdb_file in water_variants:
-                for prefix, tool, tool_kwargs in tool_list:
+            for suffix, pdb_file in self.water_variants:
+                for prefix, tool, tool_kwargs in self.tool_list:
                     name = "%s_%s" % ( prefix, suffix )
                     self.__dict__[ name ]()
         
