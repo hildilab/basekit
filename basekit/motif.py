@@ -49,7 +49,7 @@ TMPL_DIR = os.path.join( PARENT_DIR, "data", "motif" )
 
 MotifRecord = collections.namedtuple( 'MotifRecord', [
     'motif', 'pdb_id', 'chain', 'resno', 'rmsd',
-    'phi_angles', 'psi_angles', 'no'
+    'phi_angles', 'psi_angles', 'l2f_str', 'm2f_str',  'no'
 ])
 
 StrucRecord = collections.namedtuple( 'StrucRecord', [
@@ -302,15 +302,153 @@ motifs_dict = {
     "alpha_L_motif-fitted": AlphaLTest_fitted(),
     "st_motif": STTest()
 }
+npdb_dict = {}
+def get_npdb( pdb_id ):
+    pdb_repos='/home/student/Johanna/Projekte/caps/cap-referenceset/'
+    if pdb_id not in npdb_dict:
+        path = pdb_repos+pdb_id+'.pdb'
+        npdb_dict[pdb_id] = numpdb.NumPdb( path, features={
+            "phi_psi": False,
+            "sstruc": False
+        })
+    return npdb_dict[pdb_id]
+def _superpose_all( numa, sele_motif, numa2, sele_motif2):
+    
+    sele_ref = {
+            "chain": sele_motif2['chain'], "resno": [ sele_motif2['cd']-4, sele_motif2['cd'] ]
+        }
+    sele = {
+            "chain": sele_motif['chain'], "resno": [ sele_motif['cd']-4, sele_motif['cd'] ]
+        }
+    old_stdout = sys.stdout
+    sys.stdout = stdout = StringIO()
+    numpdb.superpose(
+            numa, numa2, sele, sele_ref, align=False
+        )
+    sys.stdout = old_stdout
+    rmsd = stdout.getvalue().split()[1]
+    sys.stdout = sys.stdout
+    return float(rmsd)
+def get_treshold( curr_motif_list, t='0,0.2' ):
+    motifs = curr_motif_list
+    arr= np.empty( (len(motifs)*(len(motifs)-1))/2 )
+    k=0; j=0
+    curr_treshold=[]
+    for i, mo in enumerate(motifs):
+        pdb_id1=mo[0:4]; chain1=mo[4]; cd1=mo[5:]
+        n1=get_npdb(pdb_id1)
+        al=[]; kj=0
+        while kj<len(motifs):
+            pdb_id2=motifs[kj][0:4]; chain2=motifs[kj][4]; cd2=motifs[kj][5:]
+            n2=get_npdb(pdb_id2)
+            rmsd=_superpose_all(
+                    n1, {'chain':chain1, 'cd':int(cd1)},
+                    n2 , {'chain':chain2, 'cd':int(cd2) }
+                )
+            kj +=1
+            al.append(rmsd)
+        hist2db, phiedgesb, psiedgesb = np.histogram2d( al, al, bins=1, range=[[t.split(',')[0],t.split(',')[1]],[t.split(',')[0],t.split(',')[1]]])
+        list_histb=[]
+        for i, line in enumerate(hist2db):
+            list_histb.append(hist2db[i][i])
+        curr_treshold.append([list_histb[0],mo, sum(al)/len(al)])
+        
+    return sorted(curr_treshold, reverse=True)
 
+def superpose( ref, all_motifs, t='0,0.2' ):
+    
+    numa_ref=get_npdb( ref[0:4] )
+    chain_ref=ref[4]
+    cd_ref=ref[5:]
+    sele_ref = {
+            "chain": chain_ref, "resno": [ int(cd_ref)-4, int(cd_ref) ]
+        }
+    newcluster=[]
+    for motif in all_motifs:
+        numa=get_npdb( motif[0:4] )
+        chain=motif[4]
+        cd=motif[5:]
+        sele = {
+                "chain": chain, "resno": [ int(cd)-4, int(cd) ]
+            }
+        old_stdout = sys.stdout
+        sys.stdout = stdout = StringIO()
+        numpdb.superpose(
+                numa, numa_ref, sele, sele_ref, align=False
+            )
+        sys.stdout = old_stdout
+        rmsd = stdout.getvalue().split()[1]
+        sys.stdout = sys.stdout
+        if float(rmsd) < float(t.split(',')[1]):
+            newcluster.append(motif)
+    return sorted(newcluster)
+
+def save_newcluster( newcluster, refmotif, refdir, outputdir, overlap ):
+    def _make_jspt_color_motif( pdbid, chain, resno, jspt_file ):
+        with open( jspt_file, "w" ) as fp:
+            s = "select {%s:%s}; color @{color('roygb', 0, %s, %s)}; wireframe 0.3; \n" % (resno, chain, 0,0)
+            fp.write( s )
+            fp.write( "select none; background black;" )
+    def _make_provi_file( pbdid, refdir, provi_file, jspt_file ):
+        with open( provi_file, "w" ) as fp:
+            s = '[ {"filename": "%s"},{"filename":  "%s"}]' % ('../../../cap-referenceset/'+pdbid+'.pdb/'+pdbid+'.pdb', jspt_file)
+            fp.write( s )
+    
+    if overlap: outdir2=outputdir+'cluster-overlap/'+refmotif+'/'
+    else: outdir2=outputdir+'cluster-no-overlap/'+refmotif+'/'
+    try: os.makedirs(outdir2)
+    except: pass
+    for motif in newcluster:
+        pdbid=motif[0:4]; chain=motif[4]; resno=motif[5:]
+        jspt_file=outdir2+pdbid+chain+resno+'_color_motif.jspt'
+        provi_file=outdir2+pdbid+chain+resno+'_motif.provi'
+        _make_jspt_color_motif(pdbid, chain, resno, jspt_file)
+        _make_provi_file( pdbid, refdir, provi_file, jspt_file )
+        
+    
+
+
+
+def make_clusters_with_overlap(  ):
+    #all_motifs=get_all_motifs( indir )
+    motifs_file='/home/student/Johanna/Projekte/caps/norange/2013-08-07_14-59-04_all_motifs.txt'
+    outputdir='/home/student/Johanna/Projekte/caps/cluster/'
+    refdir='/home/student/Johanna/Projekte/caps/cap-referenceset/'
+    all_motifs = []
+    with open(motifs_file, 'r') as fo:
+        for motifline in fo:
+            pdb_id1, chain1, cd1 = motifline.split()
+            all_motifs.append(pdb_id1+chain1+str(cd1))
+    curr_motif_list=[]
+    curr_motif_list=all_motifs
+    
+    while curr_motif_list!=[]:
+        curr_treshold=get_treshold(curr_motif_list, '0,0.2')
+        max_treshold=[]
+        j=0
+        while j<=len(curr_treshold)-1 and (not curr_treshold[j][0]<curr_treshold[0][0]):
+            max_treshold.append(curr_treshold[j])
+            j += 1
+        newcluster_no_overlap = superpose(sorted(max_treshold, key=lambda tup: tup[2])[0][1], curr_motif_list, '0,0.2' )
+        save_newcluster( newcluster_no_overlap, sorted(max_treshold, key=lambda tup: tup[2])[0][1], refdir, outputdir, False )
+        for i in max_treshold:
+            newcluster_overlap = superpose(i[1], all_motifs, '0,0.2' )
+            print i
+            save_newcluster( newcluster_overlap, i[1], refdir, outputdir, True )
+            curr_motif_list=list((set(curr_motif_list)).difference((set(curr_motif_list)).intersection(set(newcluster_overlap))))
+
+
+make_clusters_with_overlap()
+jo=kojo
+print jo
 
 def _superpose_test( numa, sele_motif ):
 
-    numa_ref=numpdb.NumPdb("/home/student/Johanna/Projekte/caps/cap-referenceset/2REB.pdb")
+    numa_ref=numpdb.NumPdb("/home/student/Johanna/Projekte/caps/cap-referenceset/3COX.pdb")
     chain=sele_motif['chain']
     cd=sele_motif['cd']
     sele_ref = {
-            "chain": "A", "resno": [ 86-4, 86 ]
+            "chain": "A", "resno": [ 304-4, 304 ]
         }
     sele = {
             "chain": chain, "resno": [ cd-4, cd ]
@@ -345,7 +483,7 @@ def _superpose_all( numa, sele_motif, numa2, sele_motif2):
 
 
 
-def supallall( motifs_file, pdb_repos, *args ):
+def supallall( motifs_file, pdb_repos, rmsdrange, *args ):
     npdb_dict = {}
     def get_npdb( pdb_id ):
         if pdb_id not in npdb_dict:
@@ -362,10 +500,12 @@ def supallall( motifs_file, pdb_repos, *args ):
             motifs.append((pdb_id1, chain1, cd1))    
     arr= np.empty( (len(motifs)*(len(motifs)-1))/2 )
     k=0; highrmsd=0; j=0
+    array_all={}
     for i, mo in enumerate(motifs):
         pdb_id1, chain1, cd1 = mo
         n1=get_npdb(pdb_id1)
         j=i+1
+        
         while j<len(motifs):
             pdb_id2, chain2, cd2 = motifs[j]
             n2=get_npdb(pdb_id2)
@@ -373,13 +513,42 @@ def supallall( motifs_file, pdb_repos, *args ):
                     n1, {'chain':chain1, 'cd':int(cd1)},
                     n2 , {'chain':chain2, 'cd':int(cd2) }
                 )
+
             if rmsd>highrmsd:
                 highrmsd=rmsd
             arr[k]=rmsd
             j += 1
             k +=1
+        al=[]; kj=0
+        while kj<len(motifs):
+            pdb_id2, chain2, cd2 = motifs[kj]
+            n2=get_npdb(pdb_id2)
+            rmsd=_superpose_all(
+                    n1, {'chain':chain1, 'cd':int(cd1)},
+                    n2 , {'chain':chain2, 'cd':int(cd2) }
+                )
+            kj +=1
+            al.append(rmsd)
+        hist2db, phiedgesb, psiedgesb = np.histogram2d( al, al, bins=1, range=[[0,0.2],[0,0.2]])
+        list_histb=[]
+        for i, line in enumerate(hist2db):
+            list_histb.append(hist2db[i][i])
+        array_all[str(pdb_id1 + chain1 + cd1)]=list_histb
+    for dir in args:a=dir
+    name2=a+"superpose"+'_'+strftime("%Y-%m-%d_%H-%M-%S", gmtime())+'.txt'
+    with open( name2 , "w" ) as fp2:
+        for j in phiedgesb:
+            fp2.write(str(j)+'\t')
+        fp2.write('\n')
+        for el in array_all:
+            for i in array_all[el]:
+                fp2.write(str(int(i))+'\t')
+            
+            fp2.write(el +'\n')
+        
+    if rmsdrange[1]==0: rmsdrange[0]=0; rmsdrange[1]=highrmsd
     hist2d, phiedges, psiedges = np.histogram2d( arr, arr, bins=25,
-                                                range=[[0,0.25],[0,0.25]]
+                                                range=[[rmsdrange[0],rmsdrange[1]],[rmsdrange[0],rmsdrange[1]]]
                                                 #[[0,highrmsd+0.1],[0,highrmsd+0.1]])
                                                 )
     list_hist=[]
@@ -402,10 +571,10 @@ def supallall( motifs_file, pdb_repos, *args ):
 
 
 
-def _make_record( motif, name, motif_line, i, rmsd ):
+def _make_record( motif, name, motif_line, i, rmsd, l2f_str, m2f_str ):
     return MotifRecord(
         motif, name, motif_line[1], motif_line[0], rmsd,
-        list(motif_line[2][0]), list(motif_line[2][1]), i
+        list(motif_line[2][0]), list(motif_line[2][1]), l2f_str, m2f_str, i
     )
 
 def _find_all_motifs( npdb ):
@@ -419,12 +588,10 @@ def _find_all_motifs( npdb ):
                 motif_data[ name ].append( motif_obj.make_list(*numatoms) )
     return motif_data
 
-def find_motifs( infile, motif_type, m2f, l2f ):
+def find_motifs( infile, motif_type, m2f, l2f, rmsdrange):
     # generate a numpy-pdb
     # get the motif-dicc and parses the motifs to Motif-Record
     records = []
-    if l2f: fi=open('/home/student/Johanna/Projekte/caps/fasta.fa', 'a')
-    if m2f: fo=open('/home/student/Johanna/Projekte/caps/motifs.txt', 'a')
     npdb=numpdb.NumPdb(infile)
     pdb_id = utils.path.stem( infile )
     for motif in motif_type:
@@ -433,21 +600,18 @@ def find_motifs( infile, motif_type, m2f, l2f ):
             for i, elem in enumerate(motif_found):
                 rmsd=_superpose_test( npdb, {'chain':elem[1], 'cd':elem[0]} )
                 resstr=""
-                if l2f:
+                l2f_str=''
+                if l2f=='True':
                     for i in range(elem[0]-4, elem[0]):
                         resstr=resstr+bio.AA1.get(npdb.iter_resno2(2)[i-4][0][0]["resname"], "X")
-                    fi.write(">"+pdb_id+"|"+elem[1]+str(elem[0])+"\n")
-                    fi.write(resstr)
-                    fi.write('\n')
-                if m2f:
-                    fo.write(pdb_id+" "+elem[1]+" "+str(elem[0])+"\n")
-                #if rmsd > 0.3 and rmsd < 0.4:
-                #    print pdb_id, rmsd, elem[1], elem[0]
-                #    records.append(_make_record(motif, pdb_id, elem, i, rmsd))
-                #if rmsd < 0.4:
-                #    records.append(_make_record(motif, pdb_id, elem, i, rmsd))
-                records.append(_make_record(motif, pdb_id, elem, i, rmsd))
-
+                    l2f_str=">"+pdb_id+"|"+elem[1]+str(elem[0])+"\n"+resstr+'\n'
+                m2f_str=''
+                if m2f=='True':
+                    m2f_str=pdb_id+" "+elem[1]+" "+str(elem[0])+"\n"
+                if rmsdrange[0]!='':
+                    if rmsd > float(rmsdrange[0]) and rmsd < float(rmsdrange[1]):
+                        records.append(_make_record(motif, pdb_id, elem, i, rmsd, l2f_str, m2f_str))
+                else: records.append(_make_record(motif, pdb_id, elem, i, rmsd, l2f_str, m2f_str))
     return records
 #Muscle('/home/student/Johanna/Projekte/caps/fasta3.fasta')
 
@@ -628,9 +792,11 @@ class CapsMotifFinder( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             default="", group="plot", help="residue(C3-C'')-plot in one picture "
             "(= big, 6in1), separatly (=sep) or no plot (=default)" ),
         _( "m2f", type="select", options=["True", "False"],
-            default="True", help="save the motifs in a txt-file"),
+            default="True", help="save the motifs in a txt-file for e.g. superpose"),
         _( "l2f", type="select", options=["True", "False"],
-            default="True", help="get the fasta-files from the inputs")
+            default="True", help="get the fasta-files from the inputs for multiple alignment"),
+        _( "rmsdrange", type="text", default='',
+            help="e.g. 1.4,2.3 for upper and under bound")
     ]
     out = [
          _( "jspt_file", file="color_motif.jspt" )
@@ -640,12 +806,13 @@ class CapsMotifFinder( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
     provi_tmpl = "motif.provi"
     def _init( self, *args, **kwargs ):
         self.motif_type = self.motif_type.split(",")
+        self.rmsdrange = self.rmsdrange.split(",")
         if self.motif_type[0]=='all':
             self.motif_type=motifs_dict
         self._init_records( utils.path.stem( self.inputs ), **kwargs )
         self._init_parallel( self.inputs, **kwargs )
     def func( self ):
-        self.records = find_motifs(self.inputs, self.motif_type, self.m2f, self.l2f ) 
+        self.records = find_motifs(self.inputs, self.motif_type, self.m2f, self.l2f, self.rmsdrange ) 
         self.write()
     def _post_exec( self ):
         if self.plot!="":
@@ -655,6 +822,18 @@ class CapsMotifFinder( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             pdb_file=self.relpath( self.inputs ),
             jspt_file=self.relpath( self.jspt_file )
         )
+        if self.l2f=='True':
+            with open(self.output_dir+strftime("%Y-%m-%d_%H-%M-%S", gmtime())+'_motif_fasta.fa', 'w') as fi:
+                records_dict = _motif_out_record( self.records )
+                for i, motif in enumerate(records_dict):
+                    for r in records_dict[motif]:
+                        fi.write(r.l2f_str)
+        if self.m2f=='True':
+            with open(self.output_dir+strftime("%Y-%m-%d_%H-%M-%S", gmtime())+'_all_motifs.txt', 'w') as fi:
+                records_dict = _motif_out_record( self.records )
+                for i, motif in enumerate(records_dict):
+                    for r in records_dict[motif]:
+                        fi.write(r.m2f_str)
     def _make_jspt_color_motif( self ):
         records_dict = _motif_out_record( self.records )
         with open( self.jspt_file, "w" ) as fp:
@@ -676,6 +855,7 @@ class CapsMotifFinder( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     )
                 fp.write( s )
             fp.write( "select none; background black;" )
+       
     
 
 
@@ -688,7 +868,9 @@ class Superpose( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             help="input: directory, e.g. '~/Downloads'"),
         _( "ava", type="text", default="True",
             help="al vs all (=True), or 1 vs rest "
-            "(e.g. ='~/Downloads/3DQB.pdb,A,23'=pdb-file,chain,residue of Ccap)")
+            "(e.g. ='~/Downloads/3DQB.pdb,A,23'=pdb-file,chain,residue of Ccap)"),
+        _( "rmsdrange", type="text", default='0,0',
+            help="e.g. 1.4,2.3 for upper and under bound")
     ]
     out = [
         _( "jspt_file", file="color_motif.jspt" )
@@ -697,11 +879,12 @@ class Superpose( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
     tmpl_dir = TMPL_DIR
     provi_tmpl = "motif.provi"
     def _init( self, *args, **kwargs ):
+        self.rmsdrange = map(float, self.rmsdrange.split(","))
         self._init_records( utils.path.stem( self.motifs_file ), **kwargs )
         self._init_parallel( self.motifs_file, **kwargs )
     def func( self ):
         if self.ava=="True":
-            self.records = supallall(self.motifs_file, self.pdb_repos, self.output_dir )
+            self.records = supallall(self.motifs_file, self.pdb_repos, self.rmsdrange, self.output_dir )
         else:
             pass
             #self.records = superposeall()
