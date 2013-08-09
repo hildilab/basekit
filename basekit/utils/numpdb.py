@@ -396,10 +396,13 @@ class NumAtoms:
         else:
             self._atoms[ key ] = value
     def sele( self, chain=None, resno=None, atomname=None, atomno=None,
-              altloc=None, resname=None, sele=None, invert=None ):
+              altloc=None, resname=None, sele=None, record=None,
+              invert=None ):
         atoms = self._atoms
         if sele==None:
             sele = np.ones( self.length, bool )
+        if record!=None:
+            sele &= atoms['record']==record
         if chain!=None:
             if isinstance( chain, collections.Iterable ):
                 tmps = atoms['chain']==chain[0]
@@ -607,7 +610,11 @@ class NumAtoms:
             return "".join( s )
     def center( self, **sele ):
         coords = self.get( 'xyz', **sele )
-        return np.sum( coords, axis=0 ) / len(coords)
+        try:
+            return np.sum( coords, axis=0 ) / len(coords)
+        except FloatingPointError as e:
+            print self._atoms
+            raise e
     def dist( self, sele1, sele2 ):
         return mag( self.center( **sele1 ) - self.center( **sele2 ) )
     def write( self, file_name, order='original', 
@@ -622,13 +629,11 @@ class NumAtoms:
             # for numa in self.iter_resno( **sele ):
             #     for a in numa._atoms:
             #         fp.write( pdb_line( a ) )
-    def write2( self, file_name, order='original', **sele ):
+    def write2( self, file_name, **sele ):
         """ write only the first conformation and 
             set altloc empty
         """
         coords, atoms = self._select( **sele )
-        if order=='original':
-            atoms = np.sort( atoms, order='atomno' )
         na = NumAtoms( atoms, coords )
         with open( file_name, "wb" ) as fp:
             i = 1
@@ -739,7 +744,7 @@ class NumPdb:
         atoms = np.array(atoms, dtype=types)
         if not self.features["no_sort"]:
             atoms.sort( order=[ 
-                'chain', 'resno', 'insertion', 'altloc', 'atomno' 
+                'chain', 'resno', 'insertion', 'altloc' 
             ])
         coords = np.vstack(( atoms['x'], atoms['y'], atoms['z'] )).T
         # print "may_share_memory: %s" % np.may_share_memory( atoms, coords )
