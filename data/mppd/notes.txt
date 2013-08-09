@@ -3,21 +3,20 @@
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 0 10 -nw 6
 [1B12] could not find plane coordinates
 [1BCT] could not find plane coordinates
-[1AIG] msms_vdw 1.71
-[1BCC] msms0 1.7
+[1AIG] -vpr 1.71
+[1BCC] -pr 1.7
 
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 10 20 -nw 6
 [1BHB] could not find plane coordinates
-[1BE3] too many RS components
+[1BE3] too many RS components -pr 1.7
 [1BGY] too many RS components
 
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 20 30 -nw 6
-[1C17] list index out of range
 [1CWQ] two models
 
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 30 40 -nw 6
 [????] ERROR:prep:key already in chainresatom dict.
-[1E7P]
+[1E7P] too many RS components -pr 1.7
 [1EZV]
 
 
@@ -43,6 +42,21 @@ time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 100 150 -nw 6
 [1L0M] Opm url error
 [1KQG]
 [1KQF]
+[1L0N] list index out of range
+[1LV7] could not find plane coordinates
+[1LGH]
+[1LNQ]
+[1NTK]
+[1NTM]
+[1NTZ]
+[1NU1]
+[1NEK]
+[1NEN]
+[1OED] list index out of range
+[1OCC]
+[1OCR]
+[1OCZ]
+
 
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 150 200 -nw 6
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 200 250 -nw 6

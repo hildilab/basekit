@@ -416,7 +416,7 @@ class ParallelMixin( Mixin ):
             options=[ "", "directory", "pdb_archive", "list" ] ),
         _( "interval|i", type="int", default=[ 0, None ], 
             metavar=("BEG", "END"), nargs=2 ),
-        _( "filter_id|id", type="str", default="" ),
+        _( "filter_id|id", type="str", default=[], nargs="*" ),
         _( "nworkers|nw", type="int", default=0 ),
     ]
     def _init_parallel( self, input_data, **kwargs ):
@@ -480,7 +480,7 @@ class ParallelMixin( Mixin ):
             tool.id = stem
             tool_list.append( tool )
         if self.filter_id:
-            tool_list = filter( lambda x: x.id==self.filter_id, tool_list )
+            tool_list = filter( lambda x: x.id in self.filter_id, tool_list )
         self.tool_list = tool_list
     def _func_parallel( self ):
         # !important - allows one to abort via CTRL-C

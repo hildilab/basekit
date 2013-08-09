@@ -30,6 +30,8 @@ def parse_msms_log( msms_log ):
                     line.startswith("TRIANGULATION") or
                     line.startswith("NUMERICAL VOLUMES AND AREA") ):
                 break
+            if line.find( "ERROR Too many RS components" )!=-1:
+                raise Exception( "too many RS components" )
         fp.next()
         for line in fp:
             if ( line.startswith("TRIANGULATION") or
@@ -211,7 +213,7 @@ class Msms( CmdTool, ProviMixin ):
             components = []
             for m, filepath in dir_walker( self.output_dir, p ):
                 cno = int( m.group(1) )
-                if comps[ cno ][1] > 0:
+                if cno >= len(comps) or comps[ cno ][1] > 0:
                     continue
                 components.append( 
                     string.Template( components_tmpl ).substitute( 
