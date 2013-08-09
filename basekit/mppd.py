@@ -137,7 +137,12 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             ]
 
             def filt( lst, lst_all ):
-                return [ e for e in lst_all if e[0] in lst or not lst ]
+                if not lst:
+                    return lst_all
+                if lst[0]=="!":
+                    return [ e for e in lst_all if e[0] not in lst[1:] ]
+                else:
+                    return [ e for e in lst_all if e[0] in lst ]
             self.water_variants = filt( self.variants, self.water_variants )
             self.tool_list = filt( self.tools, self.tool_list )
 
@@ -155,7 +160,12 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
     def func( self ):
         if not self.analyze_only:
             def do( name ):
-                return name in self.tools or not self.tools
+                if not self.tools:
+                    return True
+                if self.tools[0]=="!":
+                    return name not in self.tools[1:]
+                else:
+                    return name in self.tools
             
             if do( "opm" ):
                 self.opm()
@@ -254,7 +264,21 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             "sstruc": False,
             "phi_psi": False
         })
-        npdb.write2( self.processed_pdb )
+        sele = npdb.sele()
+        coords_dict = {}
+        i = 0
+        for numa in npdb.iter_resno( incomplete=True ):
+            for c in numa._coords:
+                c = tuple( c )
+                # remove atoms with identical coords
+                if c in coords_dict:
+                    print npdb._atoms[i]
+                    sele[i] = False
+                else:
+                    coords_dict[ c ] = True
+                    sele[i] = True
+                i += 1
+        npdb.copy( sele=sele ).write2( self.processed_pdb )
     def make_nowat_pdb( self ):
         with open( self.no_water_file, "w" ) as fp:
             with open( self.processed_pdb, "r" ) as fp_pdb:

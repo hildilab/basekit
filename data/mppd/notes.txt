@@ -8,18 +8,13 @@ time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 0 10 -nw 6
 
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 10 20 -nw 6
 [1BHB] could not find plane coordinates
-[1BE3] too many RS components -pr 1.7
-[1BGY] too many RS components
+[1BE3] -pr 1.7
+[1BGY] too many RS components -pr 1.7
 
-time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 20 30 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 20 50 -nw 6
 [1CWQ] two models
-
-time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 30 40 -nw 6
 [1E7P] -pr 1.7
 [1EZV] -pr 1.7
-
-
-time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 40 50 -nw 6
 [1FG6] Opm url error
 [1FE1] could not find plane coordinates
 [1FJR] could not find plane coordinates
@@ -61,6 +56,18 @@ time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 150 200 -nw 6
 [1OY8] too many RS components
 [1OY6] too many RS components
 [1OYE] too many RS components
+[1OY9] too many RS components
+[1OYD] too many RS components
+[1P84] too many RS components
+[1PRC]
+[1QCR] Opm url error
+[1PPJ] too many RS components
+[1QO1] Opm url error
+[1Q90] 
+[1QOY] Opm url error
+[1Q16] too many RS components
+[1QLB] too many RS components
+[1R3K] find_first_rs_face
 
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 200 250 -nw 6
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 250 300 -nw 6
@@ -82,6 +89,16 @@ time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 500 550 -nw 6
 [2V50] too many RS components
 
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 550 600 -nw 6
+[2W0F] find_first_rs_face
+[2W5Q] could not find plane coordinates
+[2W5R] could not find plane coordinates
+[2W5S] Opm url error
+[2W5T] Opm url error
+[2W8D] could not find plane coordinates
+[2W1P] voronoia error
+[2WCD] too many RS components
+[2WDR] too many RS components
+
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 600 650 -nw 6
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 650 700 -nw 6
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 700 750 -nw 6
