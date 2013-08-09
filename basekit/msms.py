@@ -4,6 +4,8 @@ from __future__ import with_statement
 from __future__ import division
 
 import numpy as np
+import scipy.cluster
+import scipy.spatial
 
 import string
 import shutil
@@ -126,6 +128,7 @@ class Msms( CmdTool, ProviMixin ):
         _( "surf_file", file="surf.xyzr" ),
         _( "surf_file2", file="surf2.xyz" ),
         _( "surf_file3", file="surf3.xyz" ),
+        # _( "surf_file4", file="surf4.xyz" ),
         _( "provi_file", file="msms.provi" )
     ]
     tmpl_dir = TMPL_DIR
@@ -150,7 +153,7 @@ class Msms( CmdTool, ProviMixin ):
             self.envelope_pdb = self.outpath( "envelope.pdb" )
             self.envelope_msms = Msms(
                 self.pdb_file, **copy_dict( kwargs, run=False,
-                    envelope=0.0, density=0.3, hdensity=0.5,
+                    envelope=0.0, density=0.1, hdensity=0.3,
                     probe_radius=self.envelope, all_components=False,
                     output_dir=self.subdir( "envelope" ) )
             )
@@ -164,17 +167,35 @@ class Msms( CmdTool, ProviMixin ):
             self.envelope_msms()
             vert = self.envelope_msms.get_vert( filt=True )
             pr = self.envelope_msms.probe_radius
-            with open( self.pdb2xyzr.xyzr_file, "a" ) as fp:
-                dct = {}
-                for d in vert:
-                    coords = ( d['x'], d['y'], d['z'] )
-                    if coords in dct:
-                        continue
-                    dct[ coords ] = True
-                    l = "%0.3f\t%0.3f\t%0.3f\t%0.2f\n" % (
-                        d['x'], d['y'], d['z'], pr
-                    )
-                    fp.write( l )
+            if True:
+                coords = np.array([ [ d['x'], d['y'], d['z'] ] for d in vert ])
+                fd = scipy.cluster.hierarchy.fclusterdata(
+                    coords, pr, criterion='distance', 
+                    metric='euclidean', method='average'
+                )
+                clust = collections.defaultdict( list )
+                for i, x in enumerate(fd):
+                    clust[x].append( coords[i] )
+                print len( coords ), len( clust )
+                with open( self.pdb2xyzr.xyzr_file, "a" ) as fp:
+                    for d in clust.itervalues():
+                        d3 = np.array( d ).mean( axis=0 )
+                        l = "%0.3f\t%0.3f\t%0.3f\t%0.2f\n" % (
+                            d3[0], d3[1], d3[2], pr
+                        )
+                        fp.write( l )
+            else:
+                with open( self.pdb2xyzr.xyzr_file, "a" ) as fp:
+                    dct = {}
+                    for d in vert:
+                        coords = ( d['x'], d['y'], d['z'] )
+                        if coords in dct:
+                            continue
+                        dct[ coords ] = True
+                        l = "%0.3f\t%0.3f\t%0.3f\t%0.2f\n" % (
+                            d['x'], d['y'], d['z'], pr
+                        )
+                        fp.write( l )
     def _post_exec( self ):
         self._make_provi_file(
             pdb_file=self.relpath( self.pdb_file ),
@@ -189,8 +210,8 @@ class Msms( CmdTool, ProviMixin ):
                     d['x'], d['y'], d['z'], self.probe_radius
                 )
                 fp.write( l )
+        vert2 = filter( lambda x: x[-3]<0, vert )
         with open( self.surf_file2, "w" ) as fp:
-            vert2 = filter( lambda x: x[-3]<0, vert )
             fp.write( "%i\ncomment\n" % len( vert2 ) )
             for d in vert2:
                 l = "F\t%0.3f\t%0.3f\t%0.3f\n" % (
@@ -204,6 +225,23 @@ class Msms( CmdTool, ProviMixin ):
                     d['x'], d['y'], d['z']
                 )
                 fp.write( l )
+        # ...
+        # coords = np.array([ [ d['x'], d['y'], d['z'] ] for d in vert2 ])
+        # fd = scipy.cluster.hierarchy.fclusterdata(
+        #     coords, self.probe_radius, criterion='distance', 
+        #     metric='euclidean', method='average'
+        # )
+        # clust = collections.defaultdict( list )
+        # for i, x in enumerate(fd):
+        #     clust[x].append( coords[i] )
+        # with open( self.surf_file4, "w" ) as fp:
+        #     fp.write( "%i\ncomment\n" % len( clust ) )
+        #     for d in clust.itervalues():
+        #         d3 = np.array( d ).mean( axis=0 )
+        #         l = "F\t%0.3f\t%0.3f\t%0.3f\n" % (
+        #             d3[0], d3[1], d3[2]
+        #         )
+        #         fp.write( l )
     def components_provi( self, color="", translucent=0.0, relpath=None ):
         if self.all_components:
             comps = self.get_components()

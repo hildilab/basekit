@@ -1,17 +1,13 @@
 
 
-time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 0 10 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 0 50 -nw 6
 [1B12] could not find plane coordinates
 [1BCT] could not find plane coordinates
 [1AIG] -vpr 1.71
 [1BCC] -pr 1.7
-
-time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 10 20 -nw 6
 [1BHB] could not find plane coordinates
 [1BE3] -pr 1.7
-[1BGY] too many RS components -pr 1.7
-
-time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 20 50 -nw 6
+[1BGY] -pr 1.7
 [1CWQ] two models
 [1E7P] -pr 1.7
 [1EZV] -pr 1.7
@@ -68,6 +64,8 @@ time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 150 200 -nw 6
 [1Q16] too many RS components
 [1QLB] too many RS components
 [1R3K] find_first_rs_face
+[1R3J]
+[1R3I] voronoia
 
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 200 250 -nw 6
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 250 300 -nw 6
@@ -75,6 +73,9 @@ time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 300 350 -nw 6
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 350 400 -nw 6
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 400 450 -nw 6
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 450 500 -nw 6
+
+
+
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 500 550 -nw 6
 [2P7T]
 [2Q67]
@@ -98,6 +99,16 @@ time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 550 600 -nw 6
 [2W1P] voronoia error
 [2WCD] too many RS components
 [2WDR] too many RS components
+[2WDV] too many RS components
+[2WLH] voronoia error
+[2WLK]
+[2WPD] too many RS components
+[2WP9] too many RS components
+[2WS3] too many RS components
+[2WSC] too many RS components
+[2WSE] msms0
+[2WWB]
+[2WSF]
 
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 600 650 -nw 6
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 650 700 -nw 6
