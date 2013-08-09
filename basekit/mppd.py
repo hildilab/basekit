@@ -117,7 +117,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             self.msms0 = Msms(
                 self.no_water_file, **copy_dict( kwargs, run=False, 
                 output_dir=self.subdir( "msms0" ), 
-                **copy_dict( msms_kwargs, probe_radius=self.probe_radius)
+                **copy_dict( msms_kwargs, probe_radius=self.vdw_probe_radius)
             ))
 
             self.water_variants = [

@@ -16,7 +16,7 @@ time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 20 30 -nw 6
 
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 30 40 -nw 6
 [????] ERROR:prep:key already in chainresatom dict.
-[1E7P] too many RS components -pr 1.7
+[1E7P] -pr 1.7
 [1EZV]
 
 
@@ -66,6 +66,13 @@ time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 350 400 -nw 6
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 400 450 -nw 6
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 450 500 -nw 6
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 500 550 -nw 6
+[2P7T]
+[2Q67]
+[2Q68]
+[2Q69]
+[2Q6A]
+[2ONJ]
+
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 550 600 -nw 6
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 600 650 -nw 6
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 650 700 -nw 6
