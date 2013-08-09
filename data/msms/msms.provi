@@ -3,6 +3,10 @@
         "filename": "${pdb_file}"
     },
     { 
-        "filename":  "${vert_file}"
-    }${components_data}
+        "filename":  "${vert_file}",
+        "params": {
+        	"color": "${color}"
+        }
+    }
+    ${components_data}
 ]

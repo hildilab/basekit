@@ -3,14 +3,13 @@
 from __future__ import with_statement
 from __future__ import division
 
+import numpy as np
 
-import re
-import sys
-import os
+import string
 import shutil
 import collections
 
-import utils.path
+import utils
 from utils import copy_dict, dir_walker, iter_stride
 from utils.tool import _, _dir_init, CmdTool, ProviMixin
 
@@ -81,6 +80,27 @@ def parse_msms_area( area_file ):
 
 
 
+def parse_msms_vert( vert_file ):
+    vert_list = []
+    with open( vert_file, "r" ) as fp:
+        header = fp.next() + fp.next() + fp.next()
+        for line in fp:
+            ls = line.split()
+            vert_list.append((
+                float( ls[0] ), float( ls[1] ), float( ls[2] ),
+                float( ls[3] ), float( ls[4] ), float( ls[5] ),
+                int( ls[6] ), int( ls[7] ), int( ls[8] )
+            ))
+    types = [
+        ('x', np.float), ('y', np.float), ('z', np.float),
+        ('nx', np.float), ('ny', np.float), ('nz', np.float),
+        ('face_no', np.int),
+        ('closest_sphere', np.int),
+        ('face_type', np.int)
+    ]
+    return np.array( vert_list, dtype=types )
+
+
 
 class Msms( CmdTool, ProviMixin ):
     """A wrapper around the MSMS program."""
@@ -92,11 +112,16 @@ class Msms( CmdTool, ProviMixin ):
         _( "hdensity", type="float", range=[1.0, 20], step=1.0, default=3.0 ),
         _( "all_components", type="checkbox", default=False ),
         _( "no_area", type="checkbox", default=False ),
+        _( "envelope", type="float", range=[0.0, 10], step=0.1, 
+            default=0 ),
     ]
     out = [
         _( "area_file", file="area.area" ),
         _( "face_file", file="tri_surface.face" ),
         _( "vert_file", file="tri_surface.vert" ),
+        _( "surf_file", file="surf.xyzr" ),
+        _( "surf_file2", file="surf2.xyz" ),
+        _( "surf_file3", file="surf3.xyz" ),
         _( "provi_file", file="msms.provi" )
     ]
     tmpl_dir = TMPL_DIR
@@ -117,29 +142,98 @@ class Msms( CmdTool, ProviMixin ):
         if self.no_area:
             self.cmd.append( "-no_area" )
         self.output_files.extend( self.pdb2xyzr.output_files )
+        if self.envelope:
+            self.envelope_pdb = self.outpath( "envelope.pdb" )
+            self.envelope_msms = Msms(
+                self.pdb_file, **copy_dict( kwargs, run=False,
+                    envelope=0.0, density=0.3, hdensity=0.5,
+                    probe_radius=self.envelope, all_components=False,
+                    output_dir=self.subdir( "envelope" ) )
+            )
+            self.output_files.extend( self.envelope_msms.output_files )
     def _pre_exec( self ):
+        p = "tri_surface_([0-9]+)\.vert"
+        for m, filepath in dir_walker( self.output_dir, p ):
+            utils.path.remove( filepath )
         self.pdb2xyzr()
+        if self.envelope:
+            self.envelope_msms()
+            vert = self.envelope_msms.get_vert( filt=True )
+            pr = self.envelope_msms.probe_radius
+            with open( self.pdb2xyzr.xyzr_file, "a" ) as fp:
+                dct = {}
+                for d in vert:
+                    coords = ( d['x'], d['y'], d['z'] )
+                    if coords in dct:
+                        continue
+                    dct[ coords ] = True
+                    l = "%0.3f\t%0.3f\t%0.3f\t%0.2f\n" % (
+                        d['x'], d['y'], d['z'], pr
+                    )
+                    fp.write( l )
     def _post_exec( self ):
-        if self.all_components:
-            p = "tri_surface_([0-9]+)\.vert"
-            components = []
-            for m, filepath in dir_walker( self.output_dir, p ):
-                components.append(
-                    '\t{\n\t\t"filename": "%s"\n\t}' % self.relpath( filepath )
-                )
-            components_data = ",\n" + ",\n".join( components )
-        else:
-            components_data = ""
-
         self._make_provi_file(
             pdb_file=self.relpath( self.pdb_file ),
             vert_file=self.relpath( self.vert_file ),
-            components_data=components_data
+            color="",
+            components_data=self.components_provi()
         )
+        vert = self.get_vert()
+        with open( self.surf_file, "w" ) as fp:
+            for d in vert:
+                l = "%0.3f\t%0.3f\t%0.3f\t%0.2f\n" % (
+                    d['x'], d['y'], d['z'], self.probe_radius
+                )
+                fp.write( l )
+        with open( self.surf_file2, "w" ) as fp:
+            vert2 = filter( lambda x: x[-3]<0, vert )
+            fp.write( "%i\ncomment\n" % len( vert2 ) )
+            for d in vert2:
+                l = "F\t%0.3f\t%0.3f\t%0.3f\n" % (
+                    d['x'], d['y'], d['z']
+                )
+                fp.write( l )
+        with open( self.surf_file3, "w" ) as fp:
+            fp.write( "%i\ncomment\n" % len( vert ) )
+            for d in vert:
+                l = "F\t%0.3f\t%0.3f\t%0.3f\n" % (
+                    d['x'], d['y'], d['z']
+                )
+                fp.write( l )
+    def components_provi( self, color="", translucent=0.0, relpath=None ):
+        if self.all_components:
+            comps = self.get_components()
+            if not relpath:
+                relpath = self.relpath
+            with open( self.datapath( "_component.json" ), "r" ) as fp:
+                components_tmpl = fp.read()
+            p = "tri_surface_([0-9]+)\.vert"
+            components = []
+            for m, filepath in dir_walker( self.output_dir, p ):
+                cno = int( m.group(1) )
+                if comps[ cno ][1] > 0:
+                    continue
+                components.append( 
+                    string.Template( components_tmpl ).substitute( 
+                        vert_file=relpath( filepath ),
+                        insideout="true",
+                        color=color,
+                        translucent=translucent
+                    )
+                )
+            if components:
+                return ",\n" + ",\n".join( components )
+        return ""
     def get_components( self ):
         return parse_msms_log( self.stdout_file )
     def get_area( self ):
         return parse_msms_area( self.area_file )
+    def get_vert( self, filt=False ):
+        vert = parse_msms_vert( self.vert_file )
+        if filt:
+            return filter( lambda x: x[-3]<0, vert )
+        else:
+            return vert
 
 
 

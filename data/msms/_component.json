@@ -1,0 +1,8 @@
+	{
+	    "filename": "${vert_file}",
+	    "params": {
+	    	"insideout": ${insideout},
+	    	"color": "${color}",
+	    	"translucent": ${translucent}
+	    }
+	}
