@@ -111,7 +111,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             )
             msms_kwargs = { 
                 "all_components": True,
-                "density": 2.0, "hdensity": 5.0,
+                "density": 1.0, "hdensity": 3.0,
                 "envelope": self.probe_radius * 2
             }
             self.msms0 = Msms(

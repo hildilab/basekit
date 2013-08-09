@@ -32,6 +32,8 @@ def parse_msms_log( msms_log ):
                 break
             if line.find( "ERROR Too many RS components" )!=-1:
                 raise Exception( "too many RS components" )
+            if line.find( "ERROR: find_first_rs_face" )!=-1:
+                raise Exception( "find_first_rs_face" )
         fp.next()
         for line in fp:
             if ( line.startswith("TRIANGULATION") or
