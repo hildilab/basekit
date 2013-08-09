@@ -4,101 +4,34 @@
         "params": {
             "sort_key": -1,
             "parent_id": "tab_widgets",
-            "template": "<ul><li>PDB ID: <a target='_blank' href='http://www.rcsb.org/pdb/explore/explore.do?structureId=${pdb_id}'>${pdb_id}</a></li><li>Probe radius: ${probe_radius}</li><li>Family: ${family}</li><li><a target='_blank' href='http://proteinformatics.charite.de/mppd/go?pdb=${pdb_id}''>MPPD entry</a></li></ul>",
+            "template": "<ul><li>PDB ID: <a target='_blank' href='http://www.rcsb.org/pdb/explore/explore.do?structureId=${pdb_id}'>${pdb_id}</a></li><li><a target='_blank' href='http://proteinformatics.charite.de/mppd/go?pdb=${pdb_id}''>MPPD entry</a></li></ul>",
             "data": {}
         }
     },
     {
-        "name": "pdb_org",
+        "name": "pdb",
         "filename": "${pdb_file}",
         "params": {
             "load_as": "new",
-            "script": "provi_set(\"style\", \"cartoon+lines\")"
+            "script": "provi_set(\"style\", \"cartoon+lines\"); select \"HOH\"; cpk 60%; wireframe 0.3; color {selected and _O} property temperature;"
         }
     },
     {
-        "name": "vol_atomsele_org",
-        "filename": "${vol_file_org}.atmsele",
-        "params": {
-            "subsele": "file=1.1"
-        }
-    }, 
-    {
-        "name": "vol_datalist_org",
-        "datalist": "Provi.Bio.Voronoia.VoronoiaDatalist", 
-        "params": {
-            "holes_ds": "DATASET_vol_atomsele_org",
-            "cavity_color": "skyblue"
-        }
+        "name": "mplane",
+        "filename": "${mplane_file}"
     },
     {
-        "widget": "Provi.Widget.Grid.GridWidget",
-        "params": {
-            "sort_key": 1,
-            "heading": "Cavities Org",
-            "parent_id": "tab_widgets",
-            "datalist": "DATALIST_vol_datalist_org"
-        }
-    },
-    {
-        "name": "hbx_org",
-        "filename": "${hbx_file_org}.bonds"
+        "name": "hbx",
+        "filename": "${hbx_file}.bonds"
     },
     {
         "widget": "Provi.Bio.HydrogenBonds.HbondsWidget",
         "params": {
             "sort_key": 2,
             "heading": "Hbonds Org",
-            "dataset": "DATASET_hbx_org", 
-            "parent_id": "tab_widgets"
-        }
-    },
-
-
-
-    {
-        "name": "pdb_dow",
-        "filename": "${dowser_file}", 
-        "params": { 
-            "load_as": "append",
-            "script": "provi_set(\"style\", \"cartoon+lines\")"
-        }
-    },
-    {
-        "name": "vol_atomsele_dow",
-        "filename": "${vol_file_dow}.atmsele",
-        "params": {
-            "subsele": "file=2.1"
-        }
-    }, 
-    {
-        "name": "vol_datalist_dow",
-        "datalist": "Provi.Bio.Voronoia.VoronoiaDatalist", 
-        "params": {
-            "holes_ds": "DATASET_vol_atomsele_dow",
-            "cavity_color": "tomato"
-        }
-    },
-    {
-        "widget": "Provi.Widget.Grid.GridWidget",
-        "params": {
-            "sort_key": 3,
-            "heading": "Cavities Dow",
-            "parent_id": "tab_widgets",
-            "datalist": "DATALIST_vol_datalist_dow"
-        }
-    },
-    {
-        "name": "hbx_dow",
-        "filename": "${hbx_file_dow}.bonds"
-    },
-    {
-        "widget": "Provi.Bio.HydrogenBonds.HbondsWidget",
-        "params": {
-            "sort_key": 4,
-            "heading": "Hbonds Dow",
-            "dataset": "DATASET_hbx_dow", 
+            "dataset": "DATASET_hbx", 
             "parent_id": "tab_widgets"
         }
     }
+    ${msms_components}
 ]

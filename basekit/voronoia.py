@@ -19,6 +19,7 @@ VOLUME_CMD = os.path.join( TMPL_DIR, "get_volume.exe" )
 
 logging.basicConfig()
 LOG = logging.getLogger('voronoia')
+LOG.setLevel( logging.ERROR )
 
 
 HOLE_PARTLY_FILLED = 1
@@ -38,6 +39,8 @@ def parse_vol( vol_file, pdb_file ):
     pdb_index_dict = provi.get_pdb_index_dict( pdb_file )
     vol_index_dict = {}
 
+    vol_lines = [None] * len(pdb_coord_dict)
+    pd_dict = {}
     holes = collections.OrderedDict()
     hole_types = []
     hole_list = []
@@ -50,11 +53,14 @@ def parse_vol( vol_file, pdb_file ):
                 key = ( float(l[30:38]), float(l[38:46]), float(l[46:54]) )
                 if key in pdb_coord_dict:
                     j = pdb_coord_dict[key]
+                    vol_lines[ j-1 ] = l
                     vol_index_dict[ i ] = j
                     i += 1
                 else:
                     raise Exception( 
-                        "vol coords not in pdb coords dict. %s" % str(key) 
+                        "vol coords not in pdb coords dict. %s %s" % (
+                            str(key), l
+                        )
                     )
             elif l.startswith('HOLE NUMBER'):
                 ls = map( int, l[12:].split() )
@@ -107,10 +113,35 @@ def parse_vol( vol_file, pdb_file ):
         hole_list.append( 
             VolHole( no, hole_types[ no-1 ], neighbours2 )
         )
+
+    for i, l in enumerate(vol_lines):
+        if l:
+            ls = l.split()
+            vdwvol = float(ls[-3])  #VOLUME INSIDE VAN-DER-WAALS SPHERE
+            sevol = float(ls[-2])   #VOLUME IN 1.4 ANGSTROM LAYER OUTSIDE VDW-SPHERE
+            if vdwvol==0.0:
+                packdens = 0.0
+                LOG.error( "vdw volume zero. %s" % l )
+            elif (vdwvol+sevol)==0.0:
+                packdens = 0.0
+                LOG.error( 
+                    "sum of vdw volume and excluded volume zero. %s" % l 
+                )
+            else:
+                packdens = (vdwvol/(vdwvol+sevol))
+            atomno = int( pdb_index_dict[ i+1 ][6:11] )
+            pd_dict[ atomno ] = packdens
+        else:
+            LOG.debug( 
+                "no volume data for line: %s" % (
+                    pdb_index_dict[ i+1 ].strip('\n') 
+                )
+            )
         
     return {
         "nrholes": nrholes,
-        "holes": hole_list
+        "holes": hole_list,
+        "packdens": pd_dict
     }
 
 

@@ -16,10 +16,7 @@ HOLE_FILLED_HETS_REMOVED = 4
 
 logging.basicConfig()
 LOG = logging.getLogger('prep')
-# LOG.setLevel( logging.ERROR )
-LOG.setLevel( logging.WARNING )
-# LOG.setLevel( logging.DEBUG )
-
+LOG.setLevel( logging.ERROR )
 
 
 def get_index(seq, index, default=None):

@@ -34,6 +34,10 @@ class DowserMixin( object ):
             watall_file=self.relpath( self.watall_file ),
             intsurf_file=self.relpath( self.intsurf_file )
         )
+        # make sure all file exist
+        for f in [ self.wat_file, self.watall_file, self.intsurf_file ]:
+            with open( f, "a" ):
+                pass
         # write a pdb with all dowser waters but no others
         with open( self.dowser_file, "w" ) as fp:
             with open( self.pdb_file, "r" ) as fp_pdb:
@@ -60,7 +64,7 @@ DOWSER_ARGS = [
     _( "hetero", type="checkbox", default=False ),
     _( "noxtalwater", type="checkbox", default=False ),
     _( "onlyxtalwater", type="checkbox", default=False ),
-    _( "probe", type="float", default=0.2 ),
+    _( "probe", type="float", default=0.4 ),
     _( "separation", type="float", default=1.0 ),
     _( "atomtypes", type="text", default=DOWSER_ATOMDICT ),
     _( "atomparms", type="text", default=DOWSER_ATOMPARMS )
@@ -151,7 +155,8 @@ class DowserRepeat( DowserMixin, PyTool, ProviMixin ):
                     resno = int( l[22:26] ) + max_resno
                     l = l[0:22] + "{:>4}".format( resno ) + l[26:]
                 new_watall2.append( l )
-            max_resno = max( map( lambda x: int(x[22:26]), new_watall2 ) )
+            if new_watall2:
+                max_resno = max( map( lambda x: int(x[22:26]), new_watall2 ) )
             # check if there are new waters
             if len( new_wat2 ) > 1 and len( new_watall2 ) > 1:
                 dowserwat += new_wat2

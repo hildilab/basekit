@@ -1,0 +1,82 @@
+
+
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 0 10 -nw 6
+[1B12] could not find plane coordinates
+[1BCT] could not find plane coordinates
+[1AIG] -vpr 1.71
+[1BCC] -pr 1.7
+
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 10 20 -nw 6
+[1BHB] could not find plane coordinates
+[1BE3] too many RS components -pr 1.7
+[1BGY] too many RS components
+
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 20 30 -nw 6
+[1CWQ] two models
+
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 30 40 -nw 6
+[????] ERROR:prep:key already in chainresatom dict.
+[1E7P] too many RS components -pr 1.7
+[1EZV]
+
+
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 40 50 -nw 6
+[1FG6] Opm url error
+[1FE1] could not find plane coordinates
+[1FJR] could not find plane coordinates
+
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 50 100 -nw 6
+[1ILX] could not find plane coordinates
+[1IWG] [Errno 2] No such file or directory: '/home/arose/dev/test_data/mppd/parallel/1IWG/original_dry.pdb'
+[1IWO] [Errno 2] No such file or directory: '/home/arose/dev/test_data/mppd/parallel/1IWO/hbexplore_non/nowat.pdb_hbx.anal'
+[1IZL] could not find plane coordinates[1JB0] [Errno 2] No such file or directory: '/home/arose/dev/test_data/mppd/parallel/1JB0/original_dry.pdb'
+[1J4N] [Errno 2] No such file or directory: '/home/arose/dev/test_data/mppd/parallel/1J4N/hbexplore_non/nowat.pdb_hbx.anal'
+[1JQ1] could not find plane coordinates
+[1K4C] [Errno 2] No such file or directory: '/home/arose/dev/test_data/mppd/parallel/1K4C/original_dry.pdb'
+[1KB9] [Errno 2] No such file or directory: '/home/arose/dev/test_data/mppd/parallel/1KB9/original_dry.pdb'
+[1KN9] could not find plane coordinates
+
+
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 100 150 -nw 6
+[1KYO] 
+[1L0M] Opm url error
+[1KQG]
+[1KQF]
+[1L0N] list index out of range
+[1LV7] could not find plane coordinates
+[1LGH]
+[1LNQ]
+[1NTK]
+[1NTM]
+[1NTZ]
+[1NU1]
+[1NEK]
+[1NEN]
+[1OED] list index out of range
+[1OCC]
+[1OCR]
+[1OCZ]
+
+
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 150 200 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 200 250 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 250 300 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 300 350 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 350 400 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 400 450 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 450 500 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 500 550 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 550 600 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 600 650 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 650 700 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 700 750 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 750 800 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 800 850 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 850 900 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 900 950 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 950 1000 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 1000 1050 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 1050 1100 -nw 6
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 1100 1150 -nw 6
+
+

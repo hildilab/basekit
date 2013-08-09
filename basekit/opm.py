@@ -3,6 +3,7 @@ from __future__ import division
 
 
 import os
+import json
 import urllib2
 
 import numpy as np
@@ -20,13 +21,17 @@ OPM_LOCAL_PATH = os.environ.get("OPM_LOCAL_PATH", "")
 
 
 def opm( pdb_id ):
+    pdb_id = pdb_id.lower()
     try:
         path = os.path.join( OPM_LOCAL_PATH, "%s.pdb" % pdb_id )
         with open( path, "r" ) as fp:
             return fp.read()
     except IOError:
-        url = OPM_PDB_URL.format( pdb_id=pdb_id )
-        return urllib2.urlopen( url ).read()
+        try:
+            url = OPM_PDB_URL.format( pdb_id=pdb_id )
+            return urllib2.urlopen( url ).read()
+        except urllib2.HTTPError:
+            raise Exception("Opm url error")
 
 
 def ppm( pdb_file ):
@@ -40,11 +45,14 @@ class OpmMixin( object ):
                 for line in fp_opm:
                     if line[17:20]!="DUM" and line[0:6]!="REMARK":
                         fp.write( line )
+        self.make_mplane_file()
         self._make_provi_file(
             pdb_file=self.relpath( self.processed_file ),
+            mplane_file=self.relpath( self.mplane_file )
         )
     @memoize_m
     def get_planes( self ):
+        # TODO works only for two planes
         with open( self.opm_file ) as fp:
             coords={'O':[],'N':[]}
             for line in fp:
@@ -58,13 +66,17 @@ class OpmMixin( object ):
                         vn2 = norm( c - coords[ atm ][0] )
                         if not np.allclose( vn1, vn2 ):
                             coords[ atm ].append(c)
-                    else:
+                    elif len(coords[ atm ])<2:
                         coords[ atm ].append(c)
                 if sum( map( len, coords.values() ) )==6:
                     break
             else:
                 raise Exception( "could not find plane coordinates" )
         return np.array([ coords["N"], coords["O"] ])
+    def make_mplane_file( self ):
+        with open( self.mplane_file, "w" ) as fp:
+            mp = self.get_planes().tolist()
+            json.dump( mp, fp )
 
 
 OPM_OUT = [
@@ -80,6 +92,7 @@ class Opm( OpmMixin, PyTool, ProviMixin ):
     ]
     out = [
         _( "opm_file", file="{pdb_id}_opm.pdb" ),
+        _( "mplane_file", file="{pdb_id}.mplane" ),
         _( "processed_file", file="{pdb_id}_proc.pdb" ),
     ]
     tmpl_dir = TMPL_DIR
@@ -99,6 +112,7 @@ class Ppm( OpmMixin, PyTool, ProviMixin ):
     ]
     out = [
         _( "opm_file", file="{pdb_file.stem}_opm.pdb" ),
+        _( "mplane_file", file="{pdb_file.stem}.mplane" ),
         _( "processed_file", file="{pdb_file.stem}_proc.pdb" ),
     ]
     tmpl_dir = TMPL_DIR
