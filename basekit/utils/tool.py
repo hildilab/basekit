@@ -401,7 +401,11 @@ class RecordsMixin( Mixin ):
 def call( tool ):
     try:
         tool()
-        LOG.info( "[%s] %s" % ( tool.id, tool ) )
+        if tool.check_only:
+            info = tool.check( full=True )
+        else:
+            info = str( tool )
+        LOG.info( "[%s] %s" % ( tool.id, info ) )
     except Exception as e:
         LOG.error( "[%s] %s" % ( tool.id, e ) )
         if tool.debug:
@@ -601,16 +605,20 @@ class Tool( object ):
     def __check_file( self, f ):
         f = os.path.abspath(f)
         try:
-            return os.path.isfile(f) and os.path.getsize(f)>0
+            return os.path.isfile(f)# and os.path.getsize(f)>0
         except:
             return False
     def check( self, full=False ):
         if hasattr( self, "output_files" ):
             with working_directory( self.output_dir ):
-                isfile = map( self.__check_file, self.output_files )
                 if full:
-                    return list( isfile )
+                    for of in self.output_files:
+                        if not self.__check_file( of ):
+                            return self.relpath( of )
+                    else:
+                        return "Ok"
                 else:
+                    isfile = map( self.__check_file, self.output_files )
                     return all( isfile )
         else:
             return True

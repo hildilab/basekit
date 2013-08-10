@@ -79,6 +79,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         _( "vdw_probe_radius|vpr", type="float", range=[0.1, 5], 
             step=0.1, default=1.7 ),
         _( "analyze_only|ao", type="checkbox", default=False ),
+        _( "check_only|co", type="checkbox", default=False ),
         _( "variants", type="str", nargs="*", default=[] ),
         _( "tools", type="str", nargs="*", default=[] )
     ]
@@ -104,11 +105,14 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 **copy_dict( kwargs, run=False, 
                     output_dir=self.subdir("opm") )
             )
+            self.output_files = self.opm.output_files
+            self.output_files += [ self.processed_pdb, self.no_water_file ]
             self.dowser = DowserRepeat(
                 self.processed_pdb,
                 **copy_dict( kwargs, run=False, alt='x',
                     output_dir=self.subdir("dowser") )
             )
+            self.output_files += self.dowser.output_files
             msms_kwargs = { 
                 "all_components": True,
                 "density": 1.0, "hdensity": 3.0,
@@ -119,6 +123,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 output_dir=self.subdir( "msms0" ), 
                 **copy_dict( msms_kwargs, probe_radius=self.vdw_probe_radius)
             ))
+            self.output_files += self.msms0.output_files
+            self.output_files += [ self.original_dry_pdb, self.final_pdb ]
 
             self.water_variants = [
                 ( "non", self.no_water_file ),
@@ -158,6 +164,9 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
     def _pre_exec( self ):
         pass
     def func( self ):
+        if self.check_only:
+            return
+
         if not self.analyze_only:
             def do( name ):
                 if not self.tools:
@@ -191,7 +200,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         for r in self.records:
             r.info()
     def _post_exec( self ):
-        if not self.parallel:
+        if not self.parallel and not self.check_only:
             self._make_provi_file(
                 pdb_id=self.pdb_id,
                 pdb_file=self.relpath( self.final_pdb ),
