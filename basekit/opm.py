@@ -74,9 +74,10 @@ class OpmMixin( object ):
                 raise Exception( "could not find plane coordinates" )
         return np.array([ coords["N"], coords["O"] ])
     def make_mplane_file( self ):
-        with open( self.mplane_file, "w" ) as fp:
-            mp = self.get_planes().tolist()
-            json.dump( mp, fp )
+        mp = self.get_planes().tolist()
+        if mp:
+            with open( self.mplane_file, "w" ) as fp:
+                json.dump( mp, fp )
 
 
 OPM_OUT = [

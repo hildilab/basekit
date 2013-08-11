@@ -2,6 +2,7 @@ from __future__ import with_statement
 from __future__ import division
 
 import math
+import json
 import collections
 
 import numpy as np
@@ -11,7 +12,8 @@ import utils.path
 from utils import copy_dict
 from utils.math import point_plane_dist
 from utils.tool import (
-    _, _dir_init, PyTool, RecordsMixin, ParallelMixin, ProviMixin
+    _, _dir_init, PyTool, RecordsMixin, ParallelMixin, ProviMixin,
+    JsonBackend
 )
 from utils.numpdb import NumPdb, NumAtoms
 from opm import Opm
@@ -89,6 +91,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         _( "dowser_dry_pdb", file="dowser_dry.pdb" ),
         _( "original_dry_pdb", file="original_dry.pdb" ),
         _( "final_pdb", file="final.pdb" ),
+        _( "stats_file", file="stats.json" ),
+        _( "info_file", file="info.json" ),
     ]
     RecordsClass = MppdRecord
     tmpl_dir = TMPL_DIR
@@ -99,6 +103,10 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
 
         if not self.parallel:
             self.pdb_id = self.pdb_input
+            self.npdb_features = {
+                "sstruc": False,
+                "phi_psi": False
+            }
 
             self.opm = Opm(
                 self.pdb_id,
@@ -124,7 +132,10 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 **copy_dict( msms_kwargs, probe_radius=self.vdw_probe_radius)
             ))
             self.output_files += self.msms0.output_files
-            self.output_files += [ self.original_dry_pdb, self.final_pdb ]
+            self.output_files += [ 
+                self.original_dry_pdb, self.final_pdb,
+                self.stats_file, self.info_file
+            ]
 
             self.water_variants = [
                 ( "non", self.no_water_file ),
@@ -138,8 +149,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 ( "hbexplore", HBexplore, {} ),
                 ( "msms_vdw", Msms, copy_dict( msms_kwargs,
                     probe_radius=self.vdw_probe_radius) ),
-                ( "msms_coulomb", Msms, copy_dict( msms_kwargs,
-                    probe_radius=self.probe_radius) )
+                # ( "msms_coulomb", Msms, copy_dict( msms_kwargs,
+                #     probe_radius=self.probe_radius) )
             ]
 
             def filt( lst, lst_all ):
@@ -194,6 +205,11 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 for prefix, tool, tool_kwargs in self.tool_list:
                     name = "%s_%s" % ( prefix, suffix )
                     self.__dict__[ name ]()
+
+            if do( "stats" ):
+                self.make_stats()
+            if do( "info" ):
+                self.make_info()
         
         self.records = self.make_records()
         self.write()
@@ -210,8 +226,10 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     color="lightgreen", translucent=0.5, relpath=self.relpath ),
             )
     def make_final_pdb( self ):
-        npdb_dow = NumPdb( self.dowser_dry_pdb )
-        npdb_org = NumPdb( self.original_dry_pdb )
+        npdb_dow = NumPdb( 
+            self.dowser_dry_pdb, features=self.npdb_features )
+        npdb_org = NumPdb( 
+            self.original_dry_pdb, features=self.npdb_features )
         dow_tree = get_tree( 
             npdb_dow.get( 'xyz', resname="HOH" ) 
         )
@@ -237,7 +255,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         envelope = self.msms0.envelope_msms.get_vert( filt=False )
         envelope = [ ( x['x'], x['y'], x['z'] ) for x in envelope ]
         envelope_tree = scipy.spatial.KDTree( envelope )
-        npdb_non = NumPdb( self.no_water_file )
+        npdb_non = NumPdb( 
+            self.no_water_file, features=self.npdb_features )
         non_tree = scipy.spatial.KDTree( npdb_non['xyz'] )
         
         pr2 = self.probe_radius * 2
@@ -247,7 +266,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             ( self.processed_pdb, self.original_dry_pdb )
         ]
         for pdb_file, out_file in wet_pdb:
-            npdb = NumPdb( pdb_file )
+            npdb = NumPdb( pdb_file, features=self.npdb_features )
             sele_het = npdb.sele( record="HETATM" )
             sele_not_wat = npdb.sele( resname="HOH", invert=True )
             hetero_tree = get_tree(
@@ -262,6 +281,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     dist_env = envelope_tree.query( numa['xyz'][0] )[0]
                     dist_het = hetero_tree.query( numa['xyz'][0] )[0]
                     dist_non = non_tree.query( numa['xyz'][0] )[0]
+                    # TODO het cutoff only for dowser_file
                     if dist_env<pr2 or dist_het<3.9 or dist_non>pr3:
                         flag = False
                 for a in numa._atoms:
@@ -269,10 +289,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     i += 1
             npdb.copy( sele=sele ).write2( out_file )
     def make_processed_pdb( self ):
-        npdb = NumPdb( self.opm.processed_file, features={
-            "sstruc": False,
-            "phi_psi": False
-        })
+        npdb = NumPdb( 
+            self.opm.processed_file, features=self.npdb_features )
         sele = npdb.sele()
         coords_dict = {}
         i = 0
@@ -301,7 +319,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         npdb_dict = {}
         npdb_tm_dict = {}
         for suffix, pdb_file in self.water_variants:
-            npdb = NumPdb( pdb_file )
+            npdb = NumPdb( pdb_file, features=self.npdb_features )
             npdb_dict[ suffix ] = npdb
             sele = npdb.sele()
             i = 0
@@ -321,34 +339,85 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             npdb_tm_dict[ suffix ] = npdb.copy( sele=sele )
             npdb.copy( sele=sele ).write( self.outpath( "tm_region.pdb" ) )
         return npdb_dict, npdb_tm_dict
-    def make_records( self ):
+    def make_stats( self ):
         npdb_dict, npdb_tm_dict = self.get_npdb_dicts()
         mplanes = self.opm.get_planes()
         dist = abs( point_plane_dist( mplanes[1][0], mplanes[0] ) )
         segments = [ ("ALL", npdb_dict), ("TM", npdb_tm_dict) ]
         pr = self.probe_radius
-        mppd_records = []
+        mppd_stats = []
         for suffix, pdb_file in self.water_variants:
             hbx = self.__dict__[ "hbexplore_%s" % suffix ]
             voro = self.__dict__[ "voronoia_%s" % suffix ]
             msms_vdw = self.__dict__[ "msms_vdw_%s" % suffix ]
             # msms_coulomb = self.__dict__[ "msms_coulomb_%s" % suffix ]
             for seg, npdb_d in segments:
-                mppd_records.append( MppdRecord(*(
-                    ( self.pdb_id, suffix, seg, dist ) +
-                    count_water( npdb_d[ suffix ] ) +
-                    ( None, ) +
-                    count_hbonds( npdb_d[ suffix ], hbx ) +
-                    count_holes_voro( npdb_d[ suffix ], voro ) +
-                    packing_density( npdb_d[ suffix ], voro ) +
-                    count_holes_msms( 
-                        npdb_d[ suffix ], msms_vdw, pr, 
-                        len(npdb_dict[ suffix ])
-                    )
-                )))
+                _count_water = count_water( npdb_d[ suffix ] )
+                _count_hbonds = count_hbonds( npdb_d[ suffix ], hbx )
+                _count_holes_voro = count_holes_voro( npdb_d[ suffix ], voro )
+                _packing_density = packing_density( npdb_d[ suffix ], voro )
+                _count_holes_msms = count_holes_msms( 
+                    npdb_d[ suffix ], msms_vdw, pr, 
+                    len(npdb_dict[ suffix ])
+                )
+                mppd_stats.append({
+                    "pdb_id": self.pdb_id, 
+                    "source": suffix,
+                    "segment": seg,
+                    "mplanes_dist": dist,
+                    "water_count": _count_water[0],
+                    "residue_count": _count_water[1],
+                    "hetero_count": _count_water[2],
+                    "chain_count": _count_water[3],
+                    "identical_chains": None,
+                    "hbx_protein_water": _count_hbonds[0],
+                    "hbx_water_water": _count_hbonds[1],
+                    "hbx_water_ligand": _count_hbonds[2],
+                    "voro_not_filled": _count_holes_voro[0],
+                    "voro_partly_filled": _count_holes_voro[1],
+                    "packdens_all": _packing_density[0],
+                    "packdens_protein": _packing_density[1],
+                    "packdens_water": _packing_density[2],
+                    "packdens_hetero": _packing_density[3],
+                    "msms": _count_holes_msms[0],
+                    "msms_ses": _count_holes_msms[1],
+                    "msms_gt_water": _count_holes_msms[2],
+                    "msms_gt_water_ses": _count_holes_msms[3]
+                })
+        with open( self.stats_file, "w" ) as fp:
+            json.dump( mppd_stats, fp )
+    def make_info( self ):
+        pass
+    def make_records( self ):
+        with open( self.stats_file, "r" ) as fp:
+            mppd_stats = json.load( fp )
+        mppd_records = []
+        for stat in mppd_stats:
+            mppd_records.append( MppdRecord(
+                stat["pdb_id"],
+                stat["source"],
+                stat["segment"],
+                stat["mplanes_dist"],
+                stat["water_count"],
+                stat["residue_count"],
+                stat["hetero_count"],
+                stat["chain_count"],
+                stat["identical_chains"],
+                stat["hbx_protein_water"],
+                stat["hbx_water_water"],
+                stat["hbx_water_ligand"],
+                stat["voro_not_filled"],
+                stat["voro_partly_filled"],
+                stat["packdens_all"],
+                stat["packdens_protein"],
+                stat["packdens_water"],
+                stat["packdens_hetero"],
+                stat["msms"],
+                stat["msms_ses"],
+                stat["msms_gt_water"],
+                stat["msms_gt_water_ses"]
+            ))
         return mppd_records
-
-
 
 
 def packing_density( npdb, voronoia ):
@@ -466,4 +535,15 @@ def count_holes_msms( npdb, msms, probe_radius, n ):
         sum([ c[1] for c in components3])
     )
 
+
+
+class MppdStats( PyTool ):
+    args = [
+        _( "mppd_file", type="file", ext="json" )
+    ]
+    def _init( self, *args, **kwargs ):
+        pass
+    def func( self ):
+        records = JsonBackend( self.mppd_file, MppdRecord )
+        print len( records )
 

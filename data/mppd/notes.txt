@@ -1,4 +1,6 @@
 
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 0 500 --variants fin -nw 1 -h
+
 
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 0 50 -nw 6
 [1B12] could not find plane coordinates
