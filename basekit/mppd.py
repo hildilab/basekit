@@ -1,6 +1,7 @@
 from __future__ import with_statement
 from __future__ import division
 
+import os
 import math
 import json
 import collections
@@ -66,6 +67,11 @@ class MppdRecord( _MppdRecord ):
 
 
 
+with open( os.path.join( TMPL_DIR, "pdb_dic_swfam.json" ), "r" ) as fp:
+    PDB_DIC = json.load( fp )
+
+
+
 def get_tree( coords ):
     if len( coords )==0:
         coords = np.array([[ np.inf, np.inf, np.inf ]])
@@ -97,6 +103,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
     RecordsClass = MppdRecord
     tmpl_dir = TMPL_DIR
     provi_tmpl = "mppd.provi"
+    pdb_dic = PDB_DIC
     def _init( self, *args, **kwargs ):
         self._init_records( None, **kwargs )
         self._init_parallel( self.pdb_input, **kwargs )
@@ -133,8 +140,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             ))
             self.output_files += self.msms0.output_files
             self.output_files += [ 
-                self.original_dry_pdb, self.final_pdb,
-                self.stats_file, self.info_file
+                self.original_dry_pdb, self.final_pdb, self.info_file
             ]
 
             self.water_variants = [
@@ -172,21 +178,23 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     )
                     self.output_files += self.__dict__[ name ].output_files
 
+            self.output_files += [ self.stats_file ]
+
     def _pre_exec( self ):
         pass
     def func( self ):
         if self.check_only:
             return
 
+        def do( name ):
+            if not self.tools:
+                return True
+            if self.tools[0]=="!":
+                return name not in self.tools[1:]
+            else:
+                return name in self.tools
+
         if not self.analyze_only:
-            def do( name ):
-                if not self.tools:
-                    return True
-                if self.tools[0]=="!":
-                    return name not in self.tools[1:]
-                else:
-                    return name in self.tools
-            
             if do( "opm" ):
                 self.opm()
             if do( "proc" ):
@@ -200,16 +208,16 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 self.make_dry_pdb()
             if do( "final" ):
                 self.make_final_pdb()
+            if do( "info" ):
+                self.make_info()
 
             for suffix, pdb_file in self.water_variants:
                 for prefix, tool, tool_kwargs in self.tool_list:
                     name = "%s_%s" % ( prefix, suffix )
                     self.__dict__[ name ]()
 
-            if do( "stats" ):
-                self.make_stats()
-            if do( "info" ):
-                self.make_info()
+        if do( "stats" ):
+            self.make_stats()
         
         self.records = self.make_records()
         self.write()
@@ -387,7 +395,9 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         with open( self.stats_file, "w" ) as fp:
             json.dump( mppd_stats, fp )
     def make_info( self ):
-        pass
+        info = self.pdb_dic[ self.pdb_id.upper() ]
+        with open( self.info_file, "w" ) as fp:
+            json.dump( info, fp, indent=4 )
     def make_records( self ):
         with open( self.stats_file, "r" ) as fp:
             mppd_stats = json.load( fp )
@@ -546,4 +556,14 @@ class MppdStats( PyTool ):
     def func( self ):
         records = JsonBackend( self.mppd_file, MppdRecord )
         print len( records )
+
+
+
+MppdDbRecord = collections.namedtuple( "MppdDbRecord", [
+    "PDBID", "HEADER", "RESOLUTION", "EXPDTA", "KEYWDS",
+    "OPMSpecies", "OPMFamily", "OPMSuperfamily",
+    "swname", "swfamily", 
+    "topic"
+])
+
 
