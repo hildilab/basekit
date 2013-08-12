@@ -5,6 +5,7 @@ import os
 import re
 import math
 import json
+import shutil
 import collections
 
 import numpy as np
@@ -99,7 +100,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         _( "variants", type="str", nargs="*", default=[], 
             help="a '!' as the first arg negates the list" ),
         _( "tools", type="str", nargs="*", default=[],
-            help="a '!' as the first arg negates the list" )
+            help="a '!' as the first arg negates the list" ),
+        _( "extract", type="str", default="" )
     ]
     out = [
         _( "processed_pdb", file="proc.pdb" ),
@@ -272,6 +274,23 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 ))
             db = SqliteBackend( "mppd.db", MppdDbRecord )
             db.write( db_records )
+            if self.extract:
+                fdir = self.extract
+                if not os.path.exists( fdir ):
+                    os.makedirs( fdir )
+                for t in dct.get( 'Ok', [] ):
+                    flist = [
+                        t.final_pdb,
+                        t.opm.mplane_file,
+                        t.hbexplore_fin.hbx_file,
+                        t.voronoia_fin.vol_file,
+                        t.outpath( "mppd.provi" )
+                    ]
+                    for fsrc in flist:
+                        fdst = os.path.join( fdir, t.id, t.relpath( fsrc ) )
+                        if not os.path.exists( os.path.dirname( fdst ) ):
+                            os.makedirs( os.path.dirname( fdst ) )
+                        shutil.copyfile( fsrc, fdst )
     def make_final_pdb( self ):
         npdb_dow = NumPdb( 
             self.dowser_dry_pdb, features=self.npdb_features )

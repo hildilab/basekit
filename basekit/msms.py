@@ -138,6 +138,7 @@ class Msms( CmdTool, ProviMixin ):
         self.pdb2xyzr = Pdb2xyzr( 
             self.pdb_file, **copy_dict( kwargs, run=False ) 
         )
+        self.output_files = self.pdb2xyzr.output_files + self.output_files
         self.cmd = [ 
             MSMS_CMD, "-if", self.pdb2xyzr.xyzr_file, 
             "-probe_radius", self.probe_radius,
@@ -149,7 +150,6 @@ class Msms( CmdTool, ProviMixin ):
             self.cmd.append( "-all_components" )
         if self.no_area:
             self.cmd.append( "-no_area" )
-        self.output_files.extend( self.pdb2xyzr.output_files )
         if self.envelope:
             self.envelope_pdb = self.outpath( "envelope.pdb" )
             self.envelope_msms = Msms(
@@ -158,7 +158,7 @@ class Msms( CmdTool, ProviMixin ):
                     probe_radius=self.envelope, all_components=False,
                     output_dir=self.subdir( "envelope" ) )
             )
-            self.output_files.extend( self.envelope_msms.output_files )
+            self.output_files += self.envelope_msms.output_files
     def _pre_exec( self ):
         p = "tri_surface_([0-9]+)\.vert"
         for m, filepath in dir_walker( self.output_dir, p ):
@@ -168,7 +168,7 @@ class Msms( CmdTool, ProviMixin ):
             self.envelope_msms()
             vert = self.envelope_msms.get_vert( filt=True )
             pr = self.envelope_msms.probe_radius
-            if True:
+            if False:
                 coords = np.array([ [ d['x'], d['y'], d['z'] ] for d in vert ])
                 fd = scipy.cluster.hierarchy.fclusterdata(
                     coords, pr, criterion='distance', 
