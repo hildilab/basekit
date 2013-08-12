@@ -2,6 +2,7 @@ from __future__ import with_statement
 from __future__ import division
 
 import os
+import re
 import math
 import json
 import collections
@@ -88,8 +89,10 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             step=0.1, default=1.7 ),
         _( "analyze_only|ao", type="checkbox", default=False ),
         _( "check_only|co", type="checkbox", default=False ),
-        _( "variants", type="str", nargs="*", default=[] ),
-        _( "tools", type="str", nargs="*", default=[] )
+        _( "variants", type="str", nargs="*", default=[], 
+            help="a '!' as the first arg negates the list" ),
+        _( "tools", type="str", nargs="*", default=[],
+            help="a '!' as the first arg negates the list" )
     ]
     out = [
         _( "processed_pdb", file="proc.pdb" ),
@@ -233,6 +236,17 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 msms_components=self.msms_vdw_fin.components_provi(
                     color="lightgreen", translucent=0.5, relpath=self.relpath ),
             )
+        if self.parallel and self.check_only:
+            dct = collections.defaultdict( list )
+            for t in self.tool_list:
+                info = t.check( full=True )
+                tag = re.split( "/|\.", info )[0]
+                dct[ tag ].append( t )
+            for tag, t_list in dct.iteritems():
+                if tag!="Ok":
+                    print tag, " ".join( map( lambda x: x.id, t_list ) )
+            for tag, t_list in dct.iteritems():
+                print tag, len(t_list)
     def make_final_pdb( self ):
         npdb_dow = NumPdb( 
             self.dowser_dry_pdb, features=self.npdb_features )
