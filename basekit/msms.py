@@ -7,6 +7,7 @@ import numpy as np
 import scipy.cluster
 import scipy.spatial
 
+import os
 import string
 import shutil
 import collections
@@ -153,7 +154,7 @@ class Msms( CmdTool, ProviMixin ):
             self.envelope_pdb = self.outpath( "envelope.pdb" )
             self.envelope_msms = Msms(
                 self.pdb_file, **copy_dict( kwargs, run=False,
-                    envelope=0.0, density=0.1, hdensity=0.3,
+                    envelope=0.0, density=0.3, hdensity=0.3,
                     probe_radius=self.envelope, all_components=False,
                     output_dir=self.subdir( "envelope" ) )
             )
@@ -297,5 +298,7 @@ class Pdb2xyzr( CmdTool ):
         self.output_files = [ self.pdb_prep_file, self.xyzr_file ]
     def _pre_exec( self ):
         shutil.copy( self.pdb_file, self.pdb_prep_file )
-
+    def _post_exec( self ):
+        if os.path.getsize( self.xyzr_file )==0:
+            utils.path.remove( self.xyzr_file )
 

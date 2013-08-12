@@ -10,12 +10,11 @@ import collections
 import numpy as np
 import scipy.spatial
 
-import utils.path
 from utils import copy_dict
 from utils.math import point_plane_dist
 from utils.tool import (
     _, _dir_init, PyTool, RecordsMixin, ParallelMixin, ProviMixin,
-    JsonBackend
+    JsonBackend, SqliteBackend
 )
 from utils.numpdb import NumPdb, NumAtoms
 from opm import Opm
@@ -65,6 +64,14 @@ class MppdRecord( _MppdRecord ):
             self.msms_gt_water, self.msms_gt_water_ses
         )
         print ""
+
+
+MppdDbRecord = collections.namedtuple( "MppdDbRecord", [
+    "PDBID", "HEADER", "RESOLUTION", "EXPDTA", "KEYWDS",
+    "OPMSpecies", "OPMFamily", "OPMSuperfamily",
+    "swname", "swfamily", 
+    "topic"
+])
 
 
 
@@ -238,15 +245,33 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             )
         if self.parallel and self.check_only:
             dct = collections.defaultdict( list )
+            db_records = []
             for t in self.tool_list:
                 info = t.check( full=True )
                 tag = re.split( "/|\.", info )[0]
                 dct[ tag ].append( t )
             for tag, t_list in dct.iteritems():
                 if tag!="Ok":
-                    print tag, " ".join( map( lambda x: x.id, t_list ) )
+                    print tag, " ".join( map( lambda x: x.id, t_list ) ) 
             for tag, t_list in dct.iteritems():
                 print tag, len(t_list)
+            for t in dct.get( 'Ok', [] ):
+                t_info = t.get_info()
+                db_records.append( MppdDbRecord(
+                    t_info['PDBID'],
+                    t_info['HEADER'],
+                    t_info['RESOLUTION'],
+                    t_info['EXPDTA'],
+                    ",".join( t_info['KEYWDS'] ),
+                    t_info['OPMSpecies'],
+                    t_info['OPMFamily'],
+                    t_info['OPMSuperfamily'],
+                    t_info['swname'],
+                    t_info['swfamily'],
+                    t_info['topic']
+                ))
+            db = SqliteBackend( "mppd.db", MppdDbRecord )
+            db.write( db_records )
     def make_final_pdb( self ):
         npdb_dow = NumPdb( 
             self.dowser_dry_pdb, features=self.npdb_features )
@@ -412,6 +437,9 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         info = self.pdb_dic[ self.pdb_id.upper() ]
         with open( self.info_file, "w" ) as fp:
             json.dump( info, fp, indent=4 )
+    def get_info( self ):
+        with open( self.info_file, "r" ) as fp:
+            return json.load( fp )
     def make_records( self ):
         with open( self.stats_file, "r" ) as fp:
             mppd_stats = json.load( fp )
@@ -572,12 +600,5 @@ class MppdStats( PyTool ):
         print len( records )
 
 
-
-MppdDbRecord = collections.namedtuple( "MppdDbRecord", [
-    "PDBID", "HEADER", "RESOLUTION", "EXPDTA", "KEYWDS",
-    "OPMSpecies", "OPMFamily", "OPMSuperfamily",
-    "swname", "swfamily", 
-    "topic"
-])
 
 

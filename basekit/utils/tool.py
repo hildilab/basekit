@@ -328,7 +328,7 @@ class SqliteBackend( RecordsBackend ):
             c.execute( 
                 'CREATE TABLE %s (%s)' % ( 
                     self.cls.__name__, ",".join( self.cls._fields ) 
-                ),
+                )
             )
             c.executemany( 
                 'INSERT INTO %s VALUES (%s)' % ( self.cls.__name__, qn ),
