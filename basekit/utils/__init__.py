@@ -132,6 +132,12 @@ def try_float(s, default=None):
     try: return float(s)
     except: return default if default!=None else s
 
+def try_div( x, y, default=0 ):
+    try:
+        return x/y
+    except ZeroDivisionError:
+        return default
+
 def get_index(seq, index, default=None):
     if not hasattr(seq, "__getitem__"):
         return default
