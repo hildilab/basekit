@@ -267,6 +267,12 @@ class Msms( CmdTool, ProviMixin ):
             if components:
                 return ",\n" + ",\n".join( components )
         return ""
+    def component_files( self ):
+        files = []
+        p = "tri_surface_([0-9]+)\.(vert|face)"
+        for m, filepath in dir_walker( self.output_dir, p ):
+            files.append( os.path.abspath( filepath ) )
+        return files
     def get_components( self ):
         return parse_msms_log( self.stdout_file )
     def get_area( self ):
