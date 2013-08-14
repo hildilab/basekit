@@ -1,19 +1,41 @@
 [
     {
-        "widget": "Provi.Widget.StoryWidget",
-        "params": {
-            "sort_key": -1,
-            "parent_id": "tab_widgets",
-            "template": "<ul><li>PDB ID: <a target='_blank' href='http://www.rcsb.org/pdb/explore/explore.do?structureId=${pdb_id}'>${pdb_id}</a></li><li><a target='_blank' href='http://proteinformatics.charite.de/mppd/go?pdb=${pdb_id}''>MPPD entry</a></li></ul>",
-            "data": {}
-        }
-    },
-    {
         "name": "pdb",
         "filename": "${pdb_file}",
         "params": {
             "load_as": "new",
-            "script": "provi_set(\"style\", \"cartoon+lines\"); select \"HOH\"; cpk 60%; wireframe 0.3; color {selected and _O} property temperature;"
+            "script": "provi_set(\"style\", \"cartoon\"); select \"HOH\"; cpk 40%; wireframe 0.3; color { water and connected(_H) } property temperature \"low\" range -30 -10; color { water and not connected(_H) and not _H } pink;"
+        }
+    },
+    {
+        "name": "pdb_org",
+        "filename": "${pdb_org_file}",
+        "params": {
+            "load_as": "append",
+            "script": "hide add all;"
+        }
+    },
+    {
+        "widget": "Provi.Widget.StoryWidget",
+        "params": {
+            "sort_key": -1,
+            "parent_id": "tab_widgets",
+            "template": "<ul><li>PDB ID: <a target='_blank' href='http://www.rcsb.org/pdb/explore/explore.do?structureId=${pdb_id}'>${pdb_id}</a></li><li>Low energy waters are colored from red (-30 kcal/mol) to yellow (-10).</li><li>Additional waters from the experimental structure are colored pink.</li><li>Packing density of buried residue atoms is colored from red (0.0) over white (0.5) to blue (1.0).</li></ul>",
+            "data": {},
+            "buttons": {
+                "waters":{
+                    "label": "Low energy + additional waters",
+                    "script": "select 1.1; color cpk; provi_set(\"style\", \"cartoon\"); select \"HOH\"; cpk 40%; wireframe 0.3; color { water and connected(_H) } property temperature \"low\" range -30 -10; color { water and not connected(_H) and not _H } pink; hide add 2.1;"
+                },
+                "cryst_waters":{
+                    "label": "Experimental waters",
+                    "script": "select 2.1 and water; display add selected; cpk 60%; color red translucent 0.5;"
+                },
+                "packdens":{
+                    "label": "Packing density",
+                    "script": "select protein and property_buried_flag_6=1; subset selected; provi_set(\"style\", \"cartoon+sticks\"); select *; color atoms \"property_packing_density_6\" \"rwb\" RANGE 0.0 1.0; subset;"
+                }
+            }
         }
     },
     {
@@ -28,8 +50,28 @@
         "widget": "Provi.Bio.HydrogenBonds.HbondsWidget",
         "params": {
             "sort_key": 2,
-            "heading": "Hbonds Org",
+            "heading": "Hydrogen bonds",
             "dataset": "DATASET_hbx", 
+            "parent_id": "tab_widgets"
+        }
+    },
+    {
+        "name": "vol_atomprop",
+        "filename": "${vol_file}.atmprop"
+    },
+    {
+        "widget": "Provi.Bio.AtomProperty.AtomPropertyGroupWidget",
+        "params": {
+            "sort_key": 3,
+            "dataset": "DATASET_vol_atomprop", 
+            "filter_properties": [
+                "packing_density", 
+                "z_score"
+            ],
+            "property_ranges": {
+                "packing_density": [0.0, 1.0]
+            },
+            "heading": "Packing density", 
             "parent_id": "tab_widgets"
         }
     }

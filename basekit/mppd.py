@@ -10,8 +10,13 @@ import collections
 
 import numpy as np
 import scipy.spatial
+from scipy.stats.stats import pearsonr
 
-from utils import copy_dict
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+from utils import copy_dict, try_float, try_div
 from utils.math import point_plane_dist
 from utils.tool import (
     _, _dir_init, PyTool, RecordsMixin, ParallelMixin, ProviMixin,
@@ -101,7 +106,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             help="a '!' as the first arg negates the list" ),
         _( "tools", type="str", nargs="*", default=[],
             help="a '!' as the first arg negates the list" ),
-        _( "extract", type="str", default="" )
+        _( "extract", type="str", default="" ),
+        _( "figures|fig", type="checkbox", default=False )
     ]
     out = [
         _( "processed_pdb", file="proc.pdb" ),
@@ -110,6 +116,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         _( "original_dry_pdb", file="original_dry.pdb" ),
         _( "final_pdb", file="final.pdb" ),
         _( "stats_file", file="stats.json" ),
+        _( "stats2_file", file="stats2.json" ),
         _( "info_file", file="info.json" ),
     ]
     RecordsClass = MppdRecord
@@ -228,8 +235,10 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     name = "%s_%s" % ( prefix, suffix )
                     self.__dict__[ name ]()
 
-        if do( "stats" ):
-            self.make_stats()
+        # if do( "stats" ):
+        #     self.make_stats()
+        if do( "stats2" ):
+            self.make_stats2()
         
         self.records = self.make_records()
         self.write()
@@ -240,8 +249,10 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             self._make_provi_file(
                 pdb_id=self.pdb_id,
                 pdb_file=self.relpath( self.final_pdb ),
+                pdb_org_file=self.relpath( self.original_dry_pdb ),
                 mplane_file=self.relpath( self.opm.mplane_file ),
                 hbx_file=self.relpath( self.hbexplore_fin.hbx_file ),
+                vol_file=self.relpath( self.voronoia_fin.vol_file ),
                 msms_components=self.msms_vdw_fin.components_provi(
                     color="lightgreen", translucent=0.5, relpath=self.relpath ),
             )
@@ -278,19 +289,158 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 fdir = self.extract
                 if not os.path.exists( fdir ):
                     os.makedirs( fdir )
+                shutil.copyfile( 
+                    self.outpath( "mppd.db" ),
+                    os.path.join( fdir, "mppd.db" )
+                )
                 for t in dct.get( 'Ok', [] ):
                     flist = [
+                        t.original_dry_pdb,
                         t.final_pdb,
                         t.opm.mplane_file,
-                        t.hbexplore_fin.hbx_file,
-                        t.voronoia_fin.vol_file,
+                        t.hbexplore_fin.hbx_file + ".bonds",
+                        t.voronoia_fin.vol_file + ".atmprop",
                         t.outpath( "mppd.provi" )
                     ]
+                    flist += t.msms_vdw_fin.component_files()
                     for fsrc in flist:
                         fdst = os.path.join( fdir, t.id, t.relpath( fsrc ) )
                         if not os.path.exists( os.path.dirname( fdst ) ):
                             os.makedirs( os.path.dirname( fdst ) )
                         shutil.copyfile( fsrc, fdst )
+            if self.figures:
+                alpha = 0.3
+                size = 7.0
+                nres = collections.defaultdict( list )
+                nwater = collections.defaultdict( list )
+                resolution = collections.defaultdict( list )
+                ncav = collections.defaultdict( list )
+                sesvol = collections.defaultdict( list )
+                packdens = collections.defaultdict( list )
+                packdens_buried = collections.defaultdict( list )
+                for t in dct.get( 'Ok', [] ):
+                    stats = t.get_stats()
+                    info = t.get_info()
+                    for s in stats:
+                        key = ( s["source"], s["segment"] )
+                        nres[ key ].append( s["residue_count"] )
+                        nwater[ key ].append( s["water_count"] )
+                        resolution[ key ].append( 
+                            try_float( info["RESOLUTION"], 0.0 )    
+                        )
+                        ncav[ key ].append( s["msms"] )
+                        sesvol[ key ].append( s["msms_ses"] )
+                        packdens[ key ].append( s["packdens_protein"] )
+                        packdens_buried[ key ].append( 
+                            s["packdens_protein_buried"] 
+                        )
+                for key in nres.keys():
+                    x = np.array( nwater[ key ] )
+                    y = np.array( nres[ key ] )
+                    x_y = x/y
+                    r = np.array( resolution[ key ] )
+                    cav = np.array( ncav[ key ] )
+                    cav_y = cav/y
+                    vol = np.array( sesvol[ key ] ) * -1
+                    vol_y = vol/y
+                    pd = np.array( packdens[ key ] )
+                    pd_buried = np.array( packdens_buried[ key ] )
+                    
+                    from mpl_toolkits.axes_grid.anchored_artists import (
+                        AnchoredText
+                    )
+
+                    def hist( axis, x, label, loc=1 ):
+                        x = x[ x!=0 ]
+                        if len(x)==0:
+                            x = np.array([ 0 ])
+                        axis.hist( x, normed=True, bins=25 )
+                        axis.set_xlabel( label )
+                        summary = (
+                            "Var: %.4f\nStd: %.4f\nMean: %.4f\n"
+                            "Median: %.4f\nMin: %.4f\nMax: %.4f\n"
+                        ) % ( 
+                            np.var(x), x.std(), x.mean(), 
+                            np.median(x), x.min(), x.max() 
+                        )
+                        at = AnchoredText(
+                            summary, loc=loc or 1, prop={ "size": 10 }, 
+                            frameon=True, pad=0.5, borderpad=1.0
+                        )
+                        axis.add_artist( at )
+
+                    def scatter( axis, x, y, xlabel, ylabel, loc=1 ):
+                        xnzero = x!=0
+                        ynzero = y!=0
+                        x = x[ xnzero&ynzero ]
+                        y = y[ xnzero&ynzero ]
+                        try:
+                            r = pearsonr(x, y)
+                        except Exception:
+                            r = ( np.nan, np.nan )
+                        axis.scatter( x, y, alpha=alpha, s=size )
+                        axis.set_xlabel( xlabel )
+                        axis.set_ylabel( ylabel )
+                        summary = "r: %.4f\np: %.4f\n" % r
+                        at = AnchoredText(
+                            summary, loc=loc or 1, prop={ "size": 10 }, 
+                            frameon=True, pad=0.5, borderpad=1.0
+                        )
+                        axis.add_artist( at )
+
+                    fig, (ax) = plt.subplots(3, 4, figsize=[20,12] )
+                    
+                    scatter( ax[0,0], x, y, "#h20", "#res" )
+                    hist( ax[0,1], x_y, "#h2o / #res" )
+                    
+                    scatter( ax[1,0], r, x_y, "resolution [A]", "#h2o / #res" )
+                    hist( ax[1,1], cav_y, "#cav / #res" )
+
+                    hist( ax[2,0], vol_y, "ses_vol [A^3] / #res" )
+
+                    hist( ax[0,2], pd, "packing density" )
+
+                    scatter( ax[1,2], r, pd, 
+                        "resolution [A]", "packing density" )
+
+                    hist( ax[0,3], pd_buried, "packing density buried" )
+                    
+                    scatter( ax[1,3], r, pd_buried, 
+                        "resolution [A]", "packing density buried" )
+
+                    fig.savefig( "_".join( key ) + ".png" )
+
+                # ...
+                nwater_cutoff = collections.defaultdict( list )
+                cutoff_list = np.arange(1.4, 3.9, step=0.1)
+                for t in dct.get( 'Ok', [] ):
+                    stats2 = t.get_stats2()
+                    for s2 in stats2:
+                        key = s2["segment"]
+                        if not len(nwater_cutoff[ key ]):
+                            for cutoff in cutoff_list:
+                                nwater_cutoff[ key ].append([])
+                        water_count = s2["water_count"]
+                        # residue_count = s2["residue_count"]
+                        count_list = s2["exp_water_cutoff_count"]
+                        for i, cutoff in enumerate( cutoff_list ):
+                            frac = try_div( count_list[i], water_count )
+                            nwater_cutoff[ key ][i].append( frac )
+                for key in nwater_cutoff.keys():
+                    y = [ np.array(c).mean() for c in nwater_cutoff[ key ] ]
+                    labels = map( str, cutoff_list )
+                    x = np.arange( len( y ) )
+                    e = [ np.array(c).std() for c in nwater_cutoff[ key ] ]
+                    fig, (ax) = plt.subplots(1, 1, figsize=[8,4] )
+                    ax.bar( 
+                        x, y, align='center', yerr=e, 
+                        ecolor='black', facecolor='#777777' 
+                    )
+                    ax.set_xticks( x )
+                    ax.set_xticklabels( labels )
+                    xlim = ( x.min()-1, x.max()+1 )
+                    ax.set_xlim( xlim )
+                    fig.savefig( str( key ) + ".png" )
     def make_final_pdb( self ):
         npdb_dow = NumPdb( 
             self.dowser_dry_pdb, features=self.npdb_features )
@@ -384,6 +534,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         dist = abs( point_plane_dist( mplanes[1][0], mplanes[0] ) )
         npdb_dict = {}
         npdb_tm_dict = {}
+        npdb_sol_dict = {}
         for suffix, pdb_file in self.water_variants:
             npdb = NumPdb( pdb_file, features=self.npdb_features )
             npdb_dict[ suffix ] = npdb
@@ -401,15 +552,16 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 for a in numa._atoms:
                     sele[i] = flag
                     i += 1
+            npdb_sol_dict[ suffix ] = npdb.copy( sele=sele )
+            npdb.copy( sele=sele ).write( self.outpath( "sol_region.pdb" ) )
             np.logical_not( sele, sele )
             npdb_tm_dict[ suffix ] = npdb.copy( sele=sele )
             npdb.copy( sele=sele ).write( self.outpath( "tm_region.pdb" ) )
-        return npdb_dict, npdb_tm_dict
+        return npdb_dict, npdb_tm_dict, npdb_sol_dict
     def make_stats( self ):
-        npdb_dict, npdb_tm_dict = self.get_npdb_dicts()
+        segments = zip( [ "ALL", "TM", "SOL" ], self.get_npdb_dicts() )
         mplanes = self.opm.get_planes()
         dist = abs( point_plane_dist( mplanes[1][0], mplanes[0] ) )
-        segments = [ ("ALL", npdb_dict), ("TM", npdb_tm_dict) ]
         pr = self.probe_radius
         mppd_stats = []
         for suffix, pdb_file in self.water_variants:
@@ -424,7 +576,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 _packing_density = packing_density( npdb_d[ suffix ], voro )
                 _count_holes_msms = count_holes_msms( 
                     npdb_d[ suffix ], msms_vdw, pr, 
-                    len(npdb_dict[ suffix ])
+                    len( segments[0][1][ suffix ] )
                 )
                 mppd_stats.append({
                     "pdb_id": self.pdb_id, 
@@ -445,6 +597,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     "packdens_protein": _packing_density[1],
                     "packdens_water": _packing_density[2],
                     "packdens_hetero": _packing_density[3],
+                    "packdens_protein_buried": _packing_density[4],
                     "msms": _count_holes_msms[0],
                     "msms_ses": _count_holes_msms[1],
                     "msms_gt_water": _count_holes_msms[2],
@@ -452,6 +605,39 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 })
         with open( self.stats_file, "w" ) as fp:
             json.dump( mppd_stats, fp )
+    def make_stats2( self ):
+        segments = zip( [ "ALL", "TM", "SOL" ], self.get_npdb_dicts() )
+        mppd_stats2 = []
+        for seg, npdb_d in segments:
+            npdb_dow = npdb_d[ "dow" ]
+            npdb_org = npdb_d[ "org" ]
+            dow_tree = get_tree( 
+                npdb_dow.get( 'xyz', resname="HOH" ) 
+            )
+            water_count = 0
+            residue_count = 0
+            cutoff_list = np.arange(1.4, 3.9, step=0.1)
+            count_list = [0] * len( cutoff_list )
+            for numa in npdb_org.iter_resno( incomplete=True ):
+                # count org waters that are not in dow
+                # at various cutoffs
+                if numa[0]['resname']=='HOH':
+                    water_count += 1
+                    dist = dow_tree.query( numa['xyz'][0] )[0]
+                    for i, cutoff in enumerate( cutoff_list ):
+                        if dist>cutoff:
+                            count_list[ i ] += 1
+                elif numa[0]["record"]=="ATOM  ":
+                    residue_count += 1
+            mppd_stats2.append({
+                "pdb_id": self.pdb_id, 
+                "segment": seg,
+                "water_count": water_count,
+                "residue_count": residue_count,
+                "exp_water_cutoff_count": count_list
+            })
+        with open( self.stats2_file, "w" ) as fp:
+            json.dump( mppd_stats2, fp )
     def make_info( self ):
         info = self.pdb_dic[ self.pdb_id.upper() ]
         with open( self.info_file, "w" ) as fp:
@@ -459,6 +645,14 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
     def get_info( self ):
         with open( self.info_file, "r" ) as fp:
             return json.load( fp )
+    def get_stats( self ):
+        with open( self.stats_file, "r" ) as fp:
+            return json.load( fp )
+    def get_stats2( self ):
+        with open( self.stats2_file, "r" ) as fp:
+            return json.load( 
+                fp, object_pairs_hook=collections.OrderedDict 
+            )
     def make_records( self ):
         with open( self.stats_file, "r" ) as fp:
             mppd_stats = json.load( fp )
@@ -492,16 +686,22 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
 
 
 def packing_density( npdb, voronoia ):
-    vol = voronoia.get_vol()
+    try:
+        vol = voronoia.get_vol()
+    except:
+        return ( 0, 0, 0, 0, 0 )
     pd_sum = 0
     pd_sum_protein = 0
+    pd_sum_protein_buried = 0
     pd_sum_water = 0
     pd_sum_hetero = 0
     count = 0
     protein_count = 0
+    protein_buried_count = 0
     water_count = 0
     hetero_count = 0
     pd_dict = vol["packdens"]
+    buried_dict = vol["buried"]
     for numa in npdb._iter_resno():
         for a in numa:
             pd = pd_dict.get( a["atomno"] )
@@ -515,19 +715,18 @@ def packing_density( npdb, voronoia ):
             elif a["record"]=="ATOM  ":
                 pd_sum_protein += pd
                 protein_count += 1
+                if buried_dict.get( a["atomno"] ):
+                    pd_sum_protein_buried += pd
+                    protein_buried_count += 1
             elif a["record"]=="HETATM":
                 pd_sum_hetero += pd
                 hetero_count += 1
-    def x( sum1, len1 ):
-        try:
-            return sum1/len1
-        except ZeroDivisionError:
-            return 0
     return (
-        x( pd_sum, count ),
-        x( pd_sum_protein, protein_count ),
-        x( pd_sum_water, water_count ),
-        x( pd_sum_hetero, hetero_count )
+        try_div( pd_sum, count ),
+        try_div( pd_sum_protein, protein_count ),
+        try_div( pd_sum_water, water_count ),
+        try_div( pd_sum_hetero, hetero_count ),
+        try_div( pd_sum_protein_buried, protein_buried_count )
     )
 
 
@@ -552,7 +751,11 @@ def count_hbonds( npdb, hbexplore ):
     hb_count_pw = 0
     hb_count_ww = 0
     hb_count_wl = 0
-    for hb in hbexplore.get_hbonds():
+    try:
+        hbonds = hbexplore.get_hbonds()
+    except Exception:
+        return ( 0, 0, 0 )
+    for hb in hbonds:
         # check if both atoms are in the npdb
         na1 = npdb.copy( resno=hb.resno1, chain=hb.chain1 )
         na2 = npdb.copy( resno=hb.resno2, chain=hb.chain2 )
@@ -567,7 +770,10 @@ def count_hbonds( npdb, hbexplore ):
 
 
 def count_holes_voro( npdb, voronoia ):
-    vol = voronoia.get_vol()
+    try:
+        vol = voronoia.get_vol()
+    except Exception:
+        return ( 0, 0 )
     not_filled = 0
     partly_filled = 0
     for hole in vol[ "holes" ]:
@@ -583,8 +789,11 @@ def count_holes_voro( npdb, voronoia ):
 
 
 def count_holes_msms( npdb, msms, probe_radius, n ):
-    area = msms.get_area()
-    components = msms.get_components()
+    try:
+        area = msms.get_area()
+        components = msms.get_components()
+    except Exception:
+        return ( 0, 0, 0, 0 )
     components0 = []
     for c in components:
         for nb_atomno in area["ses"][ c[0] ]:
