@@ -20,5 +20,20 @@
             "parent_id": "tab_widgets",
             "datalist": "DATALIST_vol_datalist"
         }
+    },
+    {
+        "name": "vol_atomprop",
+        "filename": "${vol_file}.atmprop"
+    },
+    {
+        "widget": "Provi.Bio.AtomProperty.AtomPropertyGroupWidget",
+        "params": {
+            "dataset": "DATASET_vol_atomprop",
+            "property_ranges": {
+                "packing_density": [0.0, 1.0]
+            },
+            "heading": "Packing", 
+            "parent_id": "tab_widgets"
+        }
     }
 ]

@@ -41,6 +41,7 @@ def parse_vol( vol_file, pdb_file ):
 
     vol_lines = [None] * len(pdb_coord_dict)
     pd_dict = {}
+    buried_dict = {}
     holes = collections.OrderedDict()
     hole_types = []
     hole_list = []
@@ -117,8 +118,9 @@ def parse_vol( vol_file, pdb_file ):
     for i, l in enumerate(vol_lines):
         if l:
             ls = l.split()
-            vdwvol = float(ls[-3])  #VOLUME INSIDE VAN-DER-WAALS SPHERE
-            sevol = float(ls[-2])   #VOLUME IN 1.4 ANGSTROM LAYER OUTSIDE VDW-SPHERE
+            buried = int(ls[-1])    # BURIED
+            vdwvol = float(ls[-3])  # VOLUME INSIDE VAN-DER-WAALS SPHERE
+            sevol = float(ls[-2])   # VOLUME IN 1.4 ANGSTROM LAYER OUTSIDE VDW-SPHERE
             if vdwvol==0.0:
                 packdens = 0.0
                 LOG.error( "vdw volume zero. %s" % l )
@@ -131,6 +133,7 @@ def parse_vol( vol_file, pdb_file ):
                 packdens = (vdwvol/(vdwvol+sevol))
             atomno = int( pdb_index_dict[ i+1 ][6:11] )
             pd_dict[ atomno ] = packdens
+            buried_dict[ atomno ] = buried
         else:
             LOG.debug( 
                 "no volume data for line: %s" % (
@@ -141,7 +144,8 @@ def parse_vol( vol_file, pdb_file ):
     return {
         "nrholes": nrholes,
         "holes": hole_list,
-        "packdens": pd_dict
+        "packdens": pd_dict,
+        "buried": buried_dict
     }
 
 
