@@ -25,16 +25,16 @@ class Jmol( CmdTool, ScriptMixin ):
         if script_file=="__tmpl__":
             self.script_file = self.outpath( self.script_tmpl )
         self.cmd = [
-            JAVA_CMD, "-Xmx4096M", "-jar", JMOL_JAR, "-oxdl", "-s", self.script_file
+            JAVA_CMD, "-Xmx6000M", "-jar", JMOL_JAR, "-oxdl", "-s", self.script_file
         ]
 
 
 class JmolImage( Jmol ):
     args = [
         _( "jmol_file", type="file", ext="jmol" ),
-        _( "scale", type="slider", range=[0, 4], default=1, fixed=True ),
-        _( "width", type="slider", range=[0, 2048], default=0 ),
-        _( "height", type="slider", range=[0, 2048], default=0 ),
+        _( "scale", type="slider", range=[0, 8], default=2, fixed=True ),
+        _( "width", type="slider", range=[0, 4096], default=0 ),
+        _( "height", type="slider", range=[0, 4096], default=0 ),
         _( "cartoon_fancy", type="checkbox", default=True )
     ]
     out = [
