@@ -350,8 +350,9 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                         AnchoredText
                     )
 
-                    def hist( axis, x, label, loc=1 ):
-                        x = x[ x!=0 ]
+                    def hist( axis, x, label, loc=1, nzero=False ):
+                        if nzero:
+                            x = x[ x!=0 ]
                         if len(x)==0:
                             x = np.array([ 0 ])
                         axis.hist( x, normed=True, bins=25 )
@@ -369,11 +370,13 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                         )
                         axis.add_artist( at )
 
-                    def scatter( axis, x, y, xlabel, ylabel, loc=1 ):
-                        xnzero = x!=0
-                        ynzero = y!=0
-                        x = x[ xnzero&ynzero ]
-                        y = y[ xnzero&ynzero ]
+                    def scatter( axis, x, y, xlabel, ylabel, 
+                                 loc=1, nzero=True ):
+                        if nzero:
+                            xnzero = x!=0
+                            ynzero = y!=0
+                            x = x[ xnzero&ynzero ]
+                            y = y[ xnzero&ynzero ]
                         try:
                             r = pearsonr(x, y)
                         except Exception:
@@ -410,6 +413,40 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
 
                     fig.savefig( "_".join( key ) + ".png" )
 
+                def bar( ax, ydata, labels ):
+                    y = [ np.array(yd).mean() for yd in ydata ]
+                    x = np.arange( len( y ) )
+                    e = [ np.array(yd).std() for yd in ydata ]
+                    ax.bar( 
+                        x, y, align='center', yerr=e, 
+                        ecolor='black', facecolor='#777777' 
+                    )
+                    ax.set_xticks( x )
+                    ax.set_xticklabels( labels )
+                    xlim = ( x.min()-1, x.max()+1 )
+                    ax.set_xlim( xlim )
+                
+
+                # ...
+                tm_keys = [
+                    ( "org", "TM" ),
+                    ( "fin", "TM" ),
+                    ( "dow", "TM" )
+                ]
+                if all( map( lambda k: k in nres, tm_keys ) ):
+                    ydata = []
+                    labels = []
+                    for key in tm_keys:
+                        ydata.append(
+                            ( np.array( nwater[ key ] ) /
+                                np.array( nres[ key ] ) ) * 100 
+                        )
+                        labels.append( key[0] )
+                    fig, (ax) = plt.subplots(1, 1, figsize=[6,4.5] )
+                    bar( ax, ydata, labels )
+                    fig.savefig( "h2o_per_100_res.png" )
+
+
                 # ...
                 nwater_cutoff = collections.defaultdict( list )
                 cutoff_list = np.arange(1.4, 3.9, step=0.1)
@@ -427,19 +464,12 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                             frac = try_div( count_list[i], water_count )
                             nwater_cutoff[ key ][i].append( frac )
                 for key in nwater_cutoff.keys():
-                    y = [ np.array(c).mean() for c in nwater_cutoff[ key ] ]
-                    labels = map( str, cutoff_list )
-                    x = np.arange( len( y ) )
-                    e = [ np.array(c).std() for c in nwater_cutoff[ key ] ]
                     fig, (ax) = plt.subplots(1, 1, figsize=[8,4] )
-                    ax.bar( 
-                        x, y, align='center', yerr=e, 
-                        ecolor='black', facecolor='#777777' 
+                    bar( 
+                        ax, 
+                        nwater_cutoff[ key ], 
+                        map( str, cutoff_list ) 
                     )
-                    ax.set_xticks( x )
-                    ax.set_xticklabels( labels )
-                    xlim = ( x.min()-1, x.max()+1 )
-                    ax.set_xlim( xlim )
                     fig.savefig( str( key ) + ".png" )
     def make_final_pdb( self ):
         npdb_dow = NumPdb( 
