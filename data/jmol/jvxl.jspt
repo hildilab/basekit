@@ -1,3 +1,7 @@
 cache remove all;
-isosurface ID "iso" ${cutoff} ${sigma} ${resolution} "${dat_file}";
+var struc_file = "${struc_file}";
+if( struc_file ){
+	load @struc_file;
+}
+isosurface ID "iso" ${within} ${cutoff} ${sigma} ${resolution} "${dat_file}" ${style};
 write ISOSURFACE "${jvxl_file}";

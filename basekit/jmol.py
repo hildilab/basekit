@@ -57,13 +57,17 @@ class JmolImage( Jmol ):
 class JmolJvxl( Jmol ):
     """Create a JVXL file (the Jmol surface format) from various file formats"""
     args = [
-        _( "dat_file", type="file", ext="dat", help="mrc, obj" ),
+        _( "dat_file", type="file", ext="dat", help="mrc, obj, mrc, ccp4" ),
+        _( "struc_file", type="file", ext="pdb", default=None ),
         _( "sigma", type="slider", range=[-1, 5], default=0, 
             fixed=True, help="level at which the surface will be created" ),
-        _( "cutoff", type="slider", range=[0, 255], default=0, 
+        _( "within", type="slider", range=[-1, 5], default=None, 
+            fixed=True, help="within distance of atoms" ),
+        _( "cutoff", type="slider", range=[0, 255], default=None, 
             fixed=True, help="value at which the data is ignored" ),
         _( "resolution", type="slider", range=[-1, 10], 
-            default=3, fixed=True )
+            default=3, fixed=True ),
+        _( "style", type="str", default=None )
     ]
     out = [
         _( "jvxl_file", file="dat.jvxl" )
@@ -74,9 +78,12 @@ class JmolJvxl( Jmol ):
     def _pre_exec( self ):
         self._make_script_file(
             dat_file=self.dat_file,
+            struc_file="" if self.struc_file==None else self.struc_file,
             sigma="" if self.sigma in (None, -1) else "SIGMA %0.2f"%self.sigma,
+            within="" if self.within==None else "WITHIN %0.2f {*}"%self.within,
             cutoff="" if self.cutoff==None else "CUTOFF %0.1f"%self.cutoff,
             resolution="" if self.resolution in (None, -1) else "RESOLUTION %0.1f"%self.resolution,
+            style="" if self.style==None else self.style,
             jvxl_file=self.jvxl_file
         )
 
