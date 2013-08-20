@@ -10,7 +10,6 @@ import json
 import numpy as np
 np.seterr( all="raise" )
 
-import utils.path
 import utils.numpdb as numpdb
 from utils import try_int
 from utils.tool import _, _dir_init, PyTool, ProviMixin
@@ -231,7 +230,8 @@ class PdbSuperpose( PyTool, ProviMixin ):
         _( "pdb_file2", type="file", ext="pdb" ),
         _( "sele1", type="sele" ),
         _( "sele2", type="sele" ),
-        _( "subset", type="text", default="CA" )
+        _( "subset|ss", type="text", default="CA" ),
+        _( "rmsd_cutoff|co", type="float", default=1.0 )
     ]
     out = [
         _( "superposed_file", file="superposed.pdb" )
@@ -244,7 +244,7 @@ class PdbSuperpose( PyTool, ProviMixin ):
         numpdb.superpose( 
             npdb1, npdb2, self.sele1, self.sele2, 
             subset=self.subset, inplace=True,
-            rmsd_cutoff=1.0, max_cycles=100
+            rmsd_cutoff=self.rmsd_cutoff, max_cycles=100
         )
         npdb1.write( self.superposed_file )
     def _post_exec( self ):
