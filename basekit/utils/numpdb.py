@@ -183,7 +183,7 @@ def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
     pos = sp.transform( npdb1['xyz'], inplace=inplace )
     npdb1['xyz'] = pos
     print "RMSD: %f" % sp.rmsd
-    return pos
+    return sp
 
 
 class SimpleParser():
