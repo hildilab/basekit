@@ -3,21 +3,79 @@ from __future__ import division
 
 
 import os
+import re
 import json
 import urllib2
 
 import numpy as np
 
 
-from utils import memoize_m
+from utils import memoize_m, try_float
 from utils.math import norm
 from utils.tool import _, _dir_init, PyTool, ProviMixin
 
 
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "opm" )
-OPM_PDB_URL = "http://opm.phar.umich.edu/pdb/{pdb_id:}.pdb"
+OPM_URL = "http://opm.phar.umich.edu/"
+OPM_PDB_URL = OPM_URL + "pdb/{pdb_id:}.pdb"
+OPM_LIST_URL = OPM_URL + "superfamilies_dl.php?class={class_id:}"
+OPM_SEARCH_URL = OPM_URL + "protein.php?search={pdb_id:}"
 OPM_LOCAL_PATH = os.environ.get("OPM_LOCAL_PATH", "")
+
+
+def opm_list( class_id ):
+    try:
+        url = OPM_LIST_URL.format( class_id=class_id )
+        page = urllib2.urlopen( url ).read()
+    except urllib2.HTTPError:
+        raise Exception("Opm_list url error")
+    pdb_ids = re.findall( r"([0-9a-zA-Z]{4})<br />", page )
+    pdb_ids = [ x.upper() for x in pdb_ids ]
+    pdb_ids = list( set( pdb_ids ) ) # make unique
+    pdb_ids.sort()
+    return pdb_ids
+
+
+
+def opm_info( pdb_id ):
+    try:
+        url = OPM_SEARCH_URL.format( pdb_id=pdb_id )
+        page = urllib2.urlopen( url ).read()
+    except urllib2.HTTPError:
+        raise Exception("Opm_info url error")
+
+    opm_type = re.findall( 
+        r'<li><i>Type:</i> <a.*>(.*)</a>', page )
+    opm_class = re.findall( 
+        r'<li><i>Class:</i> <a.*>(.*)</a>', page )
+    opm_superfamily = re.findall( 
+        r'<li><i>Superfamily:</i> <a[^<]*>([^<]*)</a>', page )
+    opm_family = re.findall( 
+        r'<li><i>Family:</i> <a[^<]*>([^<]*)</a>', page )
+    opm_species = re.findall( 
+        r'<li><i>Species:</i> <i><a.*>(.*)</a></i>', page )
+    opm_localization = re.findall( 
+        r'<li><i>Localization:</i> <a.*>(.*)</a>', page )
+
+    related_ids = re.findall( r'"\?extrapdb=([0-9a-zA-Z]{4})"', page )
+    related_ids = [ x.upper() for x in related_ids ]
+    related_ids.sort()
+
+    delta_g = re.findall( r'([-+]?[0-9]*\.?[0-9]+) kcal/mol', page )
+
+    return {
+        "OPMType": opm_type[0].split(" ", 1)[1],
+        "Class": opm_class[0].split(" ", 1)[1],
+        "OPMSuperfamily": opm_superfamily[0].split(" ", 1)[1],
+        "OPMFamily": opm_family[0].split(" ", 1)[1],
+        "OPMSpecies": opm_species[0].split(" ", 1)[1],
+        "OPMLocalization": opm_localization[0],
+        "OPMRelated": related_ids, 
+        "OPMDeltaG": try_float( delta_g[0] )
+    }
+
+
 
 
 def opm( pdb_id ):
@@ -80,14 +138,9 @@ class OpmMixin( object ):
                 json.dump( mp, fp )
 
 
-OPM_OUT = [
-    _( "opm_file", file="{pdb_file.stem}_opm.pdb" ),
-    _( "processed_file", file="{pdb_file.stem}_proc.pdb" ),
-]
-
 
 class Opm( OpmMixin, PyTool, ProviMixin ):
-    """A tool to access the OPM database"""
+    """A tool to access the OPM database pdb files"""
     args = [
         _( "pdb_id", type="str" ),
     ]
@@ -122,4 +175,37 @@ class Ppm( OpmMixin, PyTool, ProviMixin ):
         pass
     def func( self ):
         ppm( self.pdb_file )
+
+
+
+class OpmList( PyTool ):
+    """A tool to access the OPM database"""
+    args = [
+        _( "class_id", type="str" ),
+    ]
+    out = [
+        _( "list_file", file="opm_list_class_{class_id}.txt" )
+    ]
+    def _init( self, *args, **kwargs ):
+        pass
+    def func( self ):
+        pdb_list = opm_list( self.class_id )
+        with open( self.list_file, "w" ) as fp:
+            fp.write( "\n".join( pdb_list ) )
+
+
+class OpmInfo( PyTool ):
+    """A tool to get infos from the OPM database"""
+    args = [
+        _( "pdb_id", type="str" ),
+    ]
+    out = [
+        _( "info_file", file="opm_info_{pdb_id}.json" )
+    ]
+    def _init( self, *args, **kwargs ):
+        pass
+    def func( self ):
+        info = opm_info( self.pdb_id )
+        with open( self.info_file, "w" ) as fp:
+            json.dump( info, fp, indent=4 )
 

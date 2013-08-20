@@ -12,8 +12,8 @@ import numpy as np
 import scipy.spatial
 from scipy.stats.stats import pearsonr
 
-import matplotlib
-matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from utils import copy_dict, try_float, try_div
