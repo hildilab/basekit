@@ -14,7 +14,7 @@ np.seterr( all="raise" )
 import basekit.utils.path
 from basekit.utils.align import aligner
 from basekit.utils import (
-    try_int, get_index, copy_dict, iter_window, iter_stride,
+    try_int, try_float, get_index, copy_dict, iter_window, iter_stride,
     memoize_m
 )
 from math import mag, axis, Superposition, rmsd
@@ -186,22 +186,6 @@ def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
     return sp
 
 
-class SimpleParser():
-    def __init__( self ):
-        self._list = []
-    def __call__( self, line ):
-        if self._test_line( line ):
-            self._list.append( self._parse_line( line ) )
-    def _test_line( self, line ):
-        return len( line ) > 0
-    def _parse_line( self, line ):
-        return line
-    def get( self ):
-        if hasattr( self, "type" ):
-            return np.array( self._list, dtype=self.type )
-        return np.array( self._list )
-
-
 
 PDB_DELIMITER=(6,5,1,4,1,3,1,1,4,1,3,8,8,8,6,6,6,4,2,2)
 PDB_DTYPE=[
@@ -296,6 +280,23 @@ def xyzr_line( natom ):
 
 
 
+
+class SimpleParser():
+    def __init__( self ):
+        self._list = []
+    def __call__( self, line ):
+        if self._test_line( line ):
+            self._list.append( self._parse_line( line ) )
+    def _test_line( self, line ):
+        return len( line ) > 0
+    def _parse_line( self, line ):
+        return line
+    def get( self ):
+        if hasattr( self, "type" ):
+            return np.array( self._list, dtype=self.type )
+        return np.array( self._list )
+
+
 SstrucRecord = collections.namedtuple( 'SstrucRecord', [
     'type', 'subtype',
     'chain1', 'resno1', 'resname1',
@@ -357,6 +358,31 @@ class SstrucParser( SimpleParser ):
         self._list = filtered
         return self._list
 
+
+class InfoParser( object ):
+    def __init__( self ):
+        self._dict = collections.defaultdict( str )
+    def __call__( self, line ):
+        self._parse_line( line )
+    def _parse_line( self, line ):
+
+        if line.startswith("KEYWDS"):
+            self._dict["keywords"] += line[10:].rstrip()
+        elif line.startswith("EXPDTA"):
+            self._dict["experiment"] += line[10:].rstrip()
+        elif line.startswith("TITLE"):
+            self._dict["title"] += line[10:].rstrip()
+        elif line.startswith("REMARK"):
+            if line[9]=="2":
+                self._dict["resolution"] += line[10:].rstrip()
+    def get( self ):
+        dct = self._dict
+        return {
+            "keywords": dct.get("keywords").split(", "),
+            "experiment": dct.get("experiment"),
+            "title": dct.get("title"),
+            "resolution": try_float( dct.get("resolution").split()[1], None )
+        }
 
 
 # TODO needs documentation
@@ -660,7 +686,8 @@ class NumPdb:
             "protein_only": True,
             "detect_incomplete": True,
             "configuration": True,
-            "no_sort": False
+            "no_sort": False,
+            "info": True
         }
         if features: self.features.update( features )
         self._parse()
@@ -689,6 +716,8 @@ class NumPdb:
             types += [ ( 'sstruc', '|S1' ) ]
             extra += [ " " ]
             parsers[ "sstruc" ] = SstrucParser()
+        if self.features["info"]:
+            parsers[ "info" ] = InfoParser()
 
         atoms = []
         atoms_append = atoms.append
