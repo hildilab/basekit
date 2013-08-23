@@ -132,7 +132,7 @@ def numdist( numa1, numa2 ):
 
 
 def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
-               rmsd_cutoff=None, max_cycles=None, align=True ):
+               rmsd_cutoff=None, max_cycles=None, align=True, verbose=True ):
     numa1 = npdb1.copy( **copy_dict( sele1, atomname=subset ) )
     numa2 = npdb2.copy( **copy_dict( sele2, atomname=subset ) )
 
@@ -161,13 +161,13 @@ def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
         coords2 = numa2['xyz']
 
     if len( coords1 ) != len( coords2 ):
-        print "length differ, cannot superpose"
-        return None
+        raise Exception( "length differ, cannot superpose" )
 
     if rmsd_cutoff and max_cycles:
         for cycle in xrange( max_cycles ):
             sp = Superposition( coords1, coords2 )
-            print "Cycle %i, #%i, RMSD %6.2f" % (cycle, sp.n, sp.rmsd)
+            if verbose:
+                print "Cycle %i, #%i, RMSD %6.2f" % (cycle, sp.n, sp.rmsd)
             if sp.rmsd <= rmsd_cutoff or sp.n <= 8:
                 break
             coords1_trans = sp.transform( coords1, inplace=False )
@@ -182,7 +182,8 @@ def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
         sp = Superposition( coords1, coords2 )
     pos = sp.transform( npdb1['xyz'], inplace=inplace )
     npdb1['xyz'] = pos
-    print "RMSD: %f" % sp.rmsd
+    if verbose:
+        print "RMSD: %f" % sp.rmsd
     return sp
 
 
