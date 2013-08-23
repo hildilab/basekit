@@ -65,14 +65,14 @@ def opm_info( pdb_id ):
     delta_g = re.findall( r'([-+]?[0-9]*\.?[0-9]+) kcal/mol', page )
 
     return {
-        "OPMType": opm_type[0].split(" ", 1)[1],
-        "Class": opm_class[0].split(" ", 1)[1],
-        "OPMSuperfamily": opm_superfamily[0].split(" ", 1)[1],
-        "OPMFamily": opm_family[0].split(" ", 1)[1],
-        "OPMSpecies": opm_species[0].split(" ", 1)[1],
-        "OPMLocalization": opm_localization[0],
-        "OPMRelated": related_ids, 
-        "OPMDeltaG": try_float( delta_g[0] )
+        "type": opm_type[0].split(" ", 1)[1],
+        "class": opm_class[0].split(" ", 1)[1],
+        "superfamily": opm_superfamily[0].split(" ", 1)[1],
+        "family": opm_family[0].split(" ", 1)[1],
+        "species": opm_species[0].split(" ", 1)[1],
+        "localization": opm_localization[0],
+        "related_ids": related_ids, 
+        "delta_g": try_float( delta_g[0] )
     }
 
 
@@ -205,7 +205,12 @@ class OpmInfo( PyTool ):
     def _init( self, *args, **kwargs ):
         pass
     def func( self ):
-        info = opm_info( self.pdb_id )
+        self.info = opm_info( self.pdb_id )
         with open( self.info_file, "w" ) as fp:
-            json.dump( info, fp, indent=4 )
+            json.dump( self.info, fp, indent=4 )
+    def get_info( self ):
+        if not hasattr( self, "info" ):
+            with open( self.info_file, "r" ) as fp:
+                self.info = json.read( fp )
+        return self.info
 

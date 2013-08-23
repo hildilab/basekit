@@ -110,6 +110,11 @@ class MpstrucInfo( PyTool ):
     def _init( self, *args, **kwargs ):
         pass
     def func( self ):
-        info = mpstruc_info( self.pdb_id, xml_file=self.mpstruc_xml )
+        self.info = mpstruc_info( self.pdb_id, xml_file=self.mpstruc_xml )
         with open( self.info_file, "w" ) as fp:
-            json.dump( info, fp, indent=4 )
+            json.dump( self.info, fp, indent=4 )
+    def get_info( self ):
+        if not hasattr( self, "info" ):
+            with open( self.info_file, "r" ) as fp:
+                self.info = json.read( fp )
+        return self.info

@@ -11,7 +11,7 @@ import numpy as np
 np.seterr( all="raise" )
 
 import utils.numpdb as numpdb
-from utils import try_int
+from utils import try_int, copy_dict
 from utils.tool import _, _dir_init, PyTool, ProviMixin
 from utils.timer import Timer
 from utils.db import get_pdb_files
@@ -88,13 +88,14 @@ def pdb_download( pdb_id, output_file ):
     for base_url in pdb_download_urls:
         try:
             url = "%s%s.pdb" % ( base_url, pdb_id )
-            request = urllib2.Request( url )
-            response = urllib2.urlopen( request )
+            data = urllib2.urlopen( url ).read()
             with open( output_file, 'wb' ) as fp:
-                fp.write( response.read() )
-            return
-        except:
+                fp.write( data )
+            return True
+        except urllib2.HTTPError:
             pass
+    else:
+        raise Exception( "Error downloading pdb entry '%s'" % pdb_id )
 
 class PdbDownload( PyTool ):
     args = [
@@ -110,7 +111,7 @@ class PdbDownload( PyTool ):
             lambda x: self.outpath( "%s.pdb" % x ),
             self.pdb_id_list
         )    
-        self.output_files.extend( self.pdb_file_list )
+        self.output_files += self.pdb_file_list
     def func( self ):
         for pdb_id, pdb_file in zip( self.pdb_id_list, self.pdb_file_list ):
             pdb_download( pdb_id, pdb_file )
@@ -174,7 +175,6 @@ class PdbSplit( PyTool ):
         )
 
 
-
 class PdbEdit( PyTool ):
     """ Edits a pdb file. Manipulations are done in this order:
         center, shift, box.
@@ -222,8 +222,6 @@ class PdbEdit( PyTool ):
         npdb.copy( sele=sele ).write( self.edited_pdb_file )
 
 
-
-
 class PdbSuperpose( PyTool, ProviMixin ):
     args = [
         _( "pdb_file1", type="file", ext="pdb" ),
@@ -256,6 +254,40 @@ class PdbSuperpose( PyTool, ProviMixin ):
 
 
 
+class PdbInfo( PyTool ):
+    args = [
+        _( "pdb_input", type="str" )
+    ]
+    out = [
+        _( "info_file", file="pdb_info.json" )
+    ]
+    def _init( self, *args, **kwargs ):
+        if len(self.pdb_input)==4:
+            self.pdb_download = PdbDownload(
+                self.pdb_input,
+                **copy_dict( kwargs, run=False,
+                    output_dir=self.subdir("download") )
+            )
+            self.pdb_file = self.pdb_download.pdb_file_list[0]
+        else:
+            self.pdb_download = None
+            self.pdb_file = self.abspath( self.pdb_input )
+    def _pre_exec( self ):
+        if self.pdb_download:
+            self.pdb_download()
+    def func( self ):
+        self.info = numpdb.NumPdb( self.pdb_file, features={
+            "phi_psi": False, 
+            "info": True,
+            "backbone_only": True
+        })._info
+        with open( self.info_file, "w" ) as fp:
+            json.dump( self.info, fp, indent=4 )
+    def get_info( self ):
+        if not hasattr( self, "info" ):
+            with open( self.info_file, "r" ) as fp:
+                self.info = json.read( fp )
+        return self.info
 
 
 def numpdb_test( pdb_file ):
