@@ -24,6 +24,7 @@ from utils import (
     try_int, get_index, boolean, iter_window, memoize, 
     copy_dict, dir_walker
 )
+from pdb import pdb_download
 from utils.timer import Timer
 from utils.db import get_pdb_files, create_table
 from utils.tool import (
@@ -35,7 +36,7 @@ import utils.numpdb as numpdb
 import json
 from basekit.msa import Muscle
 import linecache
-
+import scipy
 
 
 
@@ -294,6 +295,311 @@ class AlphaLTest_fitted():
 
 
 
+npdb_dict = {}
+def get_npdb( pdb_id ):
+    pdb_repos='/home/student/Johanna/Projekte/caps/cap-referenceset/'
+    if pdb_id not in npdb_dict:
+        path = pdb_repos+pdb_id+'.pdb'
+        npdb_dict[pdb_id] = numpdb.NumPdb( path, features={
+            "phi_psi": True,
+            "sstruc": True
+        })
+    return npdb_dict[pdb_id]
+
+
+
+def get_refset( pdbid_list, outdir ):
+    pdbid=[]
+    with open(pdbid_list) as pdbids:
+        for line in pdbids:
+            if not line.startswith('#'):
+                pdbid.append( line.upper()[0:4] )
+    refdir = os.path.join(outdir, 'refdir')
+    try: os.makedirs(refdir)
+    except: pass
+    for i in pdbid:
+        pdb_download(i, os.path.join(refdir, i+'.pdb'))
+    return pdbid
+from opm import Opm
+import opm
+from utils.math import point_plane_dist
+
+
+def get_TM_regions( pdbid, min_helix_length, outpath ):
+    opm = Opm( pdbid, output_dir=outpath+"/opm/" )
+    mplanes = opm.get_planes()
+    npdb = NumPdb( opm.processed_file )
+    dist = abs( point_plane_dist( mplanes[1][0], mplanes[0] ) )
+    npdb_tm_dict = {}
+    npdb_sol_dict = {}
+    sele = npdb.sele()
+    i = 0; j = 0; k = 0
+    tm_end = []; tm_start = []
+    # create transmembrane region selection
+    for numa in npdb.iter_resno( incomplete=True ):
+        flag = True
+        for c in numa._coords:
+            d1 = abs( point_plane_dist( c, mplanes[0] ) )
+            d2 = abs( point_plane_dist( c, mplanes[1] ) )
+            if d1<dist and d2<dist:
+                flag = False
+                break
+        for a in numa._atoms:
+            sele[i] = flag
+            i += 1
+        if flag:#solvent
+            if j>=min_helix_length:
+                tm_end.append((numa["chain"][0],numa["resno"][0]))
+            tempstr = ((numa["chain"][0],numa["resno"][0]))
+            j = 0; k = 0
+        else:#tm
+            j += 1
+            k += 1
+            if k>=min_helix_length:
+                tm_start.append(tempstr)
+                k = -99
+    tm_regions = zip(tm_start, tm_end)
+    tm_regions.write( outpath+ "tm_regions.txt" )
+    npdb_sol_dict[ inpdb[0][0] ] = npdb.copy( sele=sele )
+    npdb.copy( sele=sele ).write( outpath+ "sol_region.pdb" )
+    np.logical_not( sele, sele )
+    npdb_tm_dict[ inpdb[0][0] ] = npdb.copy( sele=sele )
+    npdb.copy( sele=sele ).write( outpath+ "tm_region.pdb"  )
+    return npdb_tm_dict, npdb_sol_dict, tm_regions
+
+def get_helix_regions( pdbid, refdir, min_helix_length=6, dssp=False ):
+    helix_regions = []
+    def get_file_path( pdbid ):
+        return refdir+pdbid+'.pdb'
+    if dssp:
+        numa = get_npdb( pdbid );
+        curresno=0; count=0; startresno=0
+        begin=[];end=[]
+        for atom in numa:
+            if atom['sstruc']=='H':
+                if curresno!=atom["resno"]:
+                    curresno = atom["resno"]
+                    if count==0: startresno=atom["resno"]
+                    count += 1
+            else:
+                if count >= min_helix_length:
+                    begin.append( ( atom["chain"],startresno ) )
+                    end.append( ( atom["chain"],curresno ) )
+                count=0
+        pdbidd = []; i = 0
+        while i<len(begin):
+            pdbidd.append(pdbid)
+            i +=1
+        helix_regions = zip(pdbidd,zip(begin, end))#under construction
+    else:#helixenden aus der pdb
+        with open(get_file_path(pdbid), 'r') as fp:
+            for line in fp:
+                if line.startswith('HELIX'):
+                    # chain, resno, resname
+                    start = ( line[19], try_int( line[21:25] ), line[15:18] )
+                    end = ( line[31], try_int( line[33:37] ), line[27:30] )
+                    if start>end: start, end = end, start
+                    helix_regions.append( ( pdbid,start,end ) )
+                elif line.startswith('SHEET'):
+                    break;
+    return helix_regions
+#print get_helix_regions('1ABA','/home/student/Johanna/Projekte/caps/cap-referenceset/')
+
+def calc_distances( pdbid, chain, refresno, dist_range, side_chain=False ):
+    def distnum( resno, atomname ):
+        return numa.copy( chain=chain, resno=resno, atomname=atomname )
+    dist_list = []
+    numa = get_npdb( pdbid )
+    if side_chain:
+        pass
+    else:
+        for resno in range( refresno-dist_range, refresno+dist_range ):
+            if resno <= 0:
+                dist_list.append( ( pdbid+chain+str(resno), None ) )
+            else:
+                distance = numpdb.numdist( distnum( resno, "O" ), distnum( refresno, "N" ) )
+                distance2 = numpdb.numdist( distnum( resno, "N" ), distnum( refresno, "O" ) )
+                if distance <= 3.5:
+                    dist_list.append( ( pdbid+chain+str(resno), distance ) )
+                elif distance2 <= 3.5:
+                    dist_list.append( ( pdbid+chain+str(resno), distance2 ) )
+                else: dist_list.append( ( pdbid+chain+str(resno), None ) )
+    return dist_list
+
+def superpose2( refpdbid, refchain, refresno, pdbid, chain, resno, superpose_range=1 ):#superpose_range = out of helix
+    numa = get_npdb( refpdbid ); numa2 = get_npdb( pdbid )
+    sele_ref = {
+            "chain": refchain, "resno": [ refresno-4, refresno+superpose_range ]
+        }
+    sele = {
+            "chain": chain, "resno": [ resno-4, resno+superpose_range ]
+        }
+    #print sele_ref, sele
+    try:
+        rmsd = numpdb.superpose(
+            numa, numa2, sele, sele_ref, align=False#, verbose=False
+        )
+    except Exception:
+        rmsd=None
+    
+    try:
+        return rmsd.rmsd
+    except Exception: #to do: length differ, cannot superpose
+        return 999
+    
+#print superpose2( '1ABA', 'A', 15, '1ABA', 'A', 30 )
+def get_angles( pdbid, chain, resno ):
+    def distnum( chain,resno ):
+        return numa.copy( chain=chain, resno=resno )
+    def get_dihedral(name, *numatoms):
+        return np.hstack( map( lambda x: x[name][0], numatoms ) )
+    numa = get_npdb( pdbid );
+    phi = get_dihedral( "phi", distnum(chain, resno) )
+    psi = get_dihedral( "psi", distnum(chain, resno) )
+    return ( phi, psi )
+#print get_angles('1ABA', 'A', 15)
+
+def get_infos( ccap_range, ccap, dist_range ):
+    pdbid, chain, resno = ccap
+    dist_list = []; angle_list = []
+    for i in range(resno-ccap_range, resno+ccap_range+1):
+        if i <= 0:
+            dist_list.append( ( i,None ) )
+            angle_lsit.append( ( None,None ) )
+        else:
+            dist_list.append( calc_distances( pdbid, chain, i,  dist_range ) )
+            angle_list.append( get_angles( pdbid, chain, i ) )
+    #todo: save lists to file
+    return dist_list, angle_list
+
+
+
+outdir = '/home/student/Johanna/Projekte/caps/tm-cluster/'
+pdbid_list = os.path.join(outdir,'pdb-list.txt')
+#print get_refset(pdbid_list, outdir)
+#print get_TM_regions( '2GIF', 6, '/home/student/Johanna/Projekte/caps/tm-cluster/')
+
+
+
+
+
+
+#clusterbysuperpose
+def cluster_by_superpose():
+    #inputs
+    outputdir='/home/student/Johanna/Projekte/caps/cluster_by_superpose/'
+    refdir='/home/student/Johanna/Projekte/caps/cap-referenceset/'
+    min_helix_length=8
+    
+    
+    all_ccaps = []
+    all_pdbs = [i[0:-4] for i in os.listdir(refdir)]
+    for pdbid in all_pdbs:
+        #get ccap:
+        helix_regions = get_helix_regions( pdbid, refdir, min_helix_length)
+        for elem in helix_regions:
+            all_ccaps.append( ( elem[0],elem[1][0],elem[1][1] ) )
+    all_ccaps.sort()
+    superpose_matrix = np.empty([len(all_ccaps),len(all_ccaps)])
+    #superpose_list = []
+    for index, refpdbids in enumerate(all_ccaps):
+        refpdbid, refchain, refresno = refpdbids
+        for index2, pdbids in enumerate(all_ccaps):
+            if index2>index:
+                pdbid, chain, resno = pdbids
+                print index, len(all_ccaps), index2
+                rmsd = superpose2(refpdbid, refchain, refresno, pdbid, chain, resno, superpose_range=1)
+                #superpose_list.append( ( rmsd, ( re ), (  ) ) )
+                superpose_matrix[index][index2]=rmsd
+                superpose_matrix[index2][index]=rmsd
+            elif index2==index:
+                superpose_matrix[index][index2]=999
+    curr_list=[]
+    # todo: cluster!!! spalte/zeile mit niedrigstem Wert im bereich [0:0.2?]
+    # wenn gleich: gesamte spalte/zeile
+    # die raus, die in dem Bereich drin sind
+    # neue matrix schreiben, an all_ccaps denken!
+    print np.amin(superpose_matrix)
+    print np.argmin(superpose_matrix)
+    print superpose_matrix
+    
+    
+    pass
+cluster_by_superpose()
+def save_newcluster( newcluster, refmotif, refdir, outputdir, overlap ):
+    def _make_jspt_color_motif( pdbid, chain, resno, jspt_file ):
+        with open( jspt_file, "w" ) as fp:
+            s = "select {%s:%s}; color @{color('roygb', 0, %s, %s)}; wireframe 0.3; \n" % (resno, chain, 0,0)
+            fp.write( s )
+            fp.write( "select none; background black;" )
+    def _make_provi_file( pbdid, refdir, provi_file, jspt_file ):
+        with open( provi_file, "w" ) as fp:
+            s = '[ {"filename": "%s"},{"filename":  "%s"}]' % ('../../../cap-referenceset/'+pdbid+'.pdb', jspt_file)
+            fp.write( s )
+    
+    if overlap: outdir2=outputdir+'cluster-overlap/'+refmotif+'/'
+    else: outdir2=outputdir+'cluster-no-overlap/'+refmotif+'/'
+    try: os.makedirs(outdir2)
+    except: pass
+    for motif in newcluster:
+        pdbid=motif[0:4]; chain=motif[4]; resno=motif[5:]
+        jspt_file=outdir2+pdbid+chain+resno+'_color_motif.jspt'
+        provi_file=outdir2+pdbid+chain+resno+'_motif.provi'
+        _make_jspt_color_motif(pdbid, chain, resno, jspt_file)
+        _make_provi_file( pdbid, refdir, provi_file, pdbid+chain+resno+'_color_motif.jspt' )
+def make_clusters_with_overlap(  ):
+    #all_motifs=get_all_motifs( indir )
+    motifs_file='/home/student/Johanna/Projekte/caps/norange/2013-08-07_14-59-04_all_motifs.txt'
+    outputdir='/home/student/Johanna/Projekte/caps/cluster/'
+    refdir='/home/student/Johanna/Projekte/caps/cap-referenceset/'
+    all_motifs = []
+    with open(motifs_file, 'r') as fo:
+        for motifline in fo:
+            pdb_id1, chain1, cd1 = motifline.split()
+            all_motifs.append(pdb_id1+chain1+str(cd1))
+    curr_motif_list=[]
+    curr_motif_list=all_motifs
+    
+    while curr_motif_list!=[]:
+        curr_treshold=get_treshold(curr_motif_list, '0,0.2')
+        max_treshold=[]
+        j=0
+        while j<=len(curr_treshold)-1 and (not curr_treshold[j][0]<curr_treshold[0][0]):
+            max_treshold.append(curr_treshold[j])
+            j += 1
+        newcluster_no_overlap = superpose(sorted(max_treshold, key=lambda tup: tup[2])[0][1], curr_motif_list, '0,0.2' )
+        save_newcluster( newcluster_no_overlap, sorted(max_treshold, key=lambda tup: tup[2])[0][1], refdir, outputdir, False )
+        for i in max_treshold:
+            newcluster_overlap = superpose(i[1], all_motifs, '0,0.2' )
+            print i
+            save_newcluster( newcluster_overlap, i[1], refdir, outputdir, True )
+            curr_motif_list=list((set(curr_motif_list)).difference((set(curr_motif_list)).intersection(set(newcluster_overlap))))
+
+
+jo=kojo
+print jo
+#clusterbydistances - cluster by superpose
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 motifs_dict = {
@@ -391,7 +697,7 @@ def save_newcluster( newcluster, refmotif, refdir, outputdir, overlap ):
             fp.write( "select none; background black;" )
     def _make_provi_file( pbdid, refdir, provi_file, jspt_file ):
         with open( provi_file, "w" ) as fp:
-            s = '[ {"filename": "%s"},{"filename":  "%s"}]' % ('../../../cap-referenceset/'+pdbid+'.pdb/'+pdbid+'.pdb', jspt_file)
+            s = '[ {"filename": "%s"},{"filename":  "%s"}]' % ('../../../cap-referenceset/'+pdbid+'.pdb', jspt_file)
             fp.write( s )
     
     if overlap: outdir2=outputdir+'cluster-overlap/'+refmotif+'/'
@@ -403,7 +709,7 @@ def save_newcluster( newcluster, refmotif, refdir, outputdir, overlap ):
         jspt_file=outdir2+pdbid+chain+resno+'_color_motif.jspt'
         provi_file=outdir2+pdbid+chain+resno+'_motif.provi'
         _make_jspt_color_motif(pdbid, chain, resno, jspt_file)
-        _make_provi_file( pdbid, refdir, provi_file, jspt_file )
+        _make_provi_file( pdbid, refdir, provi_file, pdbid+chain+resno+'_color_motif.jspt' )
         
     
 
@@ -438,9 +744,22 @@ def make_clusters_with_overlap(  ):
             curr_motif_list=list((set(curr_motif_list)).difference((set(curr_motif_list)).intersection(set(newcluster_overlap))))
 
 
-make_clusters_with_overlap()
-jo=kojo
-print jo
+
+
+
+def seco_cluster():
+    coords = np.array([ [ d['x'], d['y'], d['z'] ] for d in vert ])
+    fd = scipy.cluster.hierarchy.fclusterdata(
+        coords, pr, criterion='distance',
+        metric='euclidean', method='average'
+    )
+    clust = collections.defaultdict( list )
+    for i, x in enumerate(fd):
+        clust[x].append( coords[i] )    
+    pass
+
+
+
 
 def _superpose_test( numa, sele_motif ):
 
