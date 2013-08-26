@@ -158,9 +158,18 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 **copy_dict( msms_kwargs, probe_radius=self.vdw_probe_radius)
             ))
             self.output_files += self.msms0.output_files
-            self.output_files += [ 
-                self.original_dry_pdb, self.final_pdb, self.info_file
-            ]
+            self.output_files += [ self.original_dry_pdb, self.final_pdb ]
+
+            self.pdb_info = PdbInfo( self.pdb_id,
+                **copy_dict( kwargs, run=False, 
+                    output_dir=self.subdir("pdb_info") ) )
+            self.opm_info = OpmInfo( self.pdb_id,
+                **copy_dict( kwargs, run=False, 
+                    output_dir=self.subdir("opm_info") ) )
+            self.mpstruc_info = MpstrucInfo( self.pdb_id,
+                **copy_dict( kwargs, run=False, 
+                    output_dir=self.subdir("mpstruc_info") ) )
+            self.output_files += [ self.info_file ]
 
             self.water_variants = [
                 ( "non", self.no_water_file ),
@@ -228,6 +237,9 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             if do( "final" ):
                 self.make_final_pdb()
             if do( "info" ):
+                self.pdb_info()
+                self.opm_info()
+                self.mpstruc_info()
                 self.make_info()
 
             for suffix, pdb_file in self.water_variants:
