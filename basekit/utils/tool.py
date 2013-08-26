@@ -634,11 +634,14 @@ class Tool( object ):
         return os.path.join( self.output_dir, file_name )
     def abspath( self, path ):
         return os.path.abspath( path )
-    def subdir( self, directory ):
+    def subdir( self, directory, filename=None ):
         subdir = os.path.join( self.output_dir, directory )
         if not os.path.exists( subdir ):
             os.makedirs( subdir )
-        return subdir
+        if filename:
+            return os.path.join( subdir, filename )
+        else:
+            return subdir
     def datapath( self, file_name ):
         if not hasattr( self, "tmpl_dir" ):
             raise "No data path available."
