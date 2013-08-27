@@ -189,6 +189,15 @@ def listify( item ):
 def flatten( lists ):
     return list( itertools.chain.from_iterable( lists ) )
 
+def common_prefix( a, b ):
+    i = 0
+    for i, (x, y) in enumerate( itertools.izip(a,b) ):
+        if x!=y: break
+    return a[0:i]
+
+def common_suffix( a, b ):
+    return reversed( common_prefix( reversed( a ), reversed( b ) ) )
+
 def iter_overlap( iterator, n=None ):
     iterator = iter(iterator)
     if n:
