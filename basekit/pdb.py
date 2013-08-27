@@ -200,7 +200,8 @@ class PdbEdit( PyTool ):
             "backbone_only": False,
             "protein_only": False,
             "detect_incomplete": False,
-            "configuration": False
+            "configuration": False,
+            "info": False
         })
         sele = None
 

@@ -379,10 +379,12 @@ class InfoParser( object ):
     def get( self ):
         dct = self._dict
         return {
-            "keywords": dct.get("keywords").split(", "),
-            "experiment": dct.get("experiment"),
-            "title": dct.get("title"),
-            "resolution": try_float( dct.get("resolution").split()[1], None )
+            "keywords": dct.get("keywords", "").split(", "),
+            "experiment": dct.get("experiment", ""),
+            "title": dct.get("title", ""),
+            "resolution": try_float( 
+                dct.get("resolution", "").split()[1], None 
+            )
         }
 
 
@@ -688,7 +690,7 @@ class NumPdb:
             "detect_incomplete": True,
             "configuration": True,
             "no_sort": False,
-            "info": True
+            "info": False
         }
         if features: self.features.update( features )
         self._parse()
