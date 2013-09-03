@@ -215,7 +215,7 @@ class ProjectRun( PyTool ):
                             )
                             for k, v in sub_pp[ pid+str(i) ].iteritems():
                                 if isinstance( v, basestring ):
-                                    v = v.format( i=str(i) )
+                                    v = v.format( i=i )
                                     sub_pp[ pid+str(i) ][k] = v
                         del p["__sub__"][pid]
                     else:
