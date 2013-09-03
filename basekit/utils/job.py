@@ -16,14 +16,16 @@ except ImportError:
 
 
 
-def run_command( cmd, cwd=".", log=None, verbose=False, input_file=None ):
+def run_command( cmd, cwd=".", log=None, verbose=False, input_file=None,
+                 shell=False ):
     kwargs = {
         "args": map( str, cmd ),
         "cwd": cwd,
         "stdout": DEVNULL,
         "stderr": subprocess.STDOUT,
         "env": os.environ,
-        "preexec_fn": os.setpgrp
+        "preexec_fn": os.setpgrp,
+        "shell": shell
     }
     if input_file:
         kwargs["stdin"] = open( input_file, "r" )

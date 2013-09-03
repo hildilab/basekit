@@ -72,7 +72,7 @@ class ToolParser( argparse.ArgumentParser ):
             if not tool_class.no_output:
                 group.add_argument( 
                     '-o', dest="output_dir", metavar='OUTPUT_DIR', 
-                    type=str, default="./" 
+                    type=str, default="" 
                 )
                 group.add_argument( 
                     '-t', dest="timeout", metavar='TIMEOUT', 
@@ -671,6 +671,7 @@ class PyTool( Tool ):
 
 class CmdTool( Tool ):
     cmd_input = None
+    use_shell = False
     def __init__( self, *args, **kwargs ):
         super(CmdTool, self).__init__( *args, **kwargs )
         if not hasattr( self, "cmd" ):
@@ -683,7 +684,7 @@ class CmdTool( Tool ):
             cmd = [ TIMEOUT_CMD, self.timeout ] + cmd
         ret = run_command( 
             cmd, log=self.stdout_file, verbose=self.verbose, 
-            input_file=self.cmd_input
+            input_file=self.cmd_input, shell=self.use_shell
         )
         return ret
 
