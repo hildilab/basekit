@@ -508,6 +508,7 @@ class ParallelMixin( Mixin ):
 class Tool( object ):
     __metaclass__ = ToolMetaclass
     def __init__( self, *args, **kwargs ):
+        args, kwargs = self._pre_init( args, kwargs )
         self.name = self.__class__.__name__.lower()
 
         # hidden kwargs
@@ -594,6 +595,8 @@ class Tool( object ):
     def __call__( self ):
         self.__run()
         return self
+    def _pre_init( self, args, kwargs ):
+        return args, kwargs
     def _init( self, *args, **kwargs ):
         pass
     def _run( self ):
