@@ -23,11 +23,13 @@ from utils.tool import (
     JsonBackend, SqliteBackend
 )
 from utils.numpdb import NumPdb, NumAtoms
-from opm import Opm
+from opm import Opm, OpmInfo
 from dowser import DowserRepeat
 from voronoia import Voronoia, HOLE_NOT_FILLED, HOLE_PARTLY_FILLED
 from hbexplore import HBexplore
 from msms import Msms
+from mpstruc import MpstrucInfo
+from pdb import PdbInfo
 
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "mppd" )
@@ -169,6 +171,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             self.mpstruc_info = MpstrucInfo( self.pdb_id,
                 **copy_dict( kwargs, run=False, 
                     output_dir=self.subdir("mpstruc_info") ) )
+            
             self.output_files += [ self.info_file ]
 
             self.water_variants = [

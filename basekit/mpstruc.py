@@ -102,7 +102,7 @@ class MpstrucInfo( PyTool ):
     """A tool to get infos from the MPstruc database"""
     args = [
         _( "pdb_id", type="str" ),
-        _( "mpstruc_xml|mx", type="file", ext="xml", default=None ),
+        _( "mpstruc_xml|mx", type="file", ext="xml", default="" ),
     ]
     out = [
         _( "info_file", file="mpstruc_info_{pdb_id}.json" )
