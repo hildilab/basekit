@@ -16,6 +16,9 @@ Icon*
 
 data/test/*
 data/voronoia/get_volume.lg
+data/voronoia/get_volume_32.lg
 
 basekit.egg-info/*
 build/*
+
+test/tmp/*
