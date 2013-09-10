@@ -8,10 +8,7 @@ import collections
 import json
 import tempfile
 
-import utils.path
-from utils import (
-    working_directory, copy_dict
-)
+from utils import working_directory
 from utils.tool import _, _dir_init, PyTool
 
 

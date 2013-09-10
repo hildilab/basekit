@@ -11,7 +11,7 @@ import collections
 
 import utils.path
 from utils import copy_dict, iter_stride
-from utils.tool import _, _dir_init, CmdTool, PyTool, ProviMixin, DbTool
+from utils.tool import _, _dir_init, CmdTool, PyTool, ProviMixin
 from utils.numpdb import NumPdb, numsele
 
 
@@ -236,5 +236,3 @@ class LinkItDensity( PyTool, ProviMixin ):
 
 
 
-class LinkerDb( DbTool ):
-    pass
