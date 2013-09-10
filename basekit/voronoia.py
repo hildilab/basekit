@@ -9,13 +9,13 @@ import logging
 import collections
 
 from utils import memoize_m
-from utils.tool import _, _dir_init, CmdTool, ProviMixin
+from utils.tool import _, _dir_init, CmdTool, ProviMixin, ParallelMixin
 
 import provi_prep as provi
 
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "voronoia" )
-VOLUME_CMD = os.path.join( TMPL_DIR, "get_volume.exe" )
+VOLUME_CMD = os.path.join( TMPL_DIR, "get_volume_32.exe" )
 
 logging.basicConfig()
 LOG = logging.getLogger('voronoia')
@@ -151,38 +151,56 @@ def parse_vol( vol_file, pdb_file ):
 
 
 # get_volume.exe ex:0.1 rad:protor i:file.pdb o:out.vol
-class Voronoia( CmdTool, ProviMixin ):
+class Voronoia( CmdTool, ProviMixin, ParallelMixin ):
     """A wrapper around the 'voronoia' aka 'get_volume' programm."""
     args = [
-        _( "pdb_file", type="file", ext="pdb" ),
+        _( "pdb_input", type="file" ),
         _( "ex", type="float", range=[0.01, 0.5], step=0.01, default=0.1 ),
-        _( "radii", type="select", options=["protor"], default="protor" )
+        _( "radii", type="select", options=["protor"], default="protor" ),
+        # TODO run the tool multiple times 
+        # when it fails without the shuffle option
+        _( "shuffle", type="checkbox", default=False, 
+            help="slightly changes the input coordinates to"
+                "circumvent numerical problems" )
     ]
     out = [
-        _( "vol_file", file="{pdb_file.stem}.vol" ),
-        _( "log_file", file="{pdb_file.stem}.log" ),
+        # TODO asr Not working for PrallelMixin
+        # _( "vol_file", file="{pdb_input.stem}.vol" ),
+        # _( "log_file", file="{pdb_input.stem}.log" ),
+        _( "vol_file", file="voro.vol" ),
+        _( "log_file", file="voro.log" ),
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "voronoia.provi"
     def _init( self, *args, **kwargs ):
-        self.cmd = [ 
-            "wine", VOLUME_CMD, 
-            "ex:%0.1f"%float(self.ex), 
-            "rad:%s"%self.radii,
-            "x:yes",
-            "l:%s" %self.log_file,
-            "i:%s"%self.pdb_file, 
-            "o:%s"%self.vol_file
-        ]
+        self._init_parallel( self.pdb_input, **kwargs )
+
+        if not self.parallel:
+            self.cmd = [ 
+                "wine", VOLUME_CMD, 
+                "ex:%0.1f"%float(self.ex), 
+                "rad:%s"%self.radii,
+                "x:yes",
+                "l:%s" %self.log_file,
+                "i:%s"%self.pdb_input, 
+                "o:%s"%self.vol_file
+            ]
+            if self.shuffle:
+                self.cmd.append( "sh:y" )
+        else:
+            self.cmd = None
     def _post_exec( self ):
-        provi.prep_volume( self.vol_file, self.pdb_file )
-        self._make_provi_file(
-            pdb_file=self.relpath( self.pdb_file ),
-            vol_file=self.relpath( self.vol_file )
-        )
+        if not self.parallel:
+            provi.prep_volume( self.vol_file, self.pdb_input )
+            self._make_provi_file(
+                pdb_file=self.relpath( self.pdb_input ),
+                vol_file=self.relpath( self.vol_file )
+            )
+    def _parallel_results( self, results ):
+        self.results = results
     @memoize_m
     def get_vol( self ):
-        return parse_vol( self.vol_file, self.pdb_file )
+        return parse_vol( self.vol_file, self.pdb_input )
 
 
 

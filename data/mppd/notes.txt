@@ -143,3 +143,16 @@ time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 0 1600 -id -nw 
 
 
 time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 0 1600 -id -nw 6 --variants fin -id 1IWO 1J4N 1K4C 1NTM 1OY8 1R3I 1R3J 1R3K 1ZWI 2BOB 2DWE 2EVU 2HFE 2HG5 2HRT 2HVJ 2IH1 2ITC 2ITD 2JK5 2NTW 2P7T 2QKS 2W1P 2WLH 2X6A 2X6B 3B8E 3CN5 3E89 3FB6 3FB7 3H1J 3HPL 3I4D 3IGA 3K03 3K04 3K0D 3LUT 3M9I 3NKA 3OR6 3OR7 3OUF 3R65 3SPC 3SPG 3SPI 3STL 3STZ 3T2M 3T4D 3T4Z 3TCU 3TET 4DNT 4FC4 4H33 --tools voronoia
+
+
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 0 1600 -id -nw 6 --variants fin -id 1IWO 1J4N 1K4C 1R3I 1R3J 1ZWI 2HFE 2HG5 2IH1 2JK5 2WLH 3FB7 3HPL 3IGA 3K03 3K04 3K0D 3LUT 3M9I 3NKA 3OR6 3OR7 3OUF 3R65 3SPC 3SPG 3SPI 3STL 3STZ 3T2M 3T4D 3T4Z 3TCU 3TET 4DNT 4FC4 4H33 --tools voronoia
+
+
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 0 1600 -id -nw 6 --variants fin -id 1K4C 1R3I 1R3J 1ZWI 2HFE 2HG5 2IH1 2JK5 2WLH 3FB7 3HPL 3IGA 3M9I 3OR6 3STZ --tools voronoia
+
+
+time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 0 1600 -id -nw 6 --variants fin -id 1K4C 1R3I 1R3J 1ZWI 2HFE 2IH1 2JK5 2WLH 3FB7 3HPL 3IGA 3M9I --tools voronoia
+
+
+
+

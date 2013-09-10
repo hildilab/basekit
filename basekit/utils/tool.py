@@ -211,9 +211,9 @@ class ToolMetaclass( type ):
         if MIXIN_REGISTER['ParallelMixin'] in bases:
             if not "ParallelClass" in dct:
                 cls.ParallelClass = cls
-            cls_func = cls.func
-            cls.func = lambda self: MIXIN_REGISTER['ParallelMixin'].func(
-                self, cls_func
+            cls_run = cls._run
+            cls._run = lambda self: MIXIN_REGISTER['ParallelMixin']._run(
+                self, cls_run
             )
 
         if not "no_output" in dct:
@@ -401,7 +401,7 @@ class RecordsMixin( Mixin ):
 def call( tool ):
     try:
         tool()
-        if tool.check_only:
+        if hasattr( tool, "check_only" ) and tool.check_only:
             info = tool.check( full=True )
         else:
             info = str( tool )
@@ -495,7 +495,7 @@ class ParallelMixin( Mixin ):
         p.close()
         p.join()
         return data
-    def func( self, fn ):
+    def _run( self, fn ):
         if self.parallel:
             self._make_tool_list()
             tool_results = self._func_parallel()
@@ -690,15 +690,6 @@ class CmdTool( Tool ):
             input_file=self.cmd_input, shell=self.use_shell
         )
         return ret
-
-
-class DbTool( Tool ):
-    def __init__( self, cmd=None, *args, **kwargs ):
-        super(DbTool, self).__init__( *args, **kwargs )
-        if not hasattr( self, "schema" ):
-            raise Exception("A DbTool needs a 'schema' attribute")
-    def _run( self ):
-        pass
 
 
 
