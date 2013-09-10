@@ -33,5 +33,26 @@ setup(
         'basekit.utils',
         'basekit.utils.align'
     ],
-    install_requires = [ 'numpy', 'matplotlib', 'poster' ]
+    install_requires = [ 'numpy', 'matplotlib', 'poster' ],
+    scripts=[
+        'scripts/apbs.py',
+        'scripts/capture.py',
+        'scripts/dowser.py',
+        'scripts/dssp.py',
+        'scripts/hbexplore.py',
+        'scripts/jmol.py',
+        'scripts/linker.py',
+        'scripts/motif.py',
+        'scripts/mppd.py',
+        'scripts/mpstruc.py',
+        'scripts/msa.py',
+        'scripts/msms.py',
+        'scripts/opm.py',
+        'scripts/pdb.py',
+        'scripts/project.py',
+        'scripts/spider.py',
+        'scripts/sstruc.py',
+        'scripts/voronoia.py',
+        'scripts/wine_watcher.py',
+    ]
 )
