@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<orgPdbCompositeQuery version="1.0">
+ <queryRefinement>
+  <queryRefinementLevel>0</queryRefinementLevel>
+  <orgPdbQuery>
+    <queryType>org.pdb.query.simple.ChainTypeQuery</queryType>
+    <containsProtein>?</containsProtein>
+    <containsDna>N</containsDna>
+    <containsRna>Y</containsRna>
+    <containsHybrid>N</containsHybrid>
+  </orgPdbQuery>
+ </queryRefinement>
+ <queryRefinement>
+  <queryRefinementLevel>1</queryRefinementLevel>
+  <conjunctionType>and</conjunctionType>
+  <orgPdbQuery>
+    <queryType>org.pdb.query.simple.${ins1}Query</queryType>
+    <${ins2}>
+    <${ins3}>
+  </orgPdbQuery>
+ </queryRefinement>
+ <queryRefinement>
+  <queryRefinementLevel>2</queryRefinementLevel>
+  <conjunctionType>and</conjunctionType>
+  <orgPdbQuery>
+    <queryType>org.pdb.query.simple.DepositDateQuery</queryType>
+    <database_PDB_rev.date_original.comparator>between</database_PDB_rev.date_original.comparator>
+    <database_PDB_rev.date_original.min>${date}</database_PDB_rev.date_original.min>
+    <database_PDB_rev.date_original.max>${today}</database_PDB_rev.date_original.max>
+  </orgPdbQuery>
+ </queryRefinement>
+</orgPdbCompositeQuery>

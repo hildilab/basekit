@@ -6,6 +6,8 @@ import urllib2
 import gzip
 import collections
 import json
+import string
+import datetime
 
 import numpy as np
 np.seterr( all="raise" )
@@ -15,7 +17,6 @@ from utils import try_int, copy_dict
 from utils.tool import _, _dir_init, PyTool, ProviMixin
 from utils.timer import Timer
 from utils.db import get_pdb_files
-
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "pdb" )
 
@@ -122,7 +123,7 @@ class PdbDownload( PyTool ):
 
 def pdb_split( pdb_file, output_dir, backbone_only=False, 
                resno_ignore=False, max_models=False, zfill=False ):
-    """ author: Johanna Thiemann
+    """ author: Johanna Tiemann
         author: Alexander Rose
         This function puts pdb-models into their own file.
     """ 
@@ -349,4 +350,86 @@ class NumpdbTest( PyTool ):
     ]
     def func( self ):
         numpdb_test( self.pdb_file )
+
+
+def rna_list( pdbid_file=None, compare=False ):
+    """ author: Johanna Tiemann
+        This function checks, if there are new RNA files.
+    """
+    def rcsb_search( data ):
+        req = urllib2.Request(url, data=data)
+        f = urllib2.urlopen(req)
+        result = f.read()
+        return result.split() if result else []
+    date = '1955-01-01'
+    today = str(datetime.datetime.now().strftime("%Y-%m-%d"))
+    pdbid_current = []
+    url = 'http://www.rcsb.org/pdb/rest/search'
+    searchstr_res = [
+        'Resolution',
+        'refine.ls_d_res_high.min>0.0</refine.ls_d_res_high.min',
+        'refine.ls_d_res_high.max>3.5</refine.ls_d_res_high.max'
+    ]
+    searchstr_nmr = [
+        'ExpType',
+        'mvStructure.expMethod.value>SOLUTION NMR</mvStructure.expMethod.value',
+        'mvStructure.hasExperimentalData.value>Y</mvStructure.hasExperimentalData.value'
+    ]
+    rna_query_temp = string.Template(open(os.path.join( TMPL_DIR, "rna_query.tpl" )).read())
+    queryText1 = rna_query_temp.substitute(
+                                            ins1 = searchstr_res[0],
+                                            ins2 = searchstr_res[1],
+                                            ins3 = searchstr_res[2],
+                                            date = date,
+                                            today = today
+                                        )
+    queryText2 = rna_query_temp.substitute(
+                                            ins1 = searchstr_nmr[0],
+                                            ins2 = searchstr_nmr[1],
+                                            ins3 = searchstr_nmr[2],
+                                            date = date,
+                                            today = today
+    )
+    pdbid_current += rcsb_search(queryText1)
+    pdbid_current += rcsb_search(queryText2)
+    if compare:
+        pdbid_compare = open(pdbid_file).read()
+        pdbid_old2 = set(pdbid_compare.split('\n'))
+        pdbid_utd2 = set(pdbid_current)
+        pdbid_new = []; pdbid_old = []
+        pdbid_old = list(pdbid_old2.difference(pdbid_utd2))
+        pdbid_new = list(pdbid_utd2.difference(pdbid_old2))
+        pdbid_old.remove('')
+        return pdbid_current, pdbid_new, pdbid_old
+    return pdbid_current
+
+
+class RNAlist( PyTool ):
+    args = [
+        _( "pdbid_file", type="file", ext="txt", default='' )
+    ]
+    out = [
+        _( "current_file", file="current.txt" ),
+        _( "new_file", file="new.txt" ),
+        _( "old_file", file="old.txt" )
+    ]
+    def _init( self, *args, **kwargs ):
+        self.compare = False
+        if self.pdbid_file:
+            self.compare = True
+    def func( self ):
+        self.rna_lists = rna_list( 
+            self.pdbid_file, self.compare
+        )
+    def _post_exec( self ):
+        if self.compare:
+            with open( self.current_file, "w" ) as fp:
+                fp.write( "\n".join( self.rna_lists[0] ) )
+            with open( self.new_file, "w" ) as fp:
+                fp.write( "\n".join( self.rna_lists[1] ) )
+            with open( self.old_file, "w" ) as fp:
+                fp.write( "\n".join( self.rna_lists[2] ) )
+        else:
+            with open( self.current_file, "w" ) as fp:
+                fp.write( "\n".join( self.rna_lists ) )
 
