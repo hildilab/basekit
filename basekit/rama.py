@@ -7,8 +7,6 @@ from utils import listify, flatten, get_index
 
 import numpy as np
 
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
