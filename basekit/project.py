@@ -257,7 +257,7 @@ class ProjectRun( PyTool ):
             tool = get_tool( t )
 
             if "__summary__" in t:
-                kwargs = self.get_kwargs( tid, t, {} )
+                kwargs = copy.deepcopy( self.get_kwargs( tid, t, {} ) )
                 wd = self.output_dir
 
                 print " `-- SUMMARY: %s" % ", ".join([ "all" ])
@@ -269,10 +269,13 @@ class ProjectRun( PyTool ):
                         (pid, parts_all[pid]) for pid in 
                         kwargs["__parts__"] if pid in parts_all
                     ])
-                if "__parts_ignore__" in kwargs:
-                    for pid in kwargs["__parts_ignore__"]:
-                        del parts[ pid ]
-
+                
+                # TODO hardly usable, needs regex
+                # if "__parts_ignore__" in kwargs:
+                #     for pid in kwargs["__parts_ignore__"]:
+                #         if pid in parts:
+                #             del parts[ pid ]
+                
                 if "__append__" in kwargs:
                     d = collections.defaultdict(list)
                     for pid, p in parts.iteritems():
