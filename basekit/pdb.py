@@ -17,8 +17,12 @@ from utils import try_int, copy_dict
 from utils.tool import _, _dir_init, PyTool, ProviMixin
 from utils.timer import Timer
 from utils.db import get_pdb_files
+from utils.list import ListRecord, ListIO, list_compare
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "pdb" )
+
+PDB_SEARCH_URL = 'http://www.rcsb.org/pdb/rest/search'
+PDB_DOWNLOAD_URL = 'http://www.rcsb.org/pdb/files/'
 
 
 
@@ -79,10 +83,9 @@ class PdbUnzip( PyTool ):
 
 
 
-
 def pdb_download( pdb_id, output_file ):
     pdb_download_urls = [
-        "http://www.rcsb.org/pdb/files/",
+        PDB_DOWNLOAD_URL,
         "http://198.202.122.52/pdb/files/", # outdated?
         "http://198.202.122.51/pdb/files/"  # outdated?
     ]
@@ -352,19 +355,20 @@ class NumpdbTest( PyTool ):
         numpdb_test( self.pdb_file )
 
 
+
+
+def rcsb_search( data ):
+    req = urllib2.Request( PDB_SEARCH_URL, data=data )
+    result = urllib2.urlopen(req).read()
+    return result.split() if result else []
+
 def rna_list( pdbid_file=None, compare=False ):
-    """ author: Johanna Tiemann
+    """ author: Johanna Tiemann, Alexander Rose
         This function checks, if there are new RNA files.
     """
-    def rcsb_search( data ):
-        req = urllib2.Request(url, data=data)
-        f = urllib2.urlopen(req)
-        result = f.read()
-        return result.split() if result else []
     date = '1955-01-01'
     today = str(datetime.datetime.now().strftime("%Y-%m-%d"))
-    pdbid_current = []
-    url = 'http://www.rcsb.org/pdb/rest/search'
+    pdb_list = []
     searchstr_res = [
         'Resolution',
         'refine.ls_d_res_high.min>0.0</refine.ls_d_res_high.min',
@@ -375,61 +379,46 @@ def rna_list( pdbid_file=None, compare=False ):
         'mvStructure.expMethod.value>SOLUTION NMR</mvStructure.expMethod.value',
         'mvStructure.hasExperimentalData.value>Y</mvStructure.hasExperimentalData.value'
     ]
-    rna_query_temp = string.Template(open(os.path.join( TMPL_DIR, "rna_query.tpl" )).read())
-    queryText1 = rna_query_temp.substitute(
-                                            ins1 = searchstr_res[0],
-                                            ins2 = searchstr_res[1],
-                                            ins3 = searchstr_res[2],
-                                            date = date,
-                                            today = today
-                                        )
-    queryText2 = rna_query_temp.substitute(
-                                            ins1 = searchstr_nmr[0],
-                                            ins2 = searchstr_nmr[1],
-                                            ins3 = searchstr_nmr[2],
-                                            date = date,
-                                            today = today
+    rna_query_temp = string.Template(
+        open( os.path.join( TMPL_DIR, "rna_query.tpl" ) ).read()
     )
-    pdbid_current += rcsb_search(queryText1)
-    pdbid_current += rcsb_search(queryText2)
-    if compare:
-        pdbid_compare = open(pdbid_file).read()
-        pdbid_old2 = set(pdbid_compare.split('\n'))
-        pdbid_utd2 = set(pdbid_current)
-        pdbid_new = []; pdbid_old = []
-        pdbid_old = list(pdbid_old2.difference(pdbid_utd2))
-        pdbid_new = list(pdbid_utd2.difference(pdbid_old2))
-        pdbid_old.remove('')
-        return pdbid_current, pdbid_new, pdbid_old
-    return pdbid_current
+    for q in [ searchstr_res, searchstr_nmr ]:
+        query_text = rna_query_temp.substitute(
+            ins1=q[0], ins2=q[1], ins3=q[2],
+            date=date, today=today
+        )
+        pdb_list += rcsb_search( query_text )
+    list_record = ListRecord(
+        "rna_query", PDB_SEARCH_URL,
+        today, today, pdb_list
+    )
+    return list_record
 
 
-class RNAlist( PyTool ):
+class RnaList( PyTool ):
     args = [
-        _( "pdbid_file", type="file", ext="txt", default='' )
+        _( "compare_list|cp", type="file", ext="json", default='' )
     ]
     out = [
-        _( "current_file", file="current.txt" ),
-        _( "new_file", file="new.txt" ),
-        _( "old_file", file="old.txt" )
+        _( "current_list", file="current.json" ),
+        _( "new_list", file="new.json" ),
+        _( "old_list", file="old.json" )
     ]
-    def _init( self, *args, **kwargs ):
-        self.compare = False
-        if self.pdbid_file:
-            self.compare = True
     def func( self ):
-        self.rna_lists = rna_list( 
-            self.pdbid_file, self.compare
-        )
+        self.rna_record = rna_list()
     def _post_exec( self ):
-        if self.compare:
-            with open( self.current_file, "w" ) as fp:
-                fp.write( "\n".join( self.rna_lists[0] ) )
-            with open( self.new_file, "w" ) as fp:
-                fp.write( "\n".join( self.rna_lists[1] ) )
-            with open( self.old_file, "w" ) as fp:
-                fp.write( "\n".join( self.rna_lists[2] ) )
-        else:
-            with open( self.current_file, "w" ) as fp:
-                fp.write( "\n".join( self.rna_lists ) )
+        ListIO( self.current_list ).write( self.rna_record )
+        if self.compare_list:
+            new_record, old_record = list_compare(
+                self.rna_record, ListIO( self.compare_list ).read()
+            )
+            ListIO( self.new_list ).write( new_record )
+            ListIO( self.old_list ).write( old_record )
+
+
+
+
+
+
+
 

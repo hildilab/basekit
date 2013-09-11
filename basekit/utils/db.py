@@ -2,6 +2,7 @@ import os
 import sqlite3
 
 
+
 def get_pdb_subdirs( directory ):
     subdirs = []
     for subdir in os.listdir( directory ):
@@ -59,4 +60,5 @@ def create_table( db_path, schema, name, data, overwrite=False ):
         c.executemany('INSERT INTO %s VALUES (%s)' % (name, val), data)
 
         conn.commit()
+
 

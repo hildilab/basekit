@@ -294,7 +294,7 @@ class JsonBackend( RecordsBackend ):
     name = "json"
     def write( self, records ):
         records_list = map( 
-            operator.methodcaller( "_asdict" ), records 
+            operator.methodcaller( "_asdict" ), records
         )
         with open( self.file_name, "w" ) as fp:
             json.dump( records_list, fp, indent=4 )
