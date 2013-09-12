@@ -445,8 +445,8 @@ class ListCompare( PyTool ):
 
 class ListJoin( PyTool ):
     args = [
-        _( "list1", type="file", ext="json" ),
-        _( "list2", type="file", ext="json" ),
+        _( "list", type="file", ext="json", nargs="+" ),
+        # _( "list2", type="file", ext="json" ),
         _( "list_name|ln", type="text", default=None )
     ]
     out = [
@@ -454,8 +454,7 @@ class ListJoin( PyTool ):
     ]
     def func( self ):
         joined_list = list_join(
-            ListIO( self.list1 ).read(),
-            ListIO( self.list2 ).read(),
+            *map( lambda x: ListIO( x ).read(), self.list ),
             name=self.list_name
         )
         ListIO( self.joined_list ).write( joined_list )

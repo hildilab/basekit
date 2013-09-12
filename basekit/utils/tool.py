@@ -546,7 +546,7 @@ class Tool( object ):
                 value = args_iter.next()
             # TODO check if the name already exists
             self.__dict__[ name ] = self.__prep_arg( value, params )
-            if params["type"]=="file":
+            if params["type"]=="file" and "nargs" not in params:
                 self.input_files_dict[ name ] = utils.Bunch(
                     stem=utils.path.stem( value ),
                     basename=os.path.basename( value ),
@@ -577,6 +577,8 @@ class Tool( object ):
         if not value: 
             return value
         if params.get("type") in [ "file", "dir" ]:
+            if "nargs" in params:
+                return map( self.abspath, value )
             return self.abspath( value )
         elif params.get("type")=="sele":
             return numpdb.numsele( value )

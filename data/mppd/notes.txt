@@ -182,7 +182,19 @@ pdb.py join \
 	--list_name non_opm \
 	-o mppd_lists/non_opm/
 
+pdb.py join \
+	mppd_lists/opm_polytopic_alpha/opm_list_class_1.json \
+	mppd_lists/tmdet/pdbtm_list.json \
+	mppd_lists/mpstruc/mpstruc_list.json \
+	--list_name opm_tmdet_mpstruc \
+	-o mppd_lists/opm_tmdet_mpstruc/
 
+### update
+
+time mppd.py pdb \
+	mppd_lists/opm_tmdet_mpstruc/joined_list.txt \
+	-o mppd/ -p file \
+	-i 0 2000 -nw 6 --variants fin -co
 
 
 

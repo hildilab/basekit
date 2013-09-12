@@ -1,6 +1,7 @@
 import string
 import collections
 import datetime
+import operator
 
 from basekit import utils
 from basekit.utils.tool import JsonBackend
@@ -64,16 +65,15 @@ def list_compare( current_record, compare_record, name=None ):
     return new_record, old_record
 
 
-def list_join( rec1, rec2, name=None ):
+def list_join( *rec, **kwargs ):
+    name = kwargs.get( "name", None )
     if name==None:
         name = "join"
     joined_record = ListRecord(
         name, 
-        "%s_%s plus %s_%s" % ( 
-            rec1.name, rec1.retrieved, rec2.name, rec2.retrieved 
-        ),
+        " plus ".join([ "%s_%s" % ( r.name, r.retrieved ) for r in rec ]),
         today(), today(),
-        rec1.list + rec2.list
+        reduce( operator.add, [ r.list for r in rec ], [] )
     )
     return joined_record
 
