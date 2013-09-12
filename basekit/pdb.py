@@ -17,7 +17,7 @@ from utils import try_int, copy_dict
 from utils.tool import _, _dir_init, PyTool, ProviMixin
 from utils.timer import Timer
 from utils.db import get_pdb_files
-from utils.list import ListRecord, ListIO, list_compare
+from utils.list import ListRecord, ListIO, list_compare, list_join
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "pdb" )
 
@@ -423,6 +423,42 @@ class RnaList( PyTool ):
 
 
 
+class ListCompare( PyTool ):
+    args = [
+        _( "list1", type="file", ext="json" ),
+        _( "list2", type="file", ext="json" ),
+        _( "list_name|ln", type="text", default=None )
+    ]
+    out = [
+        _( "list1_only", file="list1_only.json" ),
+        _( "list2_only", file="list2_only.json" )
+    ]
+    def func( self ):
+        list1_only, list2_only = list_compare(
+            ListIO( self.list1 ).read(),
+            ListIO( self.list2 ).read(),
+            name=self.list_name
+        )
+        ListIO( self.list1_only ).write( list1_only )
+        ListIO( self.list2_only ).write( list2_only )
+
+
+class ListJoin( PyTool ):
+    args = [
+        _( "list1", type="file", ext="json" ),
+        _( "list2", type="file", ext="json" ),
+        _( "list_name|ln", type="text", default=None )
+    ]
+    out = [
+        _( "joined_list", file="joined_list.json" )
+    ]
+    def func( self ):
+        joined_list = list_join(
+            ListIO( self.list1 ).read(),
+            ListIO( self.list2 ).read(),
+            name=self.list_name
+        )
+        ListIO( self.joined_list ).write( joined_list )
 
 
 
