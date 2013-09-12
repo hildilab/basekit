@@ -364,10 +364,10 @@ def rcsb_search( data ):
 
 def rna_list( pdbid_file=None, compare=False ):
     """ author: Johanna Tiemann, Alexander Rose
-        This function checks, if there are new RNA files.
+        query rcsb for pdb files containing rna
     """
     date = '1955-01-01'
-    today = str(datetime.datetime.now().strftime("%Y-%m-%d"))
+    today = str( datetime.datetime.now().strftime("%Y-%m-%d") )
     pdb_list = []
     searchstr_res = [
         'Resolution',
@@ -376,8 +376,12 @@ def rna_list( pdbid_file=None, compare=False ):
     ]
     searchstr_nmr = [
         'ExpType',
-        'mvStructure.expMethod.value>SOLUTION NMR</mvStructure.expMethod.value',
-        'mvStructure.hasExperimentalData.value>Y</mvStructure.hasExperimentalData.value'
+        ('mvStructure.expMethod.value>'
+            'SOLUTION NMR'
+        '</mvStructure.expMethod.value'),
+        ('mvStructure.hasExperimentalData.value>'
+            'Y'
+        '</mvStructure.hasExperimentalData.value')
     ]
     rna_query_temp = string.Template(
         open( os.path.join( TMPL_DIR, "rna_query.tpl" ) ).read()
@@ -390,7 +394,7 @@ def rna_list( pdbid_file=None, compare=False ):
         pdb_list += rcsb_search( query_text )
     list_record = ListRecord(
         "rna_query", PDB_SEARCH_URL,
-        today, today, pdb_list
+        None, None, pdb_list
     )
     return list_record
 

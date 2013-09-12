@@ -3,7 +3,7 @@ from __future__ import division
                                                                                                                                                                                                                                                                                                                                                                                                                         
 
 import os
-import itertools                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+import itertools
 import operator
 import json
 import collections
@@ -23,11 +23,7 @@ from pdb import PdbEdit
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "linker" ) 
 
 
-try:
-    LINKIT_DIR = os.environ["LINKIT_DIR"]
-except:
-    print "LINKIT_DIR environment variable not defined"
-    LINKIT_DIR = ""
+LINKIT_DIR = os.environ.get("LINKIT_DIR", "")
 LINKIT_CMD = os.path.join( LINKIT_DIR, "Link_It_dos2.exe" )
 
 

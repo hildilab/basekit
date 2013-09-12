@@ -4,6 +4,8 @@ import datetime
 from basekit.utils.tool import JsonBackend
 
 
+def today():
+    return str( datetime.datetime.now().strftime("%Y-%m-%d") )
 
 
 _ListRecord = collections.namedtuple( "_ListRecord", [
@@ -11,10 +13,15 @@ _ListRecord = collections.namedtuple( "_ListRecord", [
 ])
 
 class ListRecord( _ListRecord ):
-    def __init__( self, name, source, retrieved, version, lst ):
-        super( ListRecord, self ).__init__(
-            name, source, retrieved, version, 
-            list( set( map( str.upper, lst ) ) )
+    def __new__( _cls, name, source, retrieved, version, lst ):
+        if retrieved==None:
+            retrieved = today()
+        if version==None:
+            version = today()
+        lst = list( set( map( str.upper, lst ) ) )
+        lst.sort()
+        return _ListRecord.__new__(
+            _cls, name, source, retrieved, version, lst
         )
 
 class ListIO( JsonBackend ):
@@ -31,7 +38,6 @@ def list_compare( current_record, compare_record ):
     cur_f = frozenset( cur.list )
     cpr = compare_record
     cpr_f = frozenset( cpr.list )
-    today = str( datetime.datetime.now().strftime("%Y-%m-%d") )
     new_record = ListRecord(
         "compare", 
         "%s_%s minus %s_%s" % ( 
@@ -45,7 +51,7 @@ def list_compare( current_record, compare_record ):
         "%s_%s minus %s_%s" % ( 
             cpr.name, cpr.retrieved, cur.name, cur.retrieved
         ),
-        today, today,
+        today(), today(),
         list( cpr_f.difference( cur_f ) )
     )
     return new_record, old_record
