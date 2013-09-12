@@ -23,6 +23,7 @@ DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "pdb" )
 
 PDB_SEARCH_URL = 'http://www.rcsb.org/pdb/rest/search'
 PDB_DOWNLOAD_URL = 'http://www.rcsb.org/pdb/files/'
+PDBE_ASSEMBLY = 'http://www.ebi.ac.uk/pdbe-srv/view/files/{pdb_id:}_1.mmol'
 
 
 
@@ -120,6 +121,27 @@ class PdbDownload( PyTool ):
         for pdb_id, pdb_file in zip( self.pdb_id_list, self.pdb_file_list ):
             pdb_download( pdb_id, pdb_file )
 
+
+
+
+def pdb_assembly( pdb_id ):
+    try:
+        url = PDBE_ASSEMBLY.format( pdb_id=pdb_id )
+        return urllib2.urlopen( url ).read()
+    except urllib2.HTTPError:
+        raise Exception( "Error downloading pdb assembly '%s'" % pdb_id )
+
+class PdbAssembly( PyTool ):
+    args = [
+        _( "pdb_id", type="text", 
+            help="pdb id" )
+    ]
+    out = [
+        _( "assembly_file", file="assembly.pdb" )
+    ]
+    def func( self ):
+        with open( self.assembly_file, "w" ) as fp:
+            fp.write( pdb_assembly( self.pdb_id ) )
 
 
 
@@ -424,6 +446,8 @@ class RnaList( PyTool ):
 
 
 class ListCompare( PyTool ):
+    # TODO make it work for an arbitrary number of lists
+    #   by doing all pairwise comparisions
     args = [
         _( "list1", type="file", ext="json" ),
         _( "list2", type="file", ext="json" ),
@@ -446,7 +470,6 @@ class ListCompare( PyTool ):
 class ListJoin( PyTool ):
     args = [
         _( "list", type="file", ext="json", nargs="+" ),
-        # _( "list2", type="file", ext="json" ),
         _( "list_name|ln", type="text", default=None )
     ]
     out = [

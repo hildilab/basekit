@@ -4,7 +4,7 @@
 
 from basekit.utils.tool import parse_subargs
 from basekit.opm import (
-	Opm, OpmList, OpmInfo, Ppm
+	Opm, OpmList, OpmInfo, Ppm, PpmId
 )
 
 
@@ -15,7 +15,8 @@ def main():
         "id": Opm,
         "list": OpmList,
         "info": OpmInfo,
-        "pdb": Ppm
+        "pdb": Ppm,
+        "id2": PpmId
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )

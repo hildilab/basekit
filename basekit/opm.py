@@ -7,14 +7,18 @@ import re
 import json
 import urllib2
 
+from poster.encode import multipart_encode
+from poster.streaminghttp import register_openers
+
 import numpy as np
 
-
-from utils import memoize_m, try_float
+from utils import memoize_m, try_float, copy_dict
 from utils.math import norm
 from utils.tool import _, _dir_init, PyTool, ProviMixin
 from utils.list import ListRecord, ListIO
+from utils.numpdb import NumPdb
 
+from pdb import PdbAssembly
 
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "opm" )
@@ -23,6 +27,7 @@ OPM_PDB_URL = OPM_URL + "pdb/{pdb_id:}.pdb"
 OPM_LIST_URL = OPM_URL + "superfamilies_dl.php?class={class_id:}"
 OPM_SEARCH_URL = OPM_URL + "protein.php?search={pdb_id:}"
 OPM_LOCAL_PATH = os.environ.get("OPM_LOCAL_PATH", "")
+PPM_URL = "http://sunshine.phar.umich.edu/"
 
 
 def opm_list( class_id ):
@@ -94,11 +99,42 @@ def opm( pdb_id ):
             raise Exception("Opm url error")
 
 
-def ppm( pdb_file ):
-    raise NotImplementedError
+def _parse_ppm( page ):
+    pdb_url = PPM_URL + re.findall( 
+        r'href="\./(pdb_upload/.*out\.pdb)"', page
+    )[0]
+    delta_g = re.findall( r'([-+]?[0-9]*\.?[0-9]+) kcal/mol', page )[0]
+    info_dict = {
+        "delta_g": try_float( delta_g )
+    }
+    return pdb_url, info_dict
+
+def ppm( pdb_file, topology="in", hetero=True ):
+    """queries the PPM webservice"""
+    # Register the streaming http handlers with urllib2
+    register_openers()
+    datagen, headers = multipart_encode({
+        "inout": "in" if topology else "out",
+        "yesno": "yes" if hetero else "no",
+        "userfile": open( pdb_file ),
+        "submit": "Submit"
+    })
+    request = urllib2.Request( PPM_URL + "upload_file.php", datagen, headers )
+    page = urllib2.urlopen( request ).read()
+    
+    pdb_url, info_dict = _parse_ppm( page )
+    pdb_file = urllib2.urlopen( pdb_url ).read()
+
+    info_dict.update({
+        "hetero": hetero,
+        "topology": topology    
+    })
+    return pdb_file, info_dict
 
 
 class OpmMixin( object ):
+    tmpl_dir = TMPL_DIR
+    provi_tmpl = "opm.provi"
     def _post_exec( self ):
         with open( self.processed_file, "w" ) as fp:
             with open( self.opm_file, "r" ) as fp_opm:
@@ -151,33 +187,67 @@ class Opm( OpmMixin, PyTool, ProviMixin ):
         _( "mplane_file", file="{pdb_id}.mplane" ),
         _( "processed_file", file="{pdb_id}_proc.pdb" ),
     ]
-    tmpl_dir = TMPL_DIR
-    provi_tmpl = "opm.provi"
-    def _init( self, *args, **kwargs ):
-        pass
     def func( self ):
         with open( self.opm_file, "w" ) as fp:
             fp.write( opm( self.pdb_id ) )
 
 
 
-class Ppm( OpmMixin, PyTool, ProviMixin ):
-    """A tool to query the PPM webservice"""
+class PpmMixin( OpmMixin ):
+    def ppm( self, pdb_input_file ):
+        pdb_file, info_dict = ppm( pdb_input_file )
+        with open( self.opm_file, "w" ) as fp:
+            fp.write( pdb_file )
+        with open( self.info_file, "w" ) as fp:
+            json.dump( info_dict, fp, indent=4 )
+
+
+class Ppm( PpmMixin, PyTool, ProviMixin ):
+    """A tool to query the PPM webservice with a pdb file"""
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
     ]
     out = [
-        _( "opm_file", file="{pdb_file.stem}_opm.pdb" ),
+        _( "opm_file", file="{pdb_file.stem}_ppm.pdb" ),
         _( "mplane_file", file="{pdb_file.stem}.mplane" ),
         _( "processed_file", file="{pdb_file.stem}_proc.pdb" ),
+        _( "info_file", file="{pdb_file.stem}_info.json" ),
     ]
-    tmpl_dir = TMPL_DIR
-    provi_tmpl = "opm.provi"
-    def _init( self, *args, **kwargs ):
-        pass
     def func( self ):
-        ppm( self.pdb_file )
+        self.ppm( self.pdb_file )
+    
 
+
+class PpmId( PpmMixin, PyTool, ProviMixin ):
+    """A tool to query the PPM webservice with a pdb id"""
+    args = [
+        _( "pdb_id", type="str" ),
+    ]
+    out = [
+        _( "opm_file", file="{pdb_id}_ppm.pdb" ),
+        _( "mplane_file", file="{pdb_id}.mplane" ),
+        _( "assembly_file", file="{pdb_id}_asm.pdb" ),
+        _( "processed_file", file="{pdb_id}_proc.pdb" ),
+        _( "info_file", file="{pdb_id}_info.json" ),
+    ]
+    def _init( self, *args, **kwargs ):
+        self.pdb_assembly = PdbAssembly(
+            self.pdb_id,
+            **copy_dict( kwargs, run=False, 
+                output_dir=self.subdir("assembly") )
+        )
+    def _pre_exec( self ):
+        self.pdb_assembly()
+        npdb = NumPdb( 
+            self.pdb_assembly.assembly_file, 
+            features={
+                "phi_psi": False, 
+                "info": False,
+            }
+        )
+        npdb.write( self.assembly_file )
+    def func( self ):
+        self.ppm( self.assembly_file )
 
 
 class OpmList( PyTool ):
