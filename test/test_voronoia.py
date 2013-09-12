@@ -1,18 +1,26 @@
 import os
 import unittest
 
-from test import TMP_DIR, DATA_DIR
-
 from basekit.voronoia import Voronoia
+
+DIR = os.path.split( os.path.abspath( __file__ ) )[0]
+PARENT_DIR = os.path.split( DIR )[0]
+DATA_DIR = os.path.join( PARENT_DIR, "data", "test" )
+TMP_DIR = os.path.join( DIR, "tmp" )
+
+
+# cd ./test/
+# python -m unittest discover
 
 
 class VoronoiaTestCase( unittest.TestCase ):
     def setUp( self ):
         self.voro = Voronoia(
-            os.path.join( DATA_DIR, "1crn.pdb" ),
+            os.path.join( DATA_DIR, "1t7h.pdb" ),
             ex=0.2,
             output_dir=os.path.join( TMP_DIR, "voronoia" ),
-            run=False 
+            run=False,
+            verbose=False
         )
     def test_check( self ):
         self.voro()
@@ -24,8 +32,8 @@ class VoronoiaParallelTestCase( unittest.TestCase ):
     def setUp( self ):
         self.voro = Voronoia(
             " ".join([
-                os.path.join( DATA_DIR, "1crn.pdb" ),
-                os.path.join( DATA_DIR, "1u19.pdb" ),
+                os.path.join( DATA_DIR, "1T7H_A.pdb" ),
+                os.path.join( DATA_DIR, "2WFU_A.pdb" ),
             ]),
             parallel="list",
             ex=0.2,

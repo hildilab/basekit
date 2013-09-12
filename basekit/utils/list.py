@@ -25,6 +25,7 @@ class ListRecord( _ListRecord ):
         )
 
 class ListIO( JsonBackend ):
+    name = "list"
     def __init__( self, file_name ):
         super( JsonBackend, self ).__init__( file_name, ListRecord )
     def write( self, records ):

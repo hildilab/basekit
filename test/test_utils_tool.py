@@ -1,20 +1,25 @@
+import os
 import unittest
+import collections
 
-from test import TMP_DIR
+from basekit.utils.tool import _, CmdTool, PyTool, RecordsMixin
 
-from basekit.utils.tool import CmdTool
+DIR = os.path.split( os.path.abspath( __file__ ) )[0]
+PARENT_DIR = os.path.split( DIR )[0]
+DATA_DIR = os.path.join( PARENT_DIR, "data", "test" )
+TMP_DIR = os.path.join( DIR, "tmp" )
 
 
+# cd ./test/
+# python -m unittest discover
 
 
-
-class HelloWorldTool( CmdTool ):
+class SimpleCmdTool( CmdTool ):
     cmd = [ "echo", "-e", "Hello world!" ]
-
 
 class CmdToolTestCase( unittest.TestCase ):
     def setUp( self ):
-        self.tool = HelloWorldTool( output_dir=TMP_DIR, run=False )
+        self.tool = SimpleCmdTool( output_dir=TMP_DIR, run=False )
     def test_check( self ):
         self.tool()
         self.assertEquals( self.tool.check( full=True ), "Ok" )
@@ -24,3 +29,27 @@ class CmdToolTestCase( unittest.TestCase ):
             log = fp.read()
         self.assertEquals( log, "Hello world!\n" )
 
+
+
+SimpleRecord = collections.namedtuple("SimpleRecord", [ "name" ])
+
+class SimpleRecordsTool( PyTool, RecordsMixin ):
+    args = [
+        _( "myid", type="text" )
+    ]
+    RecordsClass = SimpleRecord
+    def _init( self, *args, **kwargs ):
+        self._init_records( self.myid )
+    def func( self ):
+        pass
+
+class RecordsToolTestCase( unittest.TestCase ):
+    def setUp( self ):
+        self.tool = SimpleRecordsTool(
+            "foobar",
+            output_dir=TMP_DIR,
+            run=False
+        )
+    def test_check( self ):
+        self.tool()
+        self.assertEquals( self.tool.check( full=True ), "Ok" )
