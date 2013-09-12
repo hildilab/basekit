@@ -4,7 +4,7 @@
 
 from basekit.utils.tool import parse_subargs
 from basekit.mpstruc import (
-	MpstrucDownload, MpstrucInfo
+	MpstrucDownload, MpstrucInfo, MpstrucList
 )
 
 
@@ -13,7 +13,8 @@ from basekit.mpstruc import (
 def main():
     tools = {
         "db": MpstrucDownload,
-        "info": MpstrucInfo
+        "info": MpstrucInfo,
+        "list": MpstrucList
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )

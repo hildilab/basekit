@@ -13,6 +13,7 @@ import numpy as np
 from utils import memoize_m, try_float
 from utils.math import norm
 from utils.tool import _, _dir_init, PyTool, ProviMixin
+from utils.list import ListRecord, ListIO
 
 
 
@@ -31,10 +32,11 @@ def opm_list( class_id ):
     except urllib2.HTTPError:
         raise Exception("Opm_list url error")
     pdb_ids = re.findall( r"([0-9a-zA-Z]{4})<br />", page )
-    pdb_ids = [ x.upper() for x in pdb_ids ]
-    pdb_ids = list( set( pdb_ids ) ) # make unique
-    pdb_ids.sort()
-    return pdb_ids
+    list_record = ListRecord(
+        "opm superfamily %s" % class_id, url,
+        None, None, pdb_ids
+    )
+    return list_record
 
 
 
@@ -179,19 +181,15 @@ class Ppm( OpmMixin, PyTool, ProviMixin ):
 
 
 class OpmList( PyTool ):
-    """A tool to access the OPM database"""
     args = [
         _( "class_id", type="str" ),
     ]
     out = [
-        _( "list_file", file="opm_list_class_{class_id}.txt" )
+        _( "list_file", file="opm_list_class_{class_id}.json" )
     ]
-    def _init( self, *args, **kwargs ):
-        pass
     def func( self ):
-        pdb_list = opm_list( self.class_id )
-        with open( self.list_file, "w" ) as fp:
-            fp.write( "\n".join( pdb_list ) )
+        list_record = opm_list( self.class_id )
+        ListIO( self.list_file ).write( list_record )
 
 
 class OpmInfo( PyTool ):

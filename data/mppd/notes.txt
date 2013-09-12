@@ -155,4 +155,16 @@ time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 0 1600 -id -nw 
 
 
 
+### lists
+
+opm.py list "1" -o mppd_lists/opm_polytopic_alpha/
+
+mpstruc.py list -o mppd_lists/mpstruc/
+
+
+
+
+
+
+
 

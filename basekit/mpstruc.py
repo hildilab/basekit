@@ -8,6 +8,7 @@ import urllib2
 import xml.etree.ElementTree
 
 from utils.tool import _, _dir_init, PyTool
+from utils.list import ListRecord, ListIO
 
 
 
@@ -79,6 +80,13 @@ class MpstrucDb( object ):
     def str( self, protein ):
         for x in protein:
             print "%s: %s" % ( x.tag, x.text )
+    def list( self ):
+        pdbid_list = []
+        for protein in self.tree.findall(".//protein"):
+            pdbid_list.append( protein.find("pdbCode").text )
+        for protein in self.tree.findall(".//memberProtein"):
+            pdbid_list.append( protein.find("pdbCode").text )
+        return pdbid_list
 
 
 def mpstruc_info( pdb_id, xml_file=None ):
@@ -118,3 +126,28 @@ class MpstrucInfo( PyTool ):
             with open( self.info_file, "r" ) as fp:
                 self.info = json.read( fp )
         return self.info
+
+
+
+def mpstruc_list( xml_file=None ):
+    mp = MpstrucDb( xml_file=xml_file )
+    list_record = ListRecord(
+        "mpstruc", mp.tree.attrib["url"],
+        None, mp.tree.attrib["lastDatabaseEditDate"], mp.list()
+    )
+    return list_record
+
+
+class MpstrucList( PyTool ):
+    args = [
+        
+    ]
+    out = [
+        _( "list_file", file="mpstruc_list.json" )
+    ]
+    def func( self ):
+        list_record = mpstruc_list()
+        ListIO( self.list_file ).write( list_record )
+
+
+

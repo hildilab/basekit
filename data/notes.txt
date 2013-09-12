@@ -1,0 +1,6 @@
+
+cd $BASEKIT_DATA
+
+mpstruc.py db -o mpstruc/
+
+
