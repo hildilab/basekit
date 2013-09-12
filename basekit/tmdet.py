@@ -6,6 +6,7 @@ import os
 import re
 import json
 import urllib2
+import xml.etree.ElementTree
 
 from poster.encode import multipart_encode
 from poster.streaminghttp import register_openers
@@ -22,6 +23,7 @@ DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "tmdet" )
 PDBTM_LOCAL_PATH = os.environ.get("PDBTM_LOCAL_PATH", "")
 TMDET_URL = "http://tmdet.enzim.hu/"
 PDBTM_ALPHAHELICAL_URL = "http://pdbtm_data.enzim.hu/pdbtmalpha"
+PDBTM_ALPHAHELICAL_PATH = os.environ.get("PDBTM_ALPHAHELICAL_PATH", "")
 
 
 def pdbtm_download():
@@ -168,22 +170,55 @@ class Tmdet( TmdetMixin, PyTool, ProviMixin ):
 
 
 
+
+def pdbtm_tree( xml_file=None ):
+    if not xml_file:
+        xml_file = PDBTM_ALPHAHELICAL_PATH
+    try:
+        tree = xml.etree.ElementTree.parse( xml_file )
+    except IOError:
+        raise Exception( "PDBTM xml file not found: '%s'" % xml_file )
+    return tree.getroot()
+
+
+
+class PdbtmDb( object ):
+    def __init__( self, xml_file=None ):
+        self.tree = pdbtm_tree( xml_file=xml_file )
+    def find( self, pdb_id ):
+        pdb_id = pdb_id.lower()
+        for protein in self.tree:
+            if protein.attrib["ID"].lower()==pdb_id:
+                return protein
+    def list( self ):
+        pdbid_list = []
+        for protein in self.tree:
+            pdbid_list.append( protein.attrib["ID"] )
+        return pdbid_list
+
+
 class Pdbtm( TmdetMixin, PyTool, ProviMixin ):
     pass
 
 
-def pdbtm_list(  ):
-    pass
+def pdbtm_list( xml_file=None ):
+    pm = PdbtmDb( xml_file=xml_file )
+    list_record = ListRecord(
+        "pdbtm", PDBTM_ALPHAHELICAL_PATH,
+        None, None, pm.list()
+    )
+    return list_record
+
 
 class PdbtmList( PyTool ):
     args = [
         
     ]
     out = [
-        _( "list_file", file="opm_list_class_{class_id}.json" )
+        _( "list_file", file="pdbtm_list.json" )
     ]
     def func( self ):
-        list_record = pdbtm_list( self.class_id )
+        list_record = pdbtm_list()
         ListIO( self.list_file ).write( list_record )
 
 

@@ -158,11 +158,29 @@ time mppd.py pdb polytopic_alpha_helical.txt -o mppd/ -p file -i 0 1600 -id -nw 
 ### lists
 
 opm.py list "1" -o mppd_lists/opm_polytopic_alpha/
-
 mpstruc.py list -o mppd_lists/mpstruc/
-
 tmdet.py list -o mppd_lists/tmdet/
 
+pdb.py compare \
+	mppd_lists/opm_polytopic_alpha/opm_list_class_1.json \
+	mppd_lists/mpstruc/mpstruc_list.json \
+	-o mppd_lists/opm_vs_mpstruc
+
+pdb.py compare \
+	mppd_lists/opm_polytopic_alpha/opm_list_class_1.json \
+	mppd_lists/tmdet/pdbtm_list.json \
+	-o mppd_lists/opm_vs_tmdet
+
+pdb.py compare \
+	mppd_lists/mpstruc/mpstruc_list.json \
+	mppd_lists/tmdet/pdbtm_list.json \
+	-o mppd_lists/mpstruc_vs_tmdet
+
+pdb.py join \
+	mppd_lists/opm_vs_mpstruc/list2_only.json \
+	mppd_lists/opm_vs_tmdet/list2_only.json \
+	--list_name non_opm \
+	-o mppd_lists/non_opm/
 
 
 
