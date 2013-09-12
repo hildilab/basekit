@@ -362,7 +362,7 @@ def rcsb_search( data ):
     result = urllib2.urlopen(req).read()
     return result.split() if result else []
 
-def rna_list( pdbid_file=None, compare=False ):
+def rna_list( max_res='3.5' ):
     """ author: Johanna Tiemann, Alexander Rose
         query rcsb for pdb files containing rna
     """
@@ -372,7 +372,7 @@ def rna_list( pdbid_file=None, compare=False ):
     searchstr_res = [
         'Resolution',
         'refine.ls_d_res_high.min>0.0</refine.ls_d_res_high.min',
-        'refine.ls_d_res_high.max>3.5</refine.ls_d_res_high.max'
+        'refine.ls_d_res_high.max>'+max_res+'</refine.ls_d_res_high.max'
     ]
     searchstr_nmr = [
         'ExpType',
@@ -401,7 +401,8 @@ def rna_list( pdbid_file=None, compare=False ):
 
 class RnaList( PyTool ):
     args = [
-        _( "compare_list|cp", type="file", ext="json", default='' )
+        _( "compare_list|cp", type="file", ext="json", default='' ),
+        _( "max_resolution|mr", type="text", default='3.5' )
     ]
     out = [
         _( "current_list", file="current.json" ),
@@ -409,7 +410,7 @@ class RnaList( PyTool ):
         _( "old_list", file="old.json" )
     ]
     def func( self ):
-        self.rna_record = rna_list()
+        self.rna_record = rna_list( self.max_resolution )
     def _post_exec( self ):
         ListIO( self.current_list ).write( self.rna_record )
         if self.compare_list:
