@@ -52,6 +52,7 @@ setup(
         'scripts/project.py',
         'scripts/spider.py',
         'scripts/sstruc.py',
+        'scripts/tmdet.py',
         'scripts/voronoia.py',
         'scripts/wine_watcher.py',
     ]

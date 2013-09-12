@@ -161,7 +161,7 @@ opm.py list "1" -o mppd_lists/opm_polytopic_alpha/
 
 mpstruc.py list -o mppd_lists/mpstruc/
 
-
+tmdet.py list -o mppd_lists/tmdet/
 
 
 
