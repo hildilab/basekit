@@ -124,7 +124,7 @@ class Msms( CmdTool, ProviMixin ):
         _( "no_area", type="checkbox", default=False ),
         _( "envelope", type="float", range=[0.0, 10], step=0.1, 
             default=0 ),
-        _( "envelope_hclust", type="str", default="average", 
+        _( "envelope_hclust", type="str", default="", 
             options=[ "", "ward", "average" ], help="'', average, ward" ),
     ]
     out = [

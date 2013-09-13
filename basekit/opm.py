@@ -196,6 +196,7 @@ class Opm( OpmMixin, PyTool, ProviMixin ):
         _( "opm_file", file="{pdb_id}_opm.pdb" ),
         _( "mplane_file", file="{pdb_id}.mplane" ),
         _( "processed_file", file="{pdb_id}_proc.pdb" ),
+        _( "info_file", file="{pdb_id}_info.json", optional=True ),
     ]
     def func( self ):
         with open( self.opm_file, "w" ) as fp:

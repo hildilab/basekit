@@ -23,7 +23,7 @@ from utils.tool import (
     JsonBackend, SqliteBackend
 )
 from utils.numpdb import NumPdb, NumAtoms
-from opm import Opm, OpmInfo
+from opm import Opm, OpmInfo, Ppm2
 from dowser import DowserRepeat
 from voronoia import Voronoia, HOLE_NOT_FILLED, HOLE_PARTLY_FILLED
 from hbexplore import HBexplore
@@ -112,8 +112,10 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         _( "figures|fig", type="checkbox", default=False ),
         _( "database|db", type="checkbox", default=False ),
         # msms tweaks
-        _( "envelope_hclust", type="str", default="average",
+        _( "envelope_hclust", type="str", default="",
             options=[ "", "ward", "average" ], help="'', average, ward" ),
+        # opm fallback to ppm2
+        _( "use_ppm2", type="checkbox", default=False ),
     ]
     out = [
         _( "processed_pdb", file="proc.pdb" ),
@@ -140,11 +142,19 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 "phi_psi": False
             }
 
-            self.opm = Opm(
-                self.pdb_id,
-                **copy_dict( kwargs, run=False, 
-                    output_dir=self.subdir("opm") )
-            )
+            # self.opm.info_file can be used to distinguish
+            if self.use_ppm2:
+                self.opm = Ppm2(
+                    self.pdb_id,
+                    **copy_dict( kwargs, run=False, 
+                        output_dir=self.subdir("opm") )
+                )
+            else:
+                self.opm = Opm(
+                    self.pdb_id,
+                    **copy_dict( kwargs, run=False, 
+                        output_dir=self.subdir("opm") )
+                )
             self.output_files = self.opm.output_files
             self.output_files += [ self.processed_pdb, self.no_water_file ]
             self.dowser = DowserRepeat(
@@ -157,7 +167,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 "all_components": True,
                 "density": 1.0, "hdensity": 3.0,
                 "envelope": self.probe_radius * 2,
-                "envelope_hclust": self.msms_envelope_hclust
+                "envelope_hclust": self.envelope_hclust
             }
             self.msms0 = Msms(
                 self.no_water_file, **copy_dict( kwargs, run=False, 
