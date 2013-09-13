@@ -1,0 +1,17 @@
+
+
+cd ./test/
+
+# all
+python -m unittest discover
+
+# individual file
+python -m unittest discover . test_opm.py
+python -m unittest discover . *_voronoia.py
+
+# individual class or method
+python -m unittest test_opm.PpmParseTestCase
+python -m unittest test_opm.PpmParseTestCase.test_parse
+
+
+

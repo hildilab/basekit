@@ -8,17 +8,19 @@ PARENT_DIR = os.path.split( DIR )[0]
 DATA_DIR = os.path.join( PARENT_DIR, "data", "test" )
 TMP_DIR = os.path.join( DIR, "tmp" )
 
+def data( file_name ):
+    return os.path.join( DATA_DIR, file_name )
 
-# cd ./test/
-# python -m unittest discover
+def tmp( *dir_name ):
+    return os.path.join( TMP_DIR, "voronoia", *dir_name )
 
 
 class VoronoiaTestCase( unittest.TestCase ):
     def setUp( self ):
         self.voro = Voronoia(
-            os.path.join( DATA_DIR, "1T7H_A.pdb" ),
-            ex=0.2,
-            output_dir=os.path.join( TMP_DIR, "voronoia" ),
+            data( "1T7H_A.pdb" ),
+            ex=0.3,
+            output_dir=tmp( "single_test" ),
             run=False,
             verbose=False
         )
@@ -31,13 +33,10 @@ class VoronoiaTestCase( unittest.TestCase ):
 class VoronoiaParallelTestCase( unittest.TestCase ):
     def setUp( self ):
         self.voro = Voronoia(
-            " ".join([
-                os.path.join( DATA_DIR, "1T7H_A.pdb" ),
-                os.path.join( DATA_DIR, "2WFU_A.pdb" ),
-            ]),
+            " ".join([ data( "1T7H_A.pdb" ), data( "2WFU_A.pdb" ) ]),
             parallel="list",
-            ex=0.2,
-            output_dir=os.path.join( TMP_DIR, "voronoia" ),
+            ex=0.3,
+            output_dir=tmp( "parallel_test" ),
             run=False 
         )
     def test_check( self ):

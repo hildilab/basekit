@@ -240,7 +240,7 @@ def make_ref( tool_results ):
 class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
     """A wrapper around the 'voronoia' aka 'get_volume' programm."""
     args = [
-        _( "pdb_input", type="text" ),
+        _( "pdb_input", type="file" ),
         _( "ex", type="float", range=[0.01, 0.5], step=0.01, default=0.1 ),
         _( "radii", type="select", options=["protor"], default="protor" ),
         # TODO run the tool multiple times 
@@ -252,14 +252,11 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
         _( "analyze_only|ao", type="checkbox", default=False )
     ]
     out = [
-        # TODO asr Not working for PrallelMixin
-        # _( "vol_file", file="{pdb_input.stem}.vol" ),
-        # _( "log_file", file="{pdb_input.stem}.log" ),
-        _( "vol_file", file="voro.vol" ),
-        _( "log_file", file="voro.log" ),
-        _( "dens_file", file="ref_protor_packing.json" ),
-        _( "dev_file", file="ref_protor_deviation.json" ),
-        _( "protor_log_file", file="protor.log" )
+        _( "vol_file", file="{pdb_input.stem}.vol" ),
+        _( "log_file", file="{pdb_input.stem}.log" ),
+        _( "dens_file", file="ref_protor_packing.json", optional=True ),
+        _( "dev_file", file="ref_protor_deviation.json", optional=True ),
+        _( "protor_log_file", file="protor.log", optional=True )
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "voronoia.provi"
@@ -318,14 +315,13 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
             ]
             self.write()
         if self.parallel and self.make_reference:
-            def json_writer( json_file, dic ):
-                with open( json_file, "w" ) as fp:
-                    json.dump( dic, fp )
             dict_dens, dict_dev, log_list = make_ref( self.tool_results )
-            json_writer(self.dens_file, dict_dens)
-            json_writer(self.dev_file, dict_dev)
+            d = ( self.dens_file, dict_dens ), ( self.dev_file, dict_dev )
+            for fname, dct in d:
+                with open( fname, "w" ) as fp:
+                    json.dump( dct, fp )
             with open(self.protor_log_file, 'w') as fp:
-                fp.write(log_list)
+                fp.write( log_list )
     @memoize_m
     def get_vol( self ):
         return parse_vol( self.vol_file, self.pdb_input )

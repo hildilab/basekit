@@ -11,8 +11,9 @@ TMP_DIR = os.path.join( DIR, "tmp" )
 def data( file_name ):
     return os.path.join( DATA_DIR, file_name )
 
-# cd ./test/
-# python -m unittest discover
+def tmp( *dir_name ):
+    return os.path.join( TMP_DIR, "opm", *dir_name )
+
 
 
 class PpmParseTestCase( unittest.TestCase ):

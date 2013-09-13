@@ -9,9 +9,12 @@ PARENT_DIR = os.path.split( DIR )[0]
 DATA_DIR = os.path.join( PARENT_DIR, "data", "test" )
 TMP_DIR = os.path.join( DIR, "tmp" )
 
+def data( file_name ):
+    return os.path.join( DATA_DIR, file_name )
 
-# cd ./test/
-# python -m unittest discover
+def tmp( *dir_name ):
+    return os.path.join( TMP_DIR, "utils_tool", *dir_name )
+
 
 
 class SimpleCmdTool( CmdTool ):
@@ -19,7 +22,10 @@ class SimpleCmdTool( CmdTool ):
 
 class CmdToolTestCase( unittest.TestCase ):
     def setUp( self ):
-        self.tool = SimpleCmdTool( output_dir=TMP_DIR, run=False )
+        self.tool = SimpleCmdTool( 
+            output_dir=tmp( "simple_test" ),
+            run=False
+        )
     def test_check( self ):
         self.tool()
         self.assertEquals( self.tool.check( full=True ), "Ok" )
@@ -47,7 +53,7 @@ class RecordsToolTestCase( unittest.TestCase ):
     def setUp( self ):
         self.tool = SimpleRecordsTool(
             "foobar",
-            output_dir=TMP_DIR,
+            output_dir=tmp( "records_test" ),
             run=False
         )
     def test_check( self ):
