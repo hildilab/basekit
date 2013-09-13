@@ -384,7 +384,7 @@ def rcsb_search( data ):
     result = urllib2.urlopen(req).read()
     return result.split() if result else []
 
-def rna_list( max_res='3.5' ):
+def rna_list( max_res=3.5 ):
     """ author: Johanna Tiemann, Alexander Rose
         query rcsb for pdb files containing rna
     """
@@ -394,7 +394,7 @@ def rna_list( max_res='3.5' ):
     searchstr_res = [
         'Resolution',
         'refine.ls_d_res_high.min>0.0</refine.ls_d_res_high.min',
-        'refine.ls_d_res_high.max>'+max_res+'</refine.ls_d_res_high.max'
+        'refine.ls_d_res_high.max>'+str(max_res)+'</refine.ls_d_res_high.max'
     ]
     searchstr_nmr = [
         'ExpType',
@@ -424,7 +424,7 @@ def rna_list( max_res='3.5' ):
 class RnaList( PyTool ):
     args = [
         _( "compare_list|cp", type="file", ext="json", default='' ),
-        _( "max_resolution|mr", type="text", default='3.5' )
+        _( "max_resolution|mr", type="float", default=3.5 )
     ]
     out = [
         _( "current_list", file="current.json" ),

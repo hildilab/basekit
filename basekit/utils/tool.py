@@ -494,12 +494,12 @@ class ParallelMixin( Mixin ):
         data = p.imap( call, self.tool_list )
         p.close()
         p.join()
-        return data
+        return list( data )
     def _run( self, fn ):
         if self.parallel:
             self._make_tool_list()
-            tool_results = self._func_parallel()
-            self._parallel_results( tool_results )
+            self.tool_results = self._func_parallel()
+            self._parallel_results( self.tool_results )
         else:
             fn( self )
 
