@@ -42,7 +42,7 @@ class VoronoiaParallelTestCase( unittest.TestCase ):
         )
     def test_check( self ):
         self.voro()
-        for t in self.voro.results:
+        for t in self.voro.tool_results:
             self.assertEquals( t.check( full=True ), "Ok" )
 
 

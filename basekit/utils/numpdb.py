@@ -383,7 +383,10 @@ class InfoParser( object ):
             "experiment": dct.get("experiment", ""),
             "title": dct.get("title", ""),
             "resolution": try_float( 
-                dct.get("resolution", "").split()[1], None 
+                get_index(
+                    dct.get("resolution", "").split(), 1, None
+                ), 
+                None
             )
         }
 
