@@ -5,15 +5,22 @@ from __future__ import division
 
 import os
 import re
+import json
 import logging
 import collections
+import utils.numpdb as numpdb
+import math
+from numpy import *
+from array import array
 
 from utils import memoize_m
 from utils.tool import _, _dir_init, CmdTool, ProviMixin, ParallelMixin
+from utils.tool import RecordsMixin, PyTool
 
 import provi_prep as provi
 
 
+pdbDIR, pdbPARENT_DIR, pdbTMPL_DIR = _dir_init( __file__, "pdb" )
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "voronoia" )
 VOLUME_CMD = os.path.join( TMPL_DIR, "get_volume_32.exe" )
 
@@ -33,8 +40,23 @@ HoleNeighbour = collections.namedtuple( "HoleNeighbour", [
 VolHole = collections.namedtuple( "VolHole", [
     "no", "type", "neighbours"
 ])
+InfoRecord = collections.namedtuple( "InfoRecord", [
+    "pdb", "res", "title", "experiment", "zscorerms"
+])
 
 def parse_vol( vol_file, pdb_file ):
+    def get_dicts( base ):
+        def get_json_dict( tmp_dir, json_tmp_file ):
+            with open( os.path.join( tmp_dir, json_tmp_file ), "r" ) as fp2:
+                return json.load( fp2 )
+        dics = []
+        for dic in [
+            (pdbTMPL_DIR, "protor"+base+".json"),
+            (TMPL_DIR, "ref_protor_packing"+base+".json"),
+            (TMPL_DIR, "ref_protor_deviation"+base+".json")
+        ]:
+            dics.append( get_json_dict(dic[0], dic[1] ))
+        return dics
     pdb_coord_dict = provi.get_pdb_coord_dict( pdb_file )
     pdb_index_dict = provi.get_pdb_index_dict( pdb_file )
     vol_index_dict = {}
@@ -46,6 +68,9 @@ def parse_vol( vol_file, pdb_file ):
     hole_types = []
     hole_list = []
     nrholes = {}
+    zs_dict = {}
+    p_dict = {}
+    log_list = ''
     
     i = 1
     with open( vol_file, "r" ) as fp:
@@ -134,34 +159,97 @@ def parse_vol( vol_file, pdb_file ):
             atomno = int( pdb_index_dict[ i+1 ][6:11] )
             pd_dict[ atomno ] = packdens
             buried_dict[ atomno ] = buried
+            #calculate z-score
+            residue = pdb_index_dict[ i+1 ][17:20].split()[0]
+            atom = pdb_index_dict[ i+1 ][12:16].split()[0]
+            atom = atom.replace( "\'", "*" )
+            zscore_per_atom_rna = 10; zscore_per_atom_prot = 10
+            if residue in ['G', 'C', 'A', 'U']:
+                protordic, ref_packing, ref_deviation = get_dicts( '_rna' )
+                reffi = float( ref_deviation[residue][protordic[residue][atom]] )
+                try:
+                    p_dict[ atomno ] = residue+'|'+ protordic[residue][atom]
+                except Exception:
+                    p_dict[ atomno ] = residue+ '| '
+                if reffi != 0.0:
+                    try:
+                        ref_pa = float( ref_packing[residue][protordic[residue][atom]] )
+                    except Exception:
+                        ref_pa = 1.0
+                    zscore_per_atom_rna = ( ( packdens-ref_pa )/reffi )**2
+            else:
+                protordic, ref_packing, ref_deviation = get_dicts( '' )
+                try:
+                    reffi = float( ref_deviation[residue][protordic[residue][atom]] )
+                except Exception:
+                    reffi = 0.0
+                    log_list += str(pdb_file+'\t'+str(atomno)+ '\t'+residue+ '\t'+atom+'\n')
+                try:
+                    p_dict[ atomno ] = residue+'|'+ protordic[residue][atom]
+                except Exception:
+                    p_dict[ atomno ] = residue+ '| ' 
+                if reffi != 0.0:
+                    try:
+                        ref_pa = float( ref_packing[residue][protordic[residue][atom]] )
+                    except Exception:
+                        ref_pa = 1.0
+                    zscore_per_atom_prot = ( ( packdens-ref_pa )/reffi )**2
+            if zscore_per_atom_rna != 10:
+                zscore = zscore_per_atom_rna
+            else: zscore = zscore_per_atom_prot
+            zs_dict[ atomno ] = zscore
+            
+            
         else:
             LOG.debug( 
                 "no volume data for line: %s" % (
                     pdb_index_dict[ i+1 ].strip('\n') 
                 )
             )
-        
     return {
         "nrholes": nrholes,
         "holes": hole_list,
         "packdens": pd_dict,
-        "buried": buried_dict
+        "buried": buried_dict,
+        "zscore": zs_dict,
+        "protors": p_dict,
+        "log_list": log_list
     }
 
-
+def make_ref( tool_results ):
+    def dic_in_dic( elem, ref_dic, out ):
+        short = {}
+        short[elem.split('|')[1]] = ref_dic
+        out[elem.split('|')[0]].update(short)
+    ref_dic_dens = collections.defaultdict( list )
+    out_dev = collections.defaultdict( dict )
+    out_dens = collections.defaultdict( dict )
+    log_list = ''
+    for t in tool_results:
+        log_list += t.log_list
+        for elem in t.protor:
+            if t.burried[elem]:
+                ref_dic_dens[ t.protor[elem] ].append( t.packdens[elem] )
+    for elem in ref_dic_dens:
+        dic_in_dic( elem, std(ref_dic_dens[elem]), out_dev )
+        ref_dic_dens[elem]=sum(ref_dic_dens[elem])/len(ref_dic_dens[elem])
+        dic_in_dic( elem, ref_dic_dens[elem], out_dens )
+    return out_dens, out_dev, log_list
 
 # get_volume.exe ex:0.1 rad:protor i:file.pdb o:out.vol
-class Voronoia( CmdTool, ProviMixin, ParallelMixin ):
+class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
     """A wrapper around the 'voronoia' aka 'get_volume' programm."""
     args = [
-        _( "pdb_input", type="file" ),
+        _( "pdb_input", type="text" ),
         _( "ex", type="float", range=[0.01, 0.5], step=0.01, default=0.1 ),
         _( "radii", type="select", options=["protor"], default="protor" ),
         # TODO run the tool multiple times 
         # when it fails without the shuffle option
         _( "shuffle", type="checkbox", default=False, 
             help="slightly changes the input coordinates to"
-                "circumvent numerical problems" )
+                "circumvent numerical problems" ),
+        _( "make_reference|mr", type="checkbox", default=False ),
+        _( "analyze_only|ao", type="checkbox", default=False )
     ]
     out = [
         # TODO asr Not working for PrallelMixin
@@ -169,24 +257,31 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin ):
         # _( "log_file", file="{pdb_input.stem}.log" ),
         _( "vol_file", file="voro.vol" ),
         _( "log_file", file="voro.log" ),
+        _( "dens_file", file="ref_protor_packing.json" ),
+        _( "dev_file", file="ref_protor_deviation.json" ),
+        _( "protor_log_file", file="protor.log" )
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "voronoia.provi"
+    RecordsClass = InfoRecord
     def _init( self, *args, **kwargs ):
+        self._init_records( None, **kwargs )
         self._init_parallel( self.pdb_input, **kwargs )
-
-        if not self.parallel:
-            self.cmd = [ 
-                "wine", VOLUME_CMD, 
-                "ex:%0.1f"%float(self.ex), 
-                "rad:%s"%self.radii,
-                "x:yes",
-                "l:%s" %self.log_file,
-                "i:%s"%self.pdb_input, 
-                "o:%s"%self.vol_file
-            ]
-            if self.shuffle:
-                self.cmd.append( "sh:y" )
+        if not self.analyze_only:
+            if not self.parallel: #and not self.analyze_only:
+                self.cmd = [ 
+                    "wine", VOLUME_CMD, 
+                    "ex:%0.1f"%float(self.ex), 
+                    "rad:%s"%self.radii,
+                    "x:yes",
+                    "l:%s" %self.log_file,
+                    "i:%s"%self.pdb_input, 
+                    "o:%s"%self.vol_file
+                ]
+                if self.shuffle:
+                    self.cmd.append( "sh:y" )
+            else:
+                self.cmd = None
         else:
             self.cmd = None
     def _post_exec( self ):
@@ -196,11 +291,41 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin ):
                 pdb_file=self.relpath( self.pdb_input ),
                 vol_file=self.relpath( self.vol_file )
             )
-    def _parallel_results( self, results ):
-        self.results = results
+            self.info = numpdb.NumPdb( self.pdb_input, features={
+                "phi_psi": False, 
+                "info": True,
+                "backbone_only": True
+            })._info
+            dicts = self.get_vol()
+            self.zscores = dicts['zscore']
+            self.protor = dicts['protors']
+            self.burried = dicts['buried']
+            self.packdens = dicts['packdens']
+            self.log_list = dicts['log_list']
+            zscore_allb = []; zscore_all = 0
+            for elem in self.zscores:
+                if self.burried[elem]:
+                    zscore_allb.append(self.zscores[elem])
+            zscore_all = sum(zscore_allb)
+            pdbid, ext = os.path.splitext(os.path.basename(self.pdb_input))
+            self.zscorerms = zscore_all/len(zscore_allb)
+            self.records = [
+                InfoRecord(
+                    pdbid, self.info["resolution"],
+                    self.info["title"], self.info["experiment"],
+                    self.zscorerms
+                )
+            ]
+            self.write()
+        if self.parallel and self.make_reference:
+            def json_writer( json_file, dic ):
+                with open( json_file, "w" ) as fp:
+                    json.dump( dic, fp )
+            dict_dens, dict_dev, log_list = make_ref( self.tool_results )
+            json_writer(self.dens_file, dict_dens)
+            json_writer(self.dev_file, dict_dev)
+            with open(self.protor_log_file, 'w') as fp:
+                fp.write(log_list)
     @memoize_m
     def get_vol( self ):
         return parse_vol( self.vol_file, self.pdb_input )
-
-
-
