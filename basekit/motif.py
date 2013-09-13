@@ -1,7 +1,7 @@
 from __future__ import with_statement
 from __future__ import division
 
-
+######### todo: loeschen, kommentieren etc...
 
 
 import numpy as np
@@ -437,7 +437,7 @@ def superpose2( refpdbid, refchain, refresno, pdbid, chain, resno, superpose_ran
     #print sele_ref, sele
     try:
         rmsd = numpdb.superpose(
-            numa, numa2, sele, sele_ref, align=False#, verbose=False
+            numa, numa2, sele, sele_ref, align=False, verbose=False
         )
     except Exception:
         rmsd=None
@@ -488,7 +488,7 @@ pdbid_list = os.path.join(outdir,'pdb-list.txt')
 def cluster_by_superpose():
     #inputs
     outputdir='/home/student/Johanna/Projekte/caps/cluster_by_superpose/'
-    refdir='/home/student/Johanna/Projekte/caps/cap-referenceset/'
+    refdir='/home/student/Johanna/Projekte/caps/short-ref/'
     min_helix_length=8
     
     
@@ -525,7 +525,7 @@ def cluster_by_superpose():
     
     
     pass
-cluster_by_superpose()
+#cluster_by_superpose()
 def save_newcluster( newcluster, refmotif, refdir, outputdir, overlap ):
     def _make_jspt_color_motif( pdbid, chain, resno, jspt_file ):
         with open( jspt_file, "w" ) as fp:
@@ -576,8 +576,8 @@ def make_clusters_with_overlap(  ):
             curr_motif_list=list((set(curr_motif_list)).difference((set(curr_motif_list)).intersection(set(newcluster_overlap))))
 
 
-jo=kojo
-print jo
+#jo=kojo
+#print jo
 #clusterbydistances - cluster by superpose
 
 
