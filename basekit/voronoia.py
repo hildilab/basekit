@@ -51,12 +51,37 @@ def parse_vol( vol_file, pdb_file ):
                 return json.load( fp2 )
         dics = []
         for dic in [
-            (pdbTMPL_DIR, "protor"+base+".json"),
-            (TMPL_DIR, "ref_protor_packing"+base+".json"),
-            (TMPL_DIR, "ref_protor_deviation"+base+".json")
+            (pdbTMPL_DIR, "protor_"+base+".json"),
+            (TMPL_DIR, "ref_protor_packing_"+base+".json"),
+            (TMPL_DIR, "ref_protor_deviation_"+base+".json")
         ]:
             dics.append( get_json_dict(dic[0], dic[1] ))
         return dics
+    def dic_lookup( res_sort, residue, atom, atomno, pdb_file ):
+        log2_list = ''
+        protordic, ref_packing, ref_deviation = get_dicts( res_sort )
+        try:
+            reffi = float( ref_deviation[residue][protordic[residue][atom]] )
+        except Exception:
+            reffi = 0.0
+        try:
+            p_dict[ atomno ] = residue+'|'+ protordic[residue][atom]
+        except Exception:
+            p_dict[ atomno ] = residue+ '| '
+            log2_list += str(pdb_file+'\t'+str(atomno)+ '\t'+residue+ '\t'+atom+'\t protor\n')
+        if reffi != 0.0:
+            try:
+                ref_pa = float( ref_packing[residue][protordic[residue][atom]] )
+            except Exception:
+                ref_pa = 1.0
+            return ( ( packdens-ref_pa )/reffi )**2, log2_list
+        else:
+            try:
+                ref_pa = float( ref_packing[residue][protordic[residue][atom]] )
+            except Exception:
+                log2_list += str(pdb_file+'\t'+str(atomno)+ '\t'+residue+ '\t'+atom+'\t ref\n')
+                ref_pa = 1.0
+            return 10, log2_list
     pdb_coord_dict = provi.get_pdb_coord_dict( pdb_file )
     pdb_index_dict = provi.get_pdb_index_dict( pdb_file )
     vol_index_dict = {}
@@ -164,40 +189,17 @@ def parse_vol( vol_file, pdb_file ):
             atom = pdb_index_dict[ i+1 ][12:16].split()[0]
             atom = atom.replace( "\'", "*" )
             zscore_per_atom_rna = 10; zscore_per_atom_prot = 10
+            tmp_list=''
             if residue in ['G', 'C', 'A', 'U']:
-                protordic, ref_packing, ref_deviation = get_dicts( '_rna' )
-                reffi = float( ref_deviation[residue][protordic[residue][atom]] )
-                try:
-                    p_dict[ atomno ] = residue+'|'+ protordic[residue][atom]
-                except Exception:
-                    p_dict[ atomno ] = residue+ '| '
-                if reffi != 0.0:
-                    try:
-                        ref_pa = float( ref_packing[residue][protordic[residue][atom]] )
-                    except Exception:
-                        ref_pa = 1.0
-                    zscore_per_atom_rna = ( ( packdens-ref_pa )/reffi )**2
+                zscore_per_atom_rna, tmp_list = dic_lookup( 'rna', residue, atom, atomno, pdb_file )
             else:
-                protordic, ref_packing, ref_deviation = get_dicts( '' )
-                try:
-                    reffi = float( ref_deviation[residue][protordic[residue][atom]] )
-                except Exception:
-                    reffi = 0.0
-                    log_list += str(pdb_file+'\t'+str(atomno)+ '\t'+residue+ '\t'+atom+'\n')
-                try:
-                    p_dict[ atomno ] = residue+'|'+ protordic[residue][atom]
-                except Exception:
-                    p_dict[ atomno ] = residue+ '| ' 
-                if reffi != 0.0:
-                    try:
-                        ref_pa = float( ref_packing[residue][protordic[residue][atom]] )
-                    except Exception:
-                        ref_pa = 1.0
-                    zscore_per_atom_prot = ( ( packdens-ref_pa )/reffi )**2
+                zscore_per_atom_prot, tmp_list = dic_lookup( 'nuc', residue, atom, atomno, pdb_file )
             if zscore_per_atom_rna != 10:
+                
                 zscore = zscore_per_atom_rna
             else: zscore = zscore_per_atom_prot
             zs_dict[ atomno ] = zscore
+            log_list += tmp_list
             
             
         else:
@@ -228,7 +230,7 @@ def make_ref( tool_results ):
     for t in tool_results:
         log_list += t.log_list
         for elem in t.protor:
-            if t.burried[elem]:
+            if t.burried[elem] and not (t.protor[elem].split('|')[0] in ['G', 'C', 'A', 'U']):
                 ref_dic_dens[ t.protor[elem] ].append( t.packdens[elem] )
     for elem in ref_dic_dens:
         dic_in_dic( elem, std(ref_dic_dens[elem]), out_dev )
@@ -257,8 +259,8 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
         # _( "log_file", file="{pdb_input.stem}.log" ),
         _( "vol_file", file="voro.vol" ),
         _( "log_file", file="voro.log" ),
-        _( "dens_file", file="ref_protor_packing.json" ),
-        _( "dev_file", file="ref_protor_deviation.json" ),
+        _( "dens_file", file="ref_protor_packing_nuc.json" ),
+        _( "dev_file", file="ref_protor_deviation_nuc.json" ),
         _( "protor_log_file", file="protor.log" )
     ]
     tmpl_dir = TMPL_DIR
@@ -296,6 +298,7 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                 "info": True,
                 "backbone_only": True
             })._info
+            #get info for InfoRecord
             dicts = self.get_vol()
             self.zscores = dicts['zscore']
             self.protor = dicts['protors']
