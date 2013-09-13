@@ -111,6 +111,9 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         _( "extract", type="str", default="" ),
         _( "figures|fig", type="checkbox", default=False ),
         _( "database|db", type="checkbox", default=False ),
+        # msms tweaks
+        _( "envelope_hclust", type="str", default="average",
+            options=[ "", "ward", "average" ], help="'', average, ward" ),
     ]
     out = [
         _( "processed_pdb", file="proc.pdb" ),
@@ -153,7 +156,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             msms_kwargs = { 
                 "all_components": True,
                 "density": 1.0, "hdensity": 3.0,
-                "envelope": self.probe_radius * 2
+                "envelope": self.probe_radius * 2,
+                "envelope_hclust": self.msms_envelope_hclust
             }
             self.msms0 = Msms(
                 self.no_water_file, **copy_dict( kwargs, run=False, 
@@ -277,8 +281,14 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             db_records = []
             for t in self.tool_list:
                 info = t.check( full=True )
-                # TODO additionally check if opm has two mplanes
                 tag = re.split( "/|\.", info )[0]
+                if tag!="opm":
+                    # check if opm found two mplanes
+                    try:
+                        if len( t.opm.get_planes() )!=2:
+                            tag="mplane"
+                    except:
+                        print tag, info, t.id
                 dct[ tag ].append( t )
             for tag, t_list in dct.iteritems():
                 if tag!="Ok":

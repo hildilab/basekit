@@ -15,6 +15,7 @@ import collections
 import utils
 from utils import copy_dict, dir_walker, iter_stride
 from utils.tool import _, _dir_init, CmdTool, ProviMixin
+from utils.math import hclust
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "msms" )
 
@@ -37,6 +38,8 @@ def parse_msms_log( msms_log ):
                 raise Exception( "too many RS components" )
             if line.find( "ERROR: find_first_rs_face" )!=-1:
                 raise Exception( "find_first_rs_face" )
+            if line.find( "sphere_mange_arete: inconcistence" )!=-1:
+                raise Exception( "sphere_mange_arete: inconcistence" )
         fp.next()
         for line in fp:
             if ( line.startswith("TRIANGULATION") or
@@ -74,7 +77,7 @@ def parse_msms_area( area_file ):
             ls = line.split()
             atomno = int(ls[0]) + 1
             atom_area = map( float, ls[1:] )
-            for i, a in enumerate( iter_stride( atom_area ) ):
+            for i, a in enumerate( iter_stride( atom_area, n=2 ) ):
                 ses, sas = a
                 if ses>0:
                     ses_list[i].append( atomno )
@@ -121,6 +124,8 @@ class Msms( CmdTool, ProviMixin ):
         _( "no_area", type="checkbox", default=False ),
         _( "envelope", type="float", range=[0.0, 10], step=0.1, 
             default=0 ),
+        _( "envelope_hclust", type="str", default="average" 
+            options=[ "", "ward", "average" ], help="'', average, ward" ),
     ]
     out = [
         _( "area_file", file="area.area" ),
@@ -129,14 +134,14 @@ class Msms( CmdTool, ProviMixin ):
         _( "surf_file", file="surf.xyzr" ),
         _( "surf_file2", file="surf2.xyz" ),
         _( "surf_file3", file="surf3.xyz" ),
-        # _( "surf_file4", file="surf4.xyz" ),
+        _( "surf_file4", file="surf4.xyz", optional=True ),
         _( "provi_file", file="msms.provi" )
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "msms.provi"
     def _init( self, *args, **kwargs ):
         self.pdb2xyzr = Pdb2xyzr( 
-            self.pdb_file, **copy_dict( kwargs, run=False ) 
+            self.pdb_file, **copy_dict( kwargs, run=False, verbose=False ) 
         )
         self.output_files = self.pdb2xyzr.output_files + self.output_files
         self.cmd = [ 
@@ -160,23 +165,20 @@ class Msms( CmdTool, ProviMixin ):
             )
             self.output_files += self.envelope_msms.output_files
     def _pre_exec( self ):
-        p = "tri_surface_([0-9]+)\.vert"
+        p = "tri_surface_([0-9]+)\.(vert|face)"
         for m, filepath in dir_walker( self.output_dir, p ):
             utils.path.remove( filepath )
         self.pdb2xyzr()
         if self.envelope:
+            # calc envelope; append to self.pdb2xyzr.xyzr_file 
             self.envelope_msms()
             vert = self.envelope_msms.get_vert( filt=True )
             pr = self.envelope_msms.probe_radius
-            if False:
+            if self.envelope_hclust:
                 coords = np.array([ [ d['x'], d['y'], d['z'] ] for d in vert ])
-                fd = scipy.cluster.hierarchy.fclusterdata(
-                    coords, pr, criterion='distance', 
-                    metric='euclidean', method='average'
+                clust = hclust(
+                    coords, 2*pr, method=self.envelope_hclust
                 )
-                clust = collections.defaultdict( list )
-                for i, x in enumerate(fd):
-                    clust[x].append( coords[i] )
                 print len( coords ), len( clust )
                 with open( self.pdb2xyzr.xyzr_file, "a" ) as fp:
                     for d in clust.itervalues():
@@ -198,6 +200,7 @@ class Msms( CmdTool, ProviMixin ):
                         )
                         fp.write( l )
     def _post_exec( self ):
+        self.get_components()
         self._make_provi_file(
             pdb_file=self.relpath( self.pdb_file ),
             vert_file=self.relpath( self.vert_file ),
@@ -226,23 +229,19 @@ class Msms( CmdTool, ProviMixin ):
                     d['x'], d['y'], d['z']
                 )
                 fp.write( l )
-        # ...
-        # coords = np.array([ [ d['x'], d['y'], d['z'] ] for d in vert2 ])
-        # fd = scipy.cluster.hierarchy.fclusterdata(
-        #     coords, self.probe_radius, criterion='distance', 
-        #     metric='euclidean', method='average'
-        # )
-        # clust = collections.defaultdict( list )
-        # for i, x in enumerate(fd):
-        #     clust[x].append( coords[i] )
-        # with open( self.surf_file4, "w" ) as fp:
-        #     fp.write( "%i\ncomment\n" % len( clust ) )
-        #     for d in clust.itervalues():
-        #         d3 = np.array( d ).mean( axis=0 )
-        #         l = "F\t%0.3f\t%0.3f\t%0.3f\n" % (
-        #             d3[0], d3[1], d3[2]
-        #         )
-        #         fp.write( l )
+        if self.envelope_hclust:
+            coords = np.array([ [ d['x'], d['y'], d['z'] ] for d in vert2 ])
+            clust = hclust(
+                coords, 2*self.probe_radius, method=self.envelope_hclust
+            )
+            with open( self.surf_file4, "w" ) as fp:
+                fp.write( "%i\ncomment\n" % len( clust ) )
+                for d in clust.itervalues():
+                    d3 = np.array( d ).mean( axis=0 )
+                    l = "F\t%0.3f\t%0.3f\t%0.3f\n" % (
+                        d3[0], d3[1], d3[2]
+                    )
+                    fp.write( l )
     def components_provi( self, color="", translucent=0.0, relpath=None ):
         if self.all_components:
             comps = self.get_components()
