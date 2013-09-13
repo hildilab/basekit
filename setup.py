@@ -33,7 +33,7 @@ setup(
         'basekit.utils',
         'basekit.utils.align'
     ],
-    install_requires = [ 'numpy', 'matplotlib', 'poster' ],
+    install_requires = [ 'numpy', 'matplotlib', 'poster', 'fastcluster' ],
     scripts=[
         'scripts/apbs.py',
         'scripts/capture.py',

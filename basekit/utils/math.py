@@ -1,7 +1,17 @@
 from __future__ import division
 
+import collections
+
 import numpy as np
 np.seterr( all="raise" )
+try:
+    from fastcluster import linkage as hclust_linkage
+    HCLUST_PACKAGE = "fastcluster"
+except:
+    from scipy.cluster.hierarchy import linkage as hclust_linkage
+    HCLUST_PACKAGE = "scipy"
+import scipy.cluster
+import scipy.spatial
 
 
 # https://github.com/pycogent/pycogent/blob/master/cogent/struct/dihedral.py
@@ -177,4 +187,16 @@ class Superposition( object ):
 
 
 
+def hclust( data, threshold, criterion='distance',
+            method='average', metric='euclidean' ):
+    linkage_matrix = hclust_linkage(
+        data, method=method, metric=metric
+    )
+    flat_cluster = scipy.cluster.hierarchy.fcluster(
+        linkage_matrix, threshold, criterion=criterion
+    )
+    clust = collections.defaultdict( list )
+    for i, x in enumerate( flat_cluster ):
+        clust[x].append( data[i] )
+    return clust
 
