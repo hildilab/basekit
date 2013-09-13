@@ -178,7 +178,7 @@ class OpmMixin( object ):
     @memoize_m
     def get_planes( self ):
         with open( self.mplane_file, "r" ) as fp:
-            return json.read( fp )
+            return json.load( fp )
     def make_mplane_file( self ):
         mp = parse_planes( self.opm_file ).tolist()
         if mp:
