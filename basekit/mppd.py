@@ -109,7 +109,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         _( "tools", type="str", nargs="*", default=[],
             help="a '!' as the first arg negates the list" ),
         _( "extract", type="str", default="" ),
-        _( "figures|fig", type="checkbox", default=False )
+        _( "figures|fig", type="checkbox", default=False ),
+        _( "database|db", type="checkbox", default=False ),
     ]
     out = [
         _( "processed_pdb", file="proc.pdb" ),
@@ -276,6 +277,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             db_records = []
             for t in self.tool_list:
                 info = t.check( full=True )
+                # TODO additionally check if opm has two mplanes
                 tag = re.split( "/|\.", info )[0]
                 dct[ tag ].append( t )
             for tag, t_list in dct.iteritems():
@@ -283,23 +285,24 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     print tag, " ".join( map( lambda x: x.id, t_list ) ) 
             for tag, t_list in dct.iteritems():
                 print tag, len(t_list)
-            for t in dct.get( 'Ok', [] ):
-                t_info = t.get_info()
-                db_records.append( MppdDbRecord(
-                    t_info['PDBID'],
-                    t_info['HEADER'],
-                    t_info['RESOLUTION'],
-                    t_info['EXPDTA'],
-                    ",".join( t_info['KEYWDS'] ),
-                    t_info['OPMSpecies'],
-                    t_info['OPMFamily'],
-                    t_info['OPMSuperfamily'],
-                    t_info['swname'],
-                    t_info['swfamily'],
-                    t_info['topic']
-                ))
-            db = SqliteBackend( "mppd.db", MppdDbRecord )
-            db.write( db_records )
+            if self.database:
+                for t in dct.get( 'Ok', [] ):
+                    t_info = t.get_info()
+                    db_records.append( MppdDbRecord(
+                        t_info['PDBID'],
+                        t_info['HEADER'],
+                        t_info['RESOLUTION'],
+                        t_info['EXPDTA'],
+                        ",".join( t_info['KEYWDS'] ),
+                        t_info['OPMSpecies'],
+                        t_info['OPMFamily'],
+                        t_info['OPMSuperfamily'],
+                        t_info['swname'],
+                        t_info['swfamily'],
+                        t_info['topic']
+                    ))
+                db = SqliteBackend( "mppd.db", MppdDbRecord )
+                db.write( db_records )
             if self.extract:
                 fdir = self.extract
                 if not os.path.exists( fdir ):
