@@ -6,6 +6,7 @@ import os
 import re
 import json
 import urllib2
+import collections
 
 from poster.encode import multipart_encode
 from poster.streaminghttp import register_openers
@@ -132,6 +133,34 @@ def ppm( pdb_file, topology="in", hetero=True ):
     return pdb_file, info_dict
 
 
+def parse_planes( opm_pdb_file ):
+    with open( opm_pdb_file ) as fp:
+        coords = collections.OrderedDict([ ('N', []), ('O',[]) ])
+        for line in fp:
+            if line[0:6] in ( "ATOM  ", "HETATM" ) and line[17:20]=="DUM":
+                atm = line[13:14]
+                c = np.array( map( float, [ 
+                    line[30:38], line[38:46], line[46:54] 
+                ]))
+                if len(coords[ atm ])==2:
+                    vn1 = norm( coords[ atm ][1] - coords[ atm ][0] )
+                    vn2 = norm( c - coords[ atm ][0] )
+                    if not np.allclose( vn1, vn2 ):
+                        coords[ atm ].append(c)
+                elif len(coords[ atm ])<2:
+                    coords[ atm ].append(c)
+            if sum( map( len, coords.values() ) )==6:
+                break
+        else:
+            if len( coords["N"] )==3:
+                del coords["O"]
+            elif len( coords["O"] )==3:
+                del coords["N"]
+            else:
+                raise Exception( "could not find plane coordinates" )
+    return np.array( coords.values() )
+
+
 class OpmMixin( object ):
     tmpl_dir = TMPL_DIR
     provi_tmpl = "opm.provi"
@@ -148,27 +177,7 @@ class OpmMixin( object ):
         )
     @memoize_m
     def get_planes( self ):
-        # TODO works only for two planes
-        with open( self.opm_file ) as fp:
-            coords={'O':[],'N':[]}
-            for line in fp:
-                if line[0:6]=="HETATM" and line[17:20]=="DUM":
-                    atm = line[13:14]
-                    c = np.array( map( float, [ 
-                        line[30:38], line[38:46], line[46:54] 
-                    ]))
-                    if len(coords[ atm ])==2:
-                        vn1 = norm( coords[ atm ][1] - coords[ atm ][0] )
-                        vn2 = norm( c - coords[ atm ][0] )
-                        if not np.allclose( vn1, vn2 ):
-                            coords[ atm ].append(c)
-                    elif len(coords[ atm ])<2:
-                        coords[ atm ].append(c)
-                if sum( map( len, coords.values() ) )==6:
-                    break
-            else:
-                raise Exception( "could not find plane coordinates" )
-        return np.array([ coords["N"], coords["O"] ])
+        return parse_planes( self.opm_file )
     def make_mplane_file( self ):
         mp = self.get_planes().tolist()
         if mp:
@@ -218,7 +227,7 @@ class Ppm( PpmMixin, PyTool, ProviMixin ):
     
 
 
-class PpmId( PpmMixin, PyTool, ProviMixin ):
+class Ppm2( PpmMixin, PyTool, ProviMixin ):
     """A tool to query the PPM webservice with a pdb id"""
     args = [
         _( "pdb_id", type="str" ),
@@ -238,6 +247,7 @@ class PpmId( PpmMixin, PyTool, ProviMixin ):
         )
     def _pre_exec( self ):
         self.pdb_assembly()
+        # extract first model
         npdb = NumPdb( 
             self.pdb_assembly.assembly_file, 
             features={

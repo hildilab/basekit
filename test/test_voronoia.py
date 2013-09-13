@@ -16,7 +16,7 @@ TMP_DIR = os.path.join( DIR, "tmp" )
 class VoronoiaTestCase( unittest.TestCase ):
     def setUp( self ):
         self.voro = Voronoia(
-            os.path.join( DATA_DIR, "1t7h.pdb" ),
+            os.path.join( DATA_DIR, "1T7H_A.pdb" ),
             ex=0.2,
             output_dir=os.path.join( TMP_DIR, "voronoia" ),
             run=False,
