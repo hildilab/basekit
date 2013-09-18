@@ -116,6 +116,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             options=[ "", "ward", "average" ], help="'', average, ward" ),
         # opm fallback to ppm2
         _( "use_ppm2", type="checkbox", default=False ),
+        # voronoia shuffle
+        _( "voro_shuffle", type="checkbox", default=False ),
     ]
     out = [
         _( "processed_pdb", file="proc.pdb" ),
@@ -186,8 +188,6 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             self.mpstruc_info = MpstrucInfo( self.pdb_id,
                 **copy_dict( kwargs, run=False, 
                     output_dir=self.subdir("mpstruc_info") ) )
-            
-            self.output_files += [ self.info_file ]
 
             self.water_variants = [
                 ( "non", self.no_water_file ),
@@ -197,7 +197,9 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             ]
             
             self.tool_list = [
-                ( "voronoia", Voronoia, { "ex":0.2 } ),
+                ( "voronoia", Voronoia, { 
+                    "ex":0.2, "shuffle": self.voro_shuffle
+                }),
                 ( "hbexplore", HBexplore, {} ),
                 ( "msms_vdw", Msms, copy_dict( msms_kwargs,
                     probe_radius=self.vdw_probe_radius) ),
@@ -224,6 +226,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     )
                     self.output_files += self.__dict__[ name ].output_files
 
+            self.output_files += [ self.info_file ]
             self.output_files += [ self.stats_file ]
 
     def _pre_exec( self ):
@@ -254,10 +257,13 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 self.make_dry_pdb()
             if do( "final" ):
                 self.make_final_pdb()
-            if do( "info" ):
+            if do( "pdb_info" ):
                 self.pdb_info()
+            if do( "opm_info" ):
                 self.opm_info()
+            if do( "mpstruc_info" ):
                 self.mpstruc_info()
+            if do( "info" ):
                 self.make_info()
 
             for suffix, pdb_file in self.water_variants:
@@ -272,8 +278,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         
         self.records = self.make_records()
         self.write()
-        for r in self.records:
-            r.info()
+        # for r in self.records:
+        #     r.info()
     def _post_exec( self ):
         if not self.parallel and not self.check_only:
             self._make_provi_file(
@@ -299,6 +305,14 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                             tag="mplane"
                     except:
                         print tag, info, t.id
+                else:
+                    if os.path.isfile( t.opm.outpath( "ppm_error.txt" ) ):
+                        tag = "ppm"
+                info = t.pdb_info.get_info()
+                if "CA ATOMS ONLY" in info.get( "model_type", {} ):
+                    tag = "calpha_only"
+                if "THEORETICAL MODEL"==info.get("experiment", ""):
+                    tag = "theoretical_model"
                 dct[ tag ].append( t )
             for tag, t_list in dct.iteritems():
                 if tag!="Ok":
@@ -578,6 +592,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         sele = npdb.sele()
         coords_dict = {}
         i = 0
+        print "foobar"
+        tree = scipy.spatial.KDTree( npdb['xyz'] )
         for numa in npdb.iter_resno( incomplete=True ):
             for c in numa._coords:
                 c = tuple( c )
@@ -588,6 +604,12 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 else:
                     coords_dict[ c ] = True
                     sele[i] = True
+                    # remove atoms with almost identical coords
+                    rslt = tree.query( c, k=10, distance_upper_bound=0.2 )
+                    rslt[1].sort()
+                    if rslt[1][0]!=i and rslt[0][1]!=np.inf:
+                        print i, npdb._atoms[i]
+                        sele[i] = False
                 i += 1
         npdb.copy( sele=sele ).write2( self.processed_pdb )
     def make_nowat_pdb( self ):
@@ -707,9 +729,12 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         with open( self.stats2_file, "w" ) as fp:
             json.dump( mppd_stats2, fp )
     def make_info( self ):
-        info = self.pdb_dic[ self.pdb_id.upper() ]
-        with open( self.info_file, "w" ) as fp:
-            json.dump( info, fp, indent=4 )
+        print self.pdb_info.get_info()
+        print self.opm_info.get_info()
+        print self.mpstruc_info.get_info()
+        # info = self.pdb_dic[ self.pdb_id.upper() ]
+        # with open( self.info_file, "w" ) as fp:
+        #     json.dump( info, fp, indent=4 )
     def get_info( self ):
         with open( self.info_file, "r" ) as fp:
             return json.load( fp )
