@@ -389,7 +389,7 @@ class InfoParser( object ):
             elif len(x)==1 and x[0]:
                 mdl_dct[ x[0].strip() ] = True
         return {
-            "keywords": dct.get("keywords", "").split(", "),
+            "keywords": dct.get("keywords", "").replace("- ", "-").split(", "),
             "experiment": dct.get("experiment", ""),
             "title": dct.get("title", ""),
             "resolution": try_float( 
