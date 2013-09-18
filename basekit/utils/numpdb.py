@@ -371,6 +371,8 @@ class InfoParser( object ):
             self._dict["keywords"] += line[10:].rstrip()
         elif line.startswith("EXPDTA"):
             self._dict["experiment"] += line[10:].rstrip()
+        elif line.startswith("MDLTYP"):
+            self._dict["model_type"] += line[10:].rstrip()
         elif line.startswith("TITLE"):
             self._dict["title"] += line[10:].rstrip()
         elif line.startswith("REMARK"):
@@ -378,6 +380,14 @@ class InfoParser( object ):
                 self._dict["resolution"] += line[10:].rstrip()
     def get( self ):
         dct = self._dict
+        mdl = [ s.strip() for s in dct.get("model_type", "").split(";") ]
+        mdl_dct = {}
+        for typ in mdl:
+            x = s.split(",", 1)
+            if len(x)==2:
+                mdl_dct[ x[0].strip() ] = x[1].strip()
+            elif len(x)==1 and x[0]:
+                mdl_dct[ x[0].strip() ] = True
         return {
             "keywords": dct.get("keywords", "").split(", "),
             "experiment": dct.get("experiment", ""),
@@ -387,7 +397,8 @@ class InfoParser( object ):
                     dct.get("resolution", "").split(), 1, None
                 ), 
                 None
-            )
+            ),
+            "model_type": mdl_dct
         }
 
 
