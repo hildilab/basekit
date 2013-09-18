@@ -206,7 +206,7 @@ pdb.py compare \
 time mppd.py pdb \
 	mppd_lists/opm_tmdet_mpstruc/joined_list.txt \
 	-o mppd/ -p file \
-	-i 0 1801 -nw 1 \
+	-i 0 1862 -nw 1 \
 	--variants fin \
 	-co
 
@@ -222,15 +222,15 @@ time mppd.py pdb \
 time mppd.py pdb \
 	mppd_lists/all_vs_theoretical/list1_only.txt \
 	-o mppd/ -p file \
-	-i 0 1801 -nw 5 \
+	-i 0 1801 -nw 1 \
 	--variants fin \
-	--tools hbexplore
+	--tools mpstruc_info
 
 time mppd.py pdb \
 	"3DQB" \
 	-o mppd/ -p list \
 	-nw 1 -d -v \
-	--tools opm_info \
+	--tools info \
 	--variants fin
 
 # use ppm2 for entries not in opm

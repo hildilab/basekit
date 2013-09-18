@@ -144,6 +144,13 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 "phi_psi": False
             }
 
+            self.output_files = []
+
+            self.pdb_info = PdbInfo( self.pdb_id,
+                **copy_dict( kwargs, run=False, 
+                    output_dir=self.subdir("pdb_info") ) )
+            self.output_files += [ self.pdb_info.info_file ]
+
             # self.opm.info_file can be used to distinguish
             if self.use_ppm2:
                 self.opm = Ppm2(
@@ -157,7 +164,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     **copy_dict( kwargs, run=False, 
                         output_dir=self.subdir("opm") )
                 )
-            self.output_files = self.opm.output_files
+            self.output_files += self.opm.output_files
             self.output_files += [ self.processed_pdb, self.no_water_file ]
             self.dowser = DowserRepeat(
                 self.processed_pdb,
@@ -174,14 +181,12 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             self.msms0 = Msms(
                 self.no_water_file, **copy_dict( kwargs, run=False, 
                 output_dir=self.subdir( "msms0" ), 
-                **copy_dict( msms_kwargs, probe_radius=self.vdw_probe_radius)
+                **copy_dict( msms_kwargs, probe_radius=self.vdw_probe_radius,
+                    all_components=False )
             ))
             self.output_files += self.msms0.output_files
             self.output_files += [ self.original_dry_pdb, self.final_pdb ]
 
-            self.pdb_info = PdbInfo( self.pdb_id,
-                **copy_dict( kwargs, run=False, 
-                    output_dir=self.subdir("pdb_info") ) )
             self.opm_info = OpmInfo( self.pdb_id,
                 **copy_dict( kwargs, run=False, 
                     output_dir=self.subdir("opm_info") ) )
@@ -226,6 +231,9 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     )
                     self.output_files += self.__dict__[ name ].output_files
 
+            
+            self.output_files += [ self.mpstruc_info.info_file ]
+            self.output_files += [ self.opm_info.info_file ]
             self.output_files += [ self.info_file ]
             self.output_files += [ self.stats_file ]
 
@@ -308,11 +316,12 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 else:
                     if os.path.isfile( t.opm.outpath( "ppm_error.txt" ) ):
                         tag = "ppm"
-                info = t.pdb_info.get_info()
-                if "CA ATOMS ONLY" in info.get( "model_type", {} ):
-                    tag = "calpha_only"
-                if "THEORETICAL MODEL"==info.get("experiment", ""):
-                    tag = "theoretical_model"
+                if tag!="pdb_info" and t.pdb_info.check():
+                    info = t.pdb_info.get_info()
+                    if "CA ATOMS ONLY" in info.get( "model_type", {} ):
+                        tag = "calpha_only"
+                    if "THEORETICAL MODEL"==info.get("experiment", ""):
+                        tag = "theoretical_model"
                 dct[ tag ].append( t )
             for tag, t_list in dct.iteritems():
                 if tag!="Ok":
@@ -729,9 +738,9 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         with open( self.stats2_file, "w" ) as fp:
             json.dump( mppd_stats2, fp )
     def make_info( self ):
-        print self.pdb_info.get_info()
-        print self.opm_info.get_info()
-        print self.mpstruc_info.get_info()
+        print json.dumps( self.pdb_info.get_info(), indent=4 )
+        print json.dumps( self.opm_info.get_info(), indent=4 )
+        print json.dumps( self.mpstruc_info.get_info(), indent=4 )
         # info = self.pdb_dic[ self.pdb_id.upper() ]
         # with open( self.info_file, "w" ) as fp:
         #     json.dump( info, fp, indent=4 )
