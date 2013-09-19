@@ -13,7 +13,7 @@ from poster.streaminghttp import register_openers
 
 import numpy as np
 
-from utils import memoize_m, try_float, copy_dict
+from utils import memoize_m, try_float, copy_dict, get_index
 from utils.math import norm
 from utils.tool import _, _dir_init, PyTool, ProviMixin
 from utils.list import ListRecord, ListIO
@@ -47,6 +47,13 @@ def opm_list( class_id ):
 
 def _parse_opm_info( page ):
 
+    # check if there were no matches
+    no_matches = re.findall(
+        r'<h2>Search Results for ".*"</h2>No matches', page
+    )
+    if no_matches:
+        return None
+
     # check if this page only points to a representative structure
     rep = re.findall(
         r'Representative structure\(s\) of this protein: <br /> '
@@ -79,10 +86,10 @@ def _parse_opm_info( page ):
         "class": opm_class[0].split(" ", 1)[1],
         "superfamily": opm_superfamily[0].split(" ", 1)[1],
         "family": opm_family[0].split(" ", 1)[1],
-        "species": opm_species[0].split(" ", 1)[1],
+        "species": opm_species[0].strip(),
         "localization": opm_localization[0],
         "related_ids": related_ids, 
-        "delta_g": try_float( delta_g[0] )
+        "delta_g": try_float( get_index( delta_g, 0 ) )
     }
 
 
@@ -97,14 +104,16 @@ def opm_info( pdb_id ):
         fp.write( page )
 
     info = _parse_opm_info( page )
-    rep = info.get( "representative", None )
-    # get info from representative entry
-    if rep:
-        info_rep = opm_info( rep )
-        info = info_rep
-        info["related_ids"].remove( pdb_id )
-        info["related_ids"].append( rep )
-        info["representative"] = rep
+    if info:
+        rep = info.get( "representative", None )
+        # get info from representative entry
+        if rep:
+            info_rep = opm_info( rep )
+            info = info_rep
+            if pdb_id in info["related_ids"]:
+                info["related_ids"].remove( pdb_id )
+            info["related_ids"].append( rep )
+            info["representative"] = rep
 
     return info
 

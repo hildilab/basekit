@@ -28,7 +28,7 @@ class OpmInfoParseTestCase( unittest.TestCase ):
                 'family': 'G-protein coupled receptors, family A',
                 'localization': 'Eukaryotic plasma membrane',
                 'related_ids': ['1F88', '1HZX', '1L9H', '2G87'],
-                'species': 'taurus',
+                'species': 'Bos taurus',
                 'superfamily': 'Rhodopsin-like receptors and pumps',
                 'type': 'Transmembrane'
             }
@@ -41,6 +41,39 @@ class OpmInfoParseTestCase( unittest.TestCase ):
             {
                 "representative": "3PQR"
             }
+        )
+    def test_parse2( self ):
+        with open( data( "2L6X_opm_info.html" ), "r" ) as fp:
+            info_dict = _parse_opm_info( fp.read() )
+        self.assertDictEqual(
+            info_dict,
+            {
+                'class': 'Alpha-helical polytopic',
+                'delta_g': -55.2,
+                'family': 'Microbial and algal rhodopsins',
+                'localization': 'Bacterial Gram-negative inner membrane',
+                'related_ids': [],
+                'species': 'Gamma-proteobacterium',
+                'superfamily': 'Rhodopsin-like receptors and pumps',
+                'type': 'Transmembrane'
+            }
+        )
+    def test_parse_missing( self ):
+        with open( data( "2ZT9_opm_info.html" ), "r" ) as fp:
+            info_dict = _parse_opm_info( fp.read() )
+        self.assertDictEqual(
+            info_dict,
+            {
+                'class': '',
+                'delta_g': None,
+                'family': '',
+                'localization': '',
+                'related_ids': [],
+                'species': '',
+                'superfamily': '',
+                'type': ''
+            }
+
         )
 
 
