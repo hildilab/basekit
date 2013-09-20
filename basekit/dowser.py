@@ -160,7 +160,7 @@ class DowserRepeat( DowserMixin, PyTool, ProviMixin ):
                 max_resno = max( map( lambda x: int(x[22:26]), new_watall2 ) )
             # check if there are new waters
             if ( len( new_wat2 )>1 and len( new_watall2 )>1 and
-                    ( not self.max_repeats or rep_count<self.max_repeats ) ):
+                    ( not self.max_repeats or rep_count<self.max_repeats-1 ) ):
                 dowserwat += new_wat2
                 dowserwat_all += new_watall2
                 rep_count += 1
