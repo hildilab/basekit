@@ -13,6 +13,7 @@ import math
 from numpy import *
 from array import array
 
+from basekit import utils
 from utils import memoize_m
 from utils.tool import _, _dir_init, CmdTool, ProviMixin, ParallelMixin
 from utils.tool import RecordsMixin, PyTool
@@ -283,6 +284,9 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                 self.cmd = None
         else:
             self.cmd = None
+    def _pre_exec( self ):
+        utils.path.remove( self.vol_file )
+        utils.path.remove( self.log_file )
     def _post_exec( self ):
         if not self.parallel:
             provi.prep_volume( self.vol_file, self.pdb_input )
