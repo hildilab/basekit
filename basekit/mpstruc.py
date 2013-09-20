@@ -3,6 +3,7 @@ from __future__ import division
 
 
 import os
+import re
 import json
 import urllib2
 import xml.etree.ElementTree
@@ -37,6 +38,13 @@ def mpstruc_tree( xml_file=None ):
     return tree.getroot()
 
 
+
+def _format( s ):
+    if not s:
+        return s
+    s2 = re.sub( r"</?su(b|p)>", r"", s )
+    s3 = re.sub( r"&([a-zA-Z]+);", r"\1", s2 )
+    return s3
 
 class MpstrucDb( object ):
     def __init__( self, xml_file=None ):
@@ -92,10 +100,10 @@ class MpstrucDb( object ):
             if related!=None:
                 related = [ x.text for x in related.findall("pdbCode") ]
             return {
-                "name": protein.find("name").text,
-                "species": protein.find("species").text,
-                "subgroup": self.subgroup( pdb_id ),
-                "group": self.group( pdb_id ),
+                "name": _format( protein.find("name").text ),
+                "species": _format( protein.find("species").text ),
+                "subgroup": _format( self.subgroup( pdb_id ) ),
+                "group": _format( self.group( pdb_id ) ),
                 "master": master.text if master!=None else None,
                 "related": related
             }

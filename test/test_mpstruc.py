@@ -76,5 +76,18 @@ class MpstrucDbTestCase( unittest.TestCase ):
                 'subgroup': 'Bacterial and Algal Rhodopsins'
             }
         )
+    def test_format( self ):
+        info = self.mpstruc.info( "3SN6" )
+        self.assertEquals(
+            info['name'],
+            "beta2 adrenergic receptor-Gs protein complex"
+        )
+    def test_format2( self ):
+        info = self.mpstruc.info( "3DQB" )
+        self.assertEquals(
+            info['name'],
+            "Rhodopsin, Ops*-GalphaCT peptide complex"
+        )
+
 
 
