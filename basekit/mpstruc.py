@@ -8,7 +8,7 @@ import urllib2
 import xml.etree.ElementTree
 
 from utils.tool import _, _dir_init, PyTool
-from utils.list import ListRecord, ListIO
+from utils.listing import ListRecord, ListIO
 
 
 
@@ -87,11 +87,17 @@ class MpstrucDb( object ):
     def info( self, pdb_id ):
         protein = self.find( pdb_id )
         if protein!=None:
+            master = protein.find("masterProteinPdbCode")
+            related = protein.find("relatedPdbEntries")
+            if related!=None:
+                related = [ x.text for x in related.findall("pdbCode") ]
             return {
                 "name": protein.find("name").text,
                 "species": protein.find("species").text,
                 "subgroup": self.subgroup( pdb_id ),
-                "group": self.group( pdb_id )
+                "group": self.group( pdb_id ),
+                "master": master.text if master!=None else None,
+                "related": related
             }
         else:
             return None

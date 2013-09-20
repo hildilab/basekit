@@ -25,14 +25,56 @@ class MpstrucDbTestCase( unittest.TestCase ):
     def test_find_related_member( self ):
         info = self.mpstruc.info( "1AIG" )
         self.assertEquals( info['name'], "Photosynthetic Reaction Center" )
+        self.assertDictEqual(
+            info,
+            {
+                'group': None,
+                'master': '4RCR',
+                'name': 'Photosynthetic Reaction Center',
+                'related': [ '1AIG' ],
+                'species': 'Rhodobacter sphaeroides (dark state)',
+                'subgroup': None
+            }
+        )
     def test_find_related_protein( self ):
         info = self.mpstruc.info( "2VQK" )
-        self.assertEquals( info['name'], "Porin B monomer" )
+        self.assertDictEqual(
+            info,
+            {
+                'group': 'TRANSMEMBRANE PROTEINS: ALPHA-HELICAL',
+                'master': None,
+                'name': 'Porin B monomer',
+                'related': ['2VQH', '2VQK', '2VQL'],
+                'species': 'Corynebacterium glutamicum',
+                'subgroup': 'Outer Membrane Proteins'
+            }
+        )
     def test_find_member( self ):
         info = self.mpstruc.info( "1U19" )
-        self.assertEquals( info['name'], "Rhodopsin" )
+        self.assertDictEqual(
+            info,
+            {
+                'group': 'TRANSMEMBRANE PROTEINS: ALPHA-HELICAL',
+                'master': '1F88',
+                'name': 'Rhodopsin',
+                'related': [],
+                'species': 'Bovine Rod Outer Segment',
+                'subgroup': 'G Protein-Coupled Receptors (GPCRs)'
+            }
+        )
     def test_find_protein( self ):
         info = self.mpstruc.info( "1VGO" )
         self.assertEquals( info['name'], "Archaerhodopsin-2 (aR-2)" )
+        self.assertDictEqual(
+            info,
+            {
+                'group': 'TRANSMEMBRANE PROTEINS: ALPHA-HELICAL',
+                'master': None,
+                'name': 'Archaerhodopsin-2 (aR-2)',
+                'related': [],
+                'species': 'Haloroubrum sp. aus-2',
+                'subgroup': 'Bacterial and Algal Rhodopsins'
+            }
+        )
 
 
