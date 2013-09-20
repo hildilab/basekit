@@ -34,12 +34,24 @@ def parse_msms_log( msms_log ):
                     line.startswith("TRIANGULATION") or
                     line.startswith("NUMERICAL VOLUMES AND AREA") ):
                 break
+            # find errors
             if line.find( "ERROR Too many RS components" )!=-1:
                 raise Exception( "too many RS components" )
             if line.find( "ERROR: find_first_rs_face" )!=-1:
                 raise Exception( "find_first_rs_face" )
-            if line.find( "sphere_mange_arete: inconcistence" )!=-1:
-                raise Exception( "sphere_mange_arete: inconcistence" )
+            # if line.find( "sphere_mange_arete: inconcistence" )!=-1:
+            #     raise Exception( "sphere_mange_arete: inconcistence" )
+            if ( line.find( "RS component" )!=-1 and 
+                    line.find( "not found" )!=-1 ):
+                raise Exception( "RS component not found" )
+            if ( line.find( "input file" )!=-1 and 
+                    line.find( "couldn't be open" )!=-1 ):
+                raise Exception( "input file couldn't be open" )
+            if line.find( 
+                    "failed after 5 attemps to compute the surface" )!=-1:
+                raise Exception( 
+                    "failed after 5 attemps to compute the surface" )
+            
         fp.next()
         for line in fp:
             if ( line.startswith("TRIANGULATION") or
@@ -306,4 +318,17 @@ class Pdb2xyzr( CmdTool ):
     def _post_exec( self ):
         if os.path.getsize( self.xyzr_file )==0:
             utils.path.remove( self.xyzr_file )
-
+        else:
+            xyz_file = utils.path.mod( self.xyzr_file, ext="xyz" )
+            with open( self.xyzr_file, "r" ) as fp:
+                lines = fp.readlines()
+                with open( xyz_file, "w" ) as fp_out:
+                    fp_out.write( "%i\ncomment\n" % len( lines ) )
+                    for d in lines:
+                        ds = d.strip().split()
+                        if not len(ds):
+                            continue
+                        l = "F\t%0.3f\t%0.3f\t%0.3f\n" % (
+                            float(ds[0]), float(ds[1]), float(ds[2])
+                        )
+                        fp_out.write( l )
