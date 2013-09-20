@@ -378,6 +378,9 @@ class InfoParser( object ):
         elif line.startswith("REMARK"):
             if line[9]=="2":
                 self._dict["resolution"] += line[10:].rstrip()
+        elif line.startswith("OBSLTE"):
+            self._dict["obsolete"] += line[31:].rstrip()
+
     def get( self ):
         dct = self._dict
         mdl = [ s.strip() for s in dct.get("model_type", "").split(";") ]
@@ -398,7 +401,8 @@ class InfoParser( object ):
                 ), 
                 None
             ),
-            "model_type": mdl_dct
+            "model_type": mdl_dct,
+            "obsolete": dct.get("obsolete", "").split()
         }
 
 
@@ -507,7 +511,10 @@ class NumAtoms:
         )
     def copy( self, **sele ):
         _sele = self.sele( **sele )
-        return NumAtoms( self._atoms[ _sele ], self._coords[ _sele ] )
+        if len(_sele):
+            return NumAtoms( self._atoms[ _sele ], self._coords[ _sele ] )
+        else:
+            return NumAtoms( self._atoms.copy(), self._coords.copy() )
     def _select( self, **sele ):
         coords = self._coords
         atoms = self._atoms
