@@ -23,6 +23,24 @@ MSMS_CMD = "msms"
 BABEL_CMD = "babel"
 
 
+
+"""
+g Surface1
+# Number of vertices: 30918
+v -51.84846 50.86638 114.37491
+
+# Number of normals: 21610
+vn -.076 .994 -.082
+
+# Number of faces: 64556
+f 3//3 2//2 1//1
+
+"""
+def msms_to_obj(  ):
+    pass
+
+
+
 MsmsComponent = collections.namedtuple( "MsmsComponent", [
     "id", "SES_volume", "SES_area"
 ])
@@ -63,6 +81,9 @@ def parse_msms_log( msms_log ):
         for line in fp:
             if line.startswith("NUMERICAL VOLUMES AND AREA"):
                 break
+            if line.find( "ERROR: is_point_in_contact_face" )!=-1:
+                pass
+                # raise Exception( "is_point_in_contact_face" )
         fp.next()
         for line in fp:
             if line.strip().startswith("Total"):
@@ -78,7 +99,7 @@ def parse_msms_log( msms_log ):
 
 
 
-def parse_msms_area( area_file ):
+def parse_msms_area( area_file, max_atomno=None ):
     with open( area_file, "r" ) as fp:
         header = fp.next().split()[1:]
         ses_list = [ [] for i in range(len(header)) ]
@@ -88,6 +109,8 @@ def parse_msms_area( area_file ):
                 continue
             ls = line.split()
             atomno = int(ls[0]) + 1
+            if max_atomno and atomno>max_atomno:
+                break
             atom_area = map( float, ls[1:] )
             for i, a in enumerate( iter_stride( atom_area, n=2 ) ):
                 ses, sas = a
@@ -138,6 +161,7 @@ class Msms( CmdTool, ProviMixin ):
             default=0 ),
         _( "envelope_hclust", type="str", default="", 
             options=[ "", "ward", "average" ], help="'', average, ward" ),
+        _( "atom_radius_add", type="float", default=None ),
     ]
     out = [
         _( "area_file", file="area.area" ),
@@ -211,6 +235,17 @@ class Msms( CmdTool, ProviMixin ):
                             d['x'], d['y'], d['z'], pr
                         )
                         fp.write( l )
+            if self.atom_radius_add:
+                with open( self.pdb2xyzr.xyzr_file, "r+" ) as fp:
+                    lines = fp.readlines()
+                    fp.seek(0)
+                    fp.truncate()
+                    for l in lines:
+                        x, y, z, r = l.split()
+                        l = "%s\t%s\t%s\t%0.2f\n" % (
+                            x, y, z, float(r) + self.atom_radius_add
+                        )
+                        fp.write( l )
     def _post_exec( self ):
         self.get_components()
         self._make_provi_file(
@@ -254,9 +289,13 @@ class Msms( CmdTool, ProviMixin ):
                         d3[0], d3[1], d3[2]
                     )
                     fp.write( l )
-    def components_provi( self, color="", translucent=0.0, relpath=None ):
+    def components_provi( self, color="", translucent=0.0, relpath=None,
+                            max_atomno=None ):
         if self.all_components:
             comps = self.get_components()
+            if max_atomno:
+                area = self.get_area( max_atomno=max_atomno )
+                comps = [ c for c in comps if area["ses"][ c[0] ] ]
             if not relpath:
                 relpath = self.relpath
             with open( self.datapath( "_component.json" ), "r" ) as fp:
@@ -286,8 +325,8 @@ class Msms( CmdTool, ProviMixin ):
         return files
     def get_components( self ):
         return parse_msms_log( self.stdout_file )
-    def get_area( self ):
-        return parse_msms_area( self.area_file )
+    def get_area( self, max_atomno=None ):
+        return parse_msms_area( self.area_file, max_atomno=max_atomno )
     def get_vert( self, filt=False ):
         vert = parse_msms_vert( self.vert_file )
         if filt:
