@@ -207,7 +207,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         _( "database|db", type="checkbox", default=False ),
         # msms tweaks
         _( "envelope_hclust|ehc", type="str", default="",
-            options=[ "", "ward", "average" ], help="'', average, ward" ),
+            options=[ "", "ward", "average" ], help="average, ward" ),
         _( "atom_radius_add|ara", type="float", default=None ),
         # opm fallback to ppm2
         _( "use_ppm2", type="checkbox", default=False ),
