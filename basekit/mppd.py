@@ -16,7 +16,7 @@ from scipy.stats.stats import pearsonr
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from utils import copy_dict, try_float, try_div
+from utils import copy_dict, try_float, try_div, flatten
 from utils.math import point_plane_dist
 from utils.tool import (
     _, _dir_init, PyTool, RecordsMixin, ParallelMixin, ProviMixin,
@@ -75,16 +75,12 @@ class MppdRecord( _MppdRecord ):
 
 
 MppdDbRecord = collections.namedtuple( "MppdDbRecord", [
-    "PDBID", "HEADER", "RESOLUTION", "EXPDTA", "KEYWDS",
-    "OPMSpecies", "OPMFamily", "OPMSuperfamily",
-    "swname", "swfamily", 
-    "topic"
+    "pdb_id", "pdb_title", "pdb_keywords", "pdb_experiment", "pdb_resolution",
+    "opm_superfamily", "opm_family", "opm_representative",
+    "mpstruc_group", "mpstruc_subgroup", "mpstruc_name"
 ])
 
 
-
-with open( os.path.join( TMPL_DIR, "pdb_dic_swfam.json" ), "r" ) as fp:
-    PDB_DIC = json.load( fp )
 
 
 
@@ -116,6 +112,10 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             options=[ "", "ward", "average" ], help="'', average, ward" ),
         # opm fallback to ppm2
         _( "use_ppm2", type="checkbox", default=False ),
+        # voronoia shuffle
+        _( "voro_shuffle", type="checkbox", default=False ),
+        # dowser max repeats
+        _( "dowser_max", type="int", default=None ),
     ]
     out = [
         _( "processed_pdb", file="proc.pdb" ),
@@ -130,7 +130,6 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
     RecordsClass = MppdRecord
     tmpl_dir = TMPL_DIR
     provi_tmpl = "mppd.provi"
-    pdb_dic = PDB_DIC
     def _init( self, *args, **kwargs ):
         self._init_records( None, **kwargs )
         self._init_parallel( self.pdb_input, **kwargs )
@@ -141,6 +140,13 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 "sstruc": False,
                 "phi_psi": False
             }
+
+            self.output_files = []
+
+            self.pdb_info = PdbInfo( self.pdb_id,
+                **copy_dict( kwargs, run=False, 
+                    output_dir=self.subdir("pdb_info") ) )
+            self.output_files += [ self.pdb_info.info_file ]
 
             # self.opm.info_file can be used to distinguish
             if self.use_ppm2:
@@ -155,12 +161,13 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     **copy_dict( kwargs, run=False, 
                         output_dir=self.subdir("opm") )
                 )
-            self.output_files = self.opm.output_files
+            self.output_files += self.opm.output_files
             self.output_files += [ self.processed_pdb, self.no_water_file ]
             self.dowser = DowserRepeat(
                 self.processed_pdb,
                 **copy_dict( kwargs, run=False, alt='x',
-                    output_dir=self.subdir("dowser") )
+                    output_dir=self.subdir("dowser"),
+                    max_repeats=self.dowser_max )
             )
             self.output_files += self.dowser.output_files
             msms_kwargs = { 
@@ -172,22 +179,18 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             self.msms0 = Msms(
                 self.no_water_file, **copy_dict( kwargs, run=False, 
                 output_dir=self.subdir( "msms0" ), 
-                **copy_dict( msms_kwargs, probe_radius=self.vdw_probe_radius)
+                **copy_dict( msms_kwargs, probe_radius=self.vdw_probe_radius,
+                    all_components=False )
             ))
             self.output_files += self.msms0.output_files
             self.output_files += [ self.original_dry_pdb, self.final_pdb ]
 
-            self.pdb_info = PdbInfo( self.pdb_id,
-                **copy_dict( kwargs, run=False, 
-                    output_dir=self.subdir("pdb_info") ) )
             self.opm_info = OpmInfo( self.pdb_id,
                 **copy_dict( kwargs, run=False, 
                     output_dir=self.subdir("opm_info") ) )
             self.mpstruc_info = MpstrucInfo( self.pdb_id,
                 **copy_dict( kwargs, run=False, 
                     output_dir=self.subdir("mpstruc_info") ) )
-            
-            self.output_files += [ self.info_file ]
 
             self.water_variants = [
                 ( "non", self.no_water_file ),
@@ -197,7 +200,9 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             ]
             
             self.tool_list = [
-                ( "voronoia", Voronoia, { "ex":0.2 } ),
+                ( "voronoia", Voronoia, { 
+                    "ex":0.2, "shuffle": self.voro_shuffle
+                }),
                 ( "hbexplore", HBexplore, {} ),
                 ( "msms_vdw", Msms, copy_dict( msms_kwargs,
                     probe_radius=self.vdw_probe_radius) ),
@@ -213,7 +218,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 else:
                     return [ e for e in lst_all if e[0] in lst ]
             self.water_variants = filt( self.variants, self.water_variants )
-            self.tool_list = filt( self.tools, self.tool_list )
+            self.do_tool_list = filt( self.tools, self.tool_list )
 
             for suffix, pdb_file in self.water_variants:
                 for prefix, tool, tool_kwargs in self.tool_list:
@@ -224,7 +229,12 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     )
                     self.output_files += self.__dict__[ name ].output_files
 
-            self.output_files += [ self.stats_file ]
+            
+            self.output_files += [ self.mpstruc_info.info_file ]
+            self.output_files += [ self.opm_info.info_file ]
+            self.output_files += [ self.info_file ]
+            self.output_files += [ self.outpath( "mppd.provi" ) ]
+            # self.output_files += [ self.stats_file ]
 
     def _pre_exec( self ):
         pass
@@ -254,52 +264,113 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 self.make_dry_pdb()
             if do( "final" ):
                 self.make_final_pdb()
-            if do( "info" ):
+            if do( "pdb_info" ):
                 self.pdb_info()
+            if do( "opm_info" ):
                 self.opm_info()
+            if do( "mpstruc_info" ):
                 self.mpstruc_info()
+            if do( "info" ):
                 self.make_info()
+            if do( "provi" ):
+                self._make_provi_file(
+                    pdb_id=self.pdb_id,
+                    pdb_file=self.relpath( self.final_pdb ),
+                    pdb_org_file=self.relpath( self.original_dry_pdb ),
+                    mplane_file=self.relpath( self.opm.mplane_file ),
+                    hbx_file=self.relpath( self.hbexplore_fin.hbx_file ),
+                    vol_file=self.relpath( self.voronoia_fin.vol_file ),
+                    msms_components=self.msms_vdw_fin.components_provi(
+                        color="lightgreen", translucent=0.5, relpath=self.relpath ),
+                )
 
             for suffix, pdb_file in self.water_variants:
-                for prefix, tool, tool_kwargs in self.tool_list:
+                for prefix, tool, tool_kwargs in self.do_tool_list:
                     name = "%s_%s" % ( prefix, suffix )
                     self.__dict__[ name ]()
 
-        # if do( "stats" ):
-        #     self.make_stats()
+        if do( "stats" ):
+            self.make_stats()
         if do( "stats2" ):
             self.make_stats2()
         
         self.records = self.make_records()
         self.write()
-        for r in self.records:
-            r.info()
+        # for r in self.records:
+        #     r.info()
     def _post_exec( self ):
-        if not self.parallel and not self.check_only:
-            self._make_provi_file(
-                pdb_id=self.pdb_id,
-                pdb_file=self.relpath( self.final_pdb ),
-                pdb_org_file=self.relpath( self.original_dry_pdb ),
-                mplane_file=self.relpath( self.opm.mplane_file ),
-                hbx_file=self.relpath( self.hbexplore_fin.hbx_file ),
-                vol_file=self.relpath( self.voronoia_fin.vol_file ),
-                msms_components=self.msms_vdw_fin.components_provi(
-                    color="lightgreen", translucent=0.5, relpath=self.relpath ),
-            )
         if self.parallel and self.check_only:
             dct = collections.defaultdict( list )
             db_records = []
             for t in self.tool_list:
                 info = t.check( full=True )
                 tag = re.split( "/|\.", info )[0]
+                if tag=="mppd":
+                    tag = "provi"
                 if tag!="opm":
                     # check if opm found two mplanes
                     try:
                         if len( t.opm.get_planes() )!=2:
                             tag="mplane"
                     except:
-                        print tag, info, t.id
+                        #print tag, info, t.id
+                        pass
+                else:
+                    if os.path.isfile( t.opm.outpath( "ppm_error.txt" ) ):
+                        tag = "ppm"
+                        # print open( t.opm.outpath( "ppm_error.txt" ) ).read()
+                if tag!="pdb_info" and t.pdb_info.check():
+                    info = t.pdb_info.get_info()
+                    if "CA ATOMS ONLY" in info.get( "model_type", {} ):
+                        tag = "calpha_only"
+                    if t.pdb_id in [ "3M9C", "4A82" ]:
+                        tag = "calpha_only"
+                    if "THEORETICAL MODEL"==info.get( "experiment", "" ):
+                        tag = "theoretical_model"
+                    res = info.get( "resolution" )
+                    if res and res>=4.0 and res!="NOT":
+                        tag = "resolution"
+                    if info.get( "obsolete" ):
+                        tag = "obsolete"
+
                 dct[ tag ].append( t )
+
+            # representative id search
+            test_rep_list = flatten([
+                zip( [x]*len(dct[x]), dct[x] ) 
+                for x in [ "opm", "ppm", "msms0", "msms_vdw_fin", "dowser" ]
+            ])
+            for tag, t in test_rep_list:
+                opm_info = t.opm_info.get_info()
+                mpstruc_info = t.mpstruc_info.get_info()
+                rid_list = []
+                if opm_info:
+                    rep_id = opm_info.get("representative")
+                    if rep_id:
+                        rid_list.append( rep_id.upper() )
+                    rid_list += opm_info.get("related_ids", [])
+                if mpstruc_info:
+                    master_id = mpstruc_info.get("master")
+                    if master_id:
+                        rid_list.append( master_id.upper() )
+                    rid_list += mpstruc_info.get("related", [])
+                        
+                rep = None
+                for rid in rid_list:
+                    for x in dct["Ok"]:
+                        if x.pdb_id==rid:
+                            rep = x
+                            break
+                    else:
+                        continue
+                    break
+                if rep:
+                    dct[ "representative" ].append( t )
+                else:
+                    dct[ "no_representative" ].append( t )
+                # dct[ tag ].remove( t )
+                
+
             for tag, t_list in dct.iteritems():
                 if tag!="Ok":
                     print tag, " ".join( map( lambda x: x.id, t_list ) ) 
@@ -309,17 +380,19 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 for t in dct.get( 'Ok', [] ):
                     t_info = t.get_info()
                     db_records.append( MppdDbRecord(
-                        t_info['PDBID'],
-                        t_info['HEADER'],
-                        t_info['RESOLUTION'],
-                        t_info['EXPDTA'],
-                        ",".join( t_info['KEYWDS'] ),
-                        t_info['OPMSpecies'],
-                        t_info['OPMFamily'],
-                        t_info['OPMSuperfamily'],
-                        t_info['swname'],
-                        t_info['swfamily'],
-                        t_info['topic']
+                        t_info['pdb_id'],
+                        t_info['pdb_title'],
+                        ",".join( t_info['pdb_keywords'] ),
+                        t_info['pdb_experiment'],
+                        t_info['pdb_resolution'],
+
+                        t_info['opm_superfamily'],
+                        t_info['opm_family'],
+                        t_info['opm_representative'],
+
+                        t_info['mpstruc_group'],
+                        t_info['mpstruc_subgroup'],
+                        t_info['mpstruc_name']
                     ))
                 db = SqliteBackend( "mppd.db", MppdDbRecord )
                 db.write( db_records )
@@ -578,7 +651,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         sele = npdb.sele()
         coords_dict = {}
         i = 0
-        for numa in npdb.iter_resno( incomplete=True ):
+        tree = scipy.spatial.KDTree( npdb['xyz'] )
+        for numa in npdb._iter_resno():
             for c in numa._coords:
                 c = tuple( c )
                 # remove atoms with identical coords
@@ -588,6 +662,12 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 else:
                     coords_dict[ c ] = True
                     sele[i] = True
+                    # remove atoms with almost identical coords
+                    rslt = tree.query( c, k=10, distance_upper_bound=0.2 )
+                    rslt[1].sort()
+                    if rslt[1][0]!=i and rslt[0][1]!=np.inf:
+                        print i, npdb._atoms[i]
+                        sele[i] = False
                 i += 1
         npdb.copy( sele=sele ).write2( self.processed_pdb )
     def make_nowat_pdb( self ):
@@ -598,7 +678,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                             line[17:20]!="HOH" ):
                         fp.write( line )
     def get_npdb_dicts( self ):
-        mplanes = self.opm.get_planes()
+        mplanes = np.array( self.opm.get_planes() )
         dist = abs( point_plane_dist( mplanes[1][0], mplanes[0] ) )
         npdb_dict = {}
         npdb_tm_dict = {}
@@ -628,7 +708,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         return npdb_dict, npdb_tm_dict, npdb_sol_dict
     def make_stats( self ):
         segments = zip( [ "ALL", "TM", "SOL" ], self.get_npdb_dicts() )
-        mplanes = self.opm.get_planes()
+        mplanes = np.array( self.opm.get_planes() )
         dist = abs( point_plane_dist( mplanes[1][0], mplanes[0] ) )
         pr = self.probe_radius
         mppd_stats = []
@@ -707,7 +787,24 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         with open( self.stats2_file, "w" ) as fp:
             json.dump( mppd_stats2, fp )
     def make_info( self ):
-        info = self.pdb_dic[ self.pdb_id.upper() ]
+        pdb_info = self.pdb_info.get_info() or {}
+        opm_info = self.opm_info.get_info() or {}
+        mpstruc_info = self.mpstruc_info.get_info() or {}
+        info = {
+            "pdb_id": self.pdb_id.upper(),
+            "pdb_title": pdb_info.get("title"),
+            "pdb_keywords": pdb_info.get("keywords"),
+            "pdb_experiment": pdb_info.get("experiment"),
+            "pdb_resolution": pdb_info.get("resolution"),
+
+            "opm_superfamily": opm_info.get("superfamily"),
+            "opm_family": opm_info.get("family"),
+            "opm_representative": opm_info.get("representative"),
+
+            "mpstruc_group": mpstruc_info.get("group"),
+            "mpstruc_subgroup": mpstruc_info.get("subgroup"),
+            "mpstruc_name": mpstruc_info.get("name"),
+        }
         with open( self.info_file, "w" ) as fp:
             json.dump( info, fp, indent=4 )
     def get_info( self ):

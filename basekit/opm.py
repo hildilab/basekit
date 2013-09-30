@@ -13,10 +13,10 @@ from poster.streaminghttp import register_openers
 
 import numpy as np
 
-from utils import memoize_m, try_float, copy_dict
+from utils import memoize_m, try_float, copy_dict, get_index
 from utils.math import norm
 from utils.tool import _, _dir_init, PyTool, ProviMixin
-from utils.list import ListRecord, ListIO
+from utils.listing import ListRecord, ListIO
 from utils.numpdb import NumPdb
 
 from pdb import PdbAssembly
@@ -45,13 +45,22 @@ def opm_list( class_id ):
     return list_record
 
 
+def _parse_opm_info( page ):
 
-def opm_info( pdb_id ):
-    try:
-        url = OPM_SEARCH_URL.format( pdb_id=pdb_id )
-        page = urllib2.urlopen( url ).read()
-    except urllib2.HTTPError:
-        raise Exception("Opm_info url error")
+    # check if there were no matches
+    no_matches = re.findall(
+        r'<h2>Search Results for ".*"</h2>No matches', page
+    )
+    if no_matches:
+        return None
+
+    # check if this page only points to a representative structure
+    rep = re.findall(
+        r'Representative structure\(s\) of this protein: <br /> '
+        r'<a href="protein\.php\?pdbid=([0-9a-zA-Z]{4})">', page
+    )
+    if rep:
+        return { "representative": rep[0].upper() }
 
     opm_type = re.findall( 
         r'<li><i>Type:</i> <a.*>(.*)</a>', page )
@@ -77,11 +86,36 @@ def opm_info( pdb_id ):
         "class": opm_class[0].split(" ", 1)[1],
         "superfamily": opm_superfamily[0].split(" ", 1)[1],
         "family": opm_family[0].split(" ", 1)[1],
-        "species": opm_species[0].split(" ", 1)[1],
+        "species": opm_species[0].strip(),
         "localization": opm_localization[0],
         "related_ids": related_ids, 
-        "delta_g": try_float( delta_g[0] )
+        "delta_g": try_float( get_index( delta_g, 0 ) )
     }
+
+
+def opm_info( pdb_id ):
+    try:
+        url = OPM_SEARCH_URL.format( pdb_id=pdb_id )
+        page = urllib2.urlopen( url ).read()
+    except urllib2.HTTPError:
+        raise Exception("Opm_info url error")
+
+    with open( "test_opm_info.html", "w" ) as fp:
+        fp.write( page )
+
+    info = _parse_opm_info( page )
+    if info:
+        rep = info.get( "representative", None )
+        # get info from representative entry
+        if rep:
+            info_rep = opm_info( rep )
+            info = info_rep
+            if pdb_id in info["related_ids"]:
+                info["related_ids"].remove( pdb_id )
+            info["related_ids"].append( rep )
+            info["representative"] = rep
+
+    return info
 
 
 
@@ -101,6 +135,16 @@ def opm( pdb_id ):
 
 
 def _parse_ppm( page ):
+    msg_list = [
+        r'returned an error: (.*)$',
+        r'(Too many residues)'
+    ]
+    for msg in msg_list:
+        error = re.findall( msg, page )
+        if error:
+            with open( "ppm_error.txt", "w" ) as fp:
+                fp.write( error[0] )
+            raise Exception( error[0] )
     pdb_url = PPM_URL + re.findall( 
         r'href="\./(pdb_upload/.*out\.pdb)"', page
     )[0]
@@ -109,6 +153,7 @@ def _parse_ppm( page ):
         "delta_g": try_float( delta_g )
     }
     return pdb_url, info_dict
+
 
 def ppm( pdb_file, topology="in", hetero=True ):
     """queries the PPM webservice"""
@@ -123,6 +168,10 @@ def ppm( pdb_file, topology="in", hetero=True ):
     request = urllib2.Request( PPM_URL + "upload_file.php", datagen, headers )
     page = urllib2.urlopen( request ).read()
     
+    with open( "test_ppm.html", "w" ) as fp:
+        fp.write( page )
+    # with open( "test_ppm.html", "r" ) as fp:
+    #     page = fp.read()
     pdb_url, info_dict = _parse_ppm( page )
     pdb_file = urllib2.urlopen( pdb_url ).read()
 
@@ -257,7 +306,7 @@ class Ppm2( PpmMixin, PyTool, ProviMixin ):
                 "info": False,
             }
         )
-        npdb.write( self.assembly_file )
+        npdb.write2( self.assembly_file )
     def func( self ):
         self.ppm( self.assembly_file )
 
@@ -291,6 +340,6 @@ class OpmInfo( PyTool ):
     def get_info( self ):
         if not hasattr( self, "info" ):
             with open( self.info_file, "r" ) as fp:
-                self.info = json.read( fp )
+                self.info = json.load( fp )
         return self.info
 

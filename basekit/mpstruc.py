@@ -3,12 +3,13 @@ from __future__ import division
 
 
 import os
+import re
 import json
 import urllib2
 import xml.etree.ElementTree
 
 from utils.tool import _, _dir_init, PyTool
-from utils.list import ListRecord, ListIO
+from utils.listing import ListRecord, ListIO
 
 
 
@@ -38,6 +39,13 @@ def mpstruc_tree( xml_file=None ):
 
 
 
+def _format( s ):
+    if not s:
+        return s
+    s2 = re.sub( r"</?su(b|p)>", r"", s )
+    s3 = re.sub( r"&([a-zA-Z]+);", r"\1", s2 )
+    return s3
+
 class MpstrucDb( object ):
     def __init__( self, xml_file=None ):
         self.tree = mpstruc_tree( xml_file=xml_file )
@@ -46,9 +54,19 @@ class MpstrucDb( object ):
         for protein in self.tree.findall(".//protein"):
             if protein.find("pdbCode").text.lower()==pdb_id:
                 return protein
+            rel = protein.find("relatedPdbEntries")
+            if rel!=None:
+                for x in rel.findall("pdbCode"):
+                    if x.text.lower()==pdb_id:
+                        return protein
         for protein in self.tree.findall(".//memberProtein"):
             if protein.find("pdbCode").text.lower()==pdb_id:
                 return protein
+            rel = protein.find("relatedPdbEntries")
+            if rel!=None:
+                for x in rel.findall("pdbCode"):
+                    if x.text.lower()==pdb_id:
+                        return protein
     def _group( self, pdb_id, sub=False ):
         key = ".//subgroup" if sub else ".//group"
         pdb_id = pdb_id.lower()
@@ -56,6 +74,11 @@ class MpstrucDb( object ):
             for protein in group.findall(".//protein"):
                 if protein.find("pdbCode").text.lower()==pdb_id:
                     return group.find("name").text
+                rel = protein.find("relatedPdbEntries")
+                if rel!=None:
+                    for x in rel.findall("pdbCode"):
+                        if x.text.lower()==pdb_id:
+                            return group.find("name").text
             for protein in group.findall(".//memberProtein"):
                 if protein.find("pdbCode").text.lower()==pdb_id:
                     return group.find("name").text
@@ -71,12 +94,21 @@ class MpstrucDb( object ):
         return protein
     def info( self, pdb_id ):
         protein = self.find( pdb_id )
-        return {
-            "name": protein.find("name").text,
-            "species": protein.find("species").text,
-            "subgroup": self.subgroup( pdb_id ),
-            "group": self.group( pdb_id )
-        }
+        if protein!=None:
+            master = protein.find("masterProteinPdbCode")
+            related = protein.find("relatedPdbEntries")
+            if related!=None:
+                related = [ x.text for x in related.findall("pdbCode") ]
+            return {
+                "name": _format( protein.find("name").text ),
+                "species": _format( protein.find("species").text ),
+                "subgroup": _format( self.subgroup( pdb_id ) ),
+                "group": _format( self.group( pdb_id ) ),
+                "master": master.text if master!=None else None,
+                "related": related
+            }
+        else:
+            return None
     def str( self, protein ):
         for x in protein:
             print "%s: %s" % ( x.tag, x.text )
@@ -84,9 +116,17 @@ class MpstrucDb( object ):
         pdbid_list = []
         for protein in self.tree.findall(".//protein"):
             pdbid_list.append( protein.find("pdbCode").text )
+            rel = protein.find("relatedPdbEntries")
+            if rel!=None:
+                for x in rel.findall("pdbCode"):
+                    pdbid_list.append( x.text )
         for protein in self.tree.findall(".//memberProtein"):
             pdbid_list.append( protein.find("pdbCode").text )
-        return pdbid_list
+            rel = protein.find("relatedPdbEntries")
+            if rel!=None:
+                for x in rel.findall("pdbCode"):
+                    pdbid_list.append( x.text )
+        return [ x.upper() for x in pdbid_list ]
 
 
 def mpstruc_info( pdb_id, xml_file=None ):
@@ -124,7 +164,7 @@ class MpstrucInfo( PyTool ):
     def get_info( self ):
         if not hasattr( self, "info" ):
             with open( self.info_file, "r" ) as fp:
-                self.info = json.read( fp )
+                self.info = json.load( fp )
         return self.info
 
 

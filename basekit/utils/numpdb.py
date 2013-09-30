@@ -371,15 +371,28 @@ class InfoParser( object ):
             self._dict["keywords"] += line[10:].rstrip()
         elif line.startswith("EXPDTA"):
             self._dict["experiment"] += line[10:].rstrip()
+        elif line.startswith("MDLTYP"):
+            self._dict["model_type"] += line[10:].rstrip()
         elif line.startswith("TITLE"):
             self._dict["title"] += line[10:].rstrip()
         elif line.startswith("REMARK"):
             if line[9]=="2":
                 self._dict["resolution"] += line[10:].rstrip()
+        elif line.startswith("OBSLTE"):
+            self._dict["obsolete"] += line[31:].rstrip()
+
     def get( self ):
         dct = self._dict
+        mdl = [ s.strip() for s in dct.get("model_type", "").split(";") ]
+        mdl_dct = {}
+        for typ in mdl:
+            x = s.split(",", 1)
+            if len(x)==2:
+                mdl_dct[ x[0].strip() ] = x[1].strip()
+            elif len(x)==1 and x[0]:
+                mdl_dct[ x[0].strip() ] = True
         return {
-            "keywords": dct.get("keywords", "").split(", "),
+            "keywords": dct.get("keywords", "").replace("- ", "-").split(", "),
             "experiment": dct.get("experiment", ""),
             "title": dct.get("title", ""),
             "resolution": try_float( 
@@ -387,7 +400,9 @@ class InfoParser( object ):
                     dct.get("resolution", "").split(), 1, None
                 ), 
                 None
-            )
+            ),
+            "model_type": mdl_dct,
+            "obsolete": dct.get("obsolete", "").split()
         }
 
 
@@ -496,7 +511,10 @@ class NumAtoms:
         )
     def copy( self, **sele ):
         _sele = self.sele( **sele )
-        return NumAtoms( self._atoms[ _sele ], self._coords[ _sele ] )
+        if len(_sele):
+            return NumAtoms( self._atoms[ _sele ], self._coords[ _sele ] )
+        else:
+            return NumAtoms( self._atoms.copy(), self._coords.copy() )
     def _select( self, **sele ):
         coords = self._coords
         atoms = self._atoms

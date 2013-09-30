@@ -17,7 +17,7 @@ from utils import try_int, copy_dict
 from utils.tool import _, _dir_init, PyTool, ProviMixin
 from utils.timer import Timer
 from utils.db import get_pdb_files
-from utils.list import ListRecord, ListIO, list_compare, list_join
+from utils.listing import ListRecord, ListIO, list_compare, list_join
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "pdb" )
 
@@ -350,7 +350,7 @@ class PdbInfo( PyTool ):
     def get_info( self ):
         if not hasattr( self, "info" ):
             with open( self.info_file, "r" ) as fp:
-                self.info = json.read( fp )
+                self.info = json.load( fp )
         return self.info
 
 
