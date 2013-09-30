@@ -11,13 +11,14 @@ from utils import copy_dict
 from utils.tool import _, _dir_init, PyTool, CmdTool, ScriptMixin
 from utils.numpdb import NumPdb
 
-from pdb import PdbSplit
-from pdb import PdbEdit
+from pdb import *#PdbSplit
+#from pdb import PdbEdit, NumpdbTest
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "spider" )
 SPIDER_CMD = "spider" 
 
 
+            
 # 2010 Cryo-EM Modeling Challenge: http://ncmi.bcm.edu/challenge
 
 
@@ -142,9 +143,10 @@ class SpiderShift( Spider ):
         super(SpiderShift, self)._init( "__tmpl__" )
     def _pre_exec( self ):
         boxsize=getMrc(self.mrc_file,'nx' )
-        originx=abs(getMrc(self.mrc_file,'xorg' ))
-        originy=abs(getMrc(self.mrc_file,'yorg' ))
-        originz=abs(getMrc(self.mrc_file,'zorg' ))
+        originx=abs(getMrc(self.mrc_file,'nxstart'))#'xorg' ))
+        originy=abs(getMrc(self.mrc_file,'nystart'))#'yorg' ))
+        originz=abs(getMrc(self.mrc_file,'nzstart'))#'zorg' ))
+        print originx
         size=getMrc(self.mrc_file,'xlen' )
         pixelsize=(size/boxsize)
         self._make_script_file(    
@@ -159,6 +161,7 @@ class SpiderShift( Spider ):
         shx = (originx -(boxsize/2)) * pixelsize
         shy = (originy -(boxsize/2)) * pixelsize
         shz = (originz -(boxsize/2)) * pixelsize
+        #print shx
         PdbEdit( 
             self.pdb_file, shift= [shx, shy, shz]
         )    
@@ -211,8 +214,9 @@ class SpiderPdbBox( PyTool ):
             z =  (ol3 - (bbs/2)) * ps - 1
             print [x,y,z, bs,bbs]
         PdbEdit (self.pdb_file, box = [ x, y, z, obs, obs, obs ] )
+        
 
-
+        
 class SpiderDeleteFilledDensities( Spider ):
     args = [
         _( "mrc_file", type="file", ext="mrc" ),

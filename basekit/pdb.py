@@ -25,10 +25,47 @@ PDB_SEARCH_URL = 'http://www.rcsb.org/pdb/rest/search'
 PDB_DOWNLOAD_URL = 'http://www.rcsb.org/pdb/files/'
 PDBE_ASSEMBLY = 'http://www.ebi.ac.uk/pdbe-srv/view/files/{pdb_id:}_1.mmol'
 
-
-
-# RESIDUE   TPO     22
-# CONECT      CG2    4 CB   HG21 HG22 HG23
+class CutpdbSSE (PyTool) :
+    args = [
+            _( "dataset_dir", type="dir" )            
+        ]
+    out = [
+            _( "edited_pdb_file", file="edited.pdb" )
+        ]
+    def func( self ):
+        
+        for fn in os.listdir(self.dataset_dir):
+            print fn
+            for files in os.listdir(self.dataset_dir+"/"+fn):
+                if files.endswith(".pdb"):
+                    print files
+                    npdb = numpdb.NumPdb( self.dataset_dir+"/"+fn+"/"+files, {
+                        "phi_psi": False,
+                        "sstruc": True,
+                        "backbone_only": False,
+                        "protein_only": False,
+                        "detect_incomplete": False,
+                        "configuration": False,
+                        "info": False
+                    })
+                    
+                    for i, numa in enumerate( npdb.iter_sstruc() ):
+                        #print numa['resname']
+                        print numa.sequence()
+                        values_dic ={}
+                        values_dic[1]=numa['resno'][0]
+                        values_dic[2]=numa['resno'][-1]
+                        values_dic[3]=numa.sequence()
+                        values_dic[4]=numa['chain'][0]
+                        if not os.path.exists(self.dataset_dir+"/"+fn+"/pieces/"):
+                            os.makedirs(self.dataset_dir+"/"+fn+"/pieces/")
+                        numa.write(self.dataset_dir+"/"+fn+"/pieces/"+str(files)[-8:-4]+"-"+str(numa['resno'][0])+"-"+str(numa['resno'][-1])+".pdb")
+                        #textdatei=self.dataset_dir+"/"+fn+"/pieces/"+str(files)[-8:-4]+"-"+str(numa['resno'][0])+"-"+str(numa['resno'][-1])+".json"
+                        with open(self.dataset_dir+"/"+fn+"/pieces/"+str(files)[-8:-4]+"-"+str(numa['resno'][0])+"-"+str(numa['resno'][-1])+".json", "w" ) as fp:
+                           json.dump( values_dic,fp, separators=(',',':') )
+                            #fp.write(stem1)
+                            #fp.write("numa['resno'][-1]")
+                            #fp.write("numa.sequence()") 
 def parse_het_dictionary( het_file ):
     het_dict = collections.defaultdict( list )
     key = None
