@@ -35,6 +35,95 @@ from pdb import PdbInfo
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "mppd" )
 
 
+CURATED_INFO = collections.defaultdict( dict, {
+    "": {
+        "backbone_only": True,
+        "no_pdb_entry": True,
+        "representative": "",
+        "related": [],
+        "species": "",
+        "comment": ""
+    },
+    "2W1B": {
+        "comment": "dowser max_repeats=5"
+    },
+    "2XND": {
+        "representative": "",
+        # from sequence similarity
+        "related": [ "2XOK", "2WPD", "3ZRY", "4B2Q" ],
+        "comment": "membrane plane by superposition with 2WPD"
+    },
+    "35WB": {
+        "no_pdb_entry": True,
+        "comment": "found in MPstruc"
+    },
+    "35WD": {
+        "no_pdb_entry": True,
+        "comment": "found in MPstruc"
+    },
+    # and 4IL6
+    "3ARC": {
+        # defect 3A0H (4 A), pending 4IL6 (msms0)
+        "representative": ""
+    },
+    "3M9C": {
+        "backbone_only": True
+    },
+    "4A82": {
+        "backbone_only": True
+    },
+    "4FZ0": {
+        "comment": "membrane plane by superposition with 2QTS"
+    },
+})
+
+# no rep
+# 2XND (in pdbtm, ppm)
+# 3A0B (in pdbtm, msms0)
+# 3T51 (in pdbtm, )
+# 3T53 (in pdbtm, representative available)
+# 3T56 (in pdbtm, )
+
+# 4FZ0 (in pdbtm, ppm, but representative available)
+
+
+# CA only header record test must be refined...
+# 1IZL probably ok to use, only two chains are CA only
+
+
+
+for x in [
+    # membrane extrinsic atpase parts
+    "1BMF", "1COW", "1EFR", "2CK3", "2HLD", "2JDI", "2WSS", "3OAA",
+    "3VR2", "3W3A", "3ZIA",
+    # periplasmic MexA
+    "1T5E", "1VF7",
+    # ClpP1
+    "2C8T", "2CE3",
+    # soluble FtsH construct
+    "2CE7", "2CEA",
+    # periplasmic PCP domains
+    "3B8M",
+    # SppA, membrane bound
+    "3BF0", "3RST",
+    # ZntB cytoplasmic domain
+    "3CK6",
+    # outer membrane complex of a type IV secretion system
+    "3JQO",
+    # BK channel cytoplasmic region
+    "3NAF", "3U6N",
+    # MthK RCK domain
+    "3RBZ", "3RBX",
+    # SLO3 gating ring
+    "4HPF",
+    # by inspection (data calculated)
+    "4FYF", "4FYE", "3BPP", "2LS4", "2KO2", "4FYG", "3VIV", "3FWL",
+]:
+    CURATED_INFO[ x ].update({
+        "no_transmembrane": True
+    })
+
+
 
 _MppdRecord = collections.namedtuple( "_MppdRecord", [
     "pdb_id", "source", "segment", "mplanes_dist", 
@@ -76,11 +165,20 @@ class MppdRecord( _MppdRecord ):
 
 MppdDbRecord = collections.namedtuple( "MppdDbRecord", [
     "pdb_id", "pdb_title", "pdb_keywords", "pdb_experiment", "pdb_resolution",
-    "opm_superfamily", "opm_family", "opm_representative",
-    "mpstruc_group", "mpstruc_subgroup", "mpstruc_name"
+
+    "opm_superfamily", "opm_family", "opm_representative", "opm_species",
+    "opm_related",
+
+    "mpstruc_group", "mpstruc_subgroup", "mpstruc_name", "mpstruc_species",
+    "mpstruc_master", "mpstruc_related",
+    
+    "curated_representative", "curated_related",
+    
+    "status",
+
+    "tm_packdens_protein_buried", "tm_water_count", "tm_residue_count", 
+    "tm_cavity_count"
 ])
-
-
 
 
 
@@ -108,8 +206,9 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         _( "figures|fig", type="checkbox", default=False ),
         _( "database|db", type="checkbox", default=False ),
         # msms tweaks
-        _( "envelope_hclust", type="str", default="",
+        _( "envelope_hclust|ehc", type="str", default="",
             options=[ "", "ward", "average" ], help="'', average, ward" ),
+        _( "atom_radius_add|ara", type="float", default=None ),
         # opm fallback to ppm2
         _( "use_ppm2", type="checkbox", default=False ),
         # voronoia shuffle
@@ -174,7 +273,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 "all_components": True,
                 "density": 1.0, "hdensity": 3.0,
                 "envelope": self.probe_radius * 2,
-                "envelope_hclust": self.envelope_hclust
+                "envelope_hclust": self.envelope_hclust,
+                "atom_radius_add": self.atom_radius_add,
             }
             self.msms0 = Msms(
                 self.no_water_file, **copy_dict( kwargs, run=False, 
@@ -234,7 +334,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             self.output_files += [ self.opm_info.info_file ]
             self.output_files += [ self.info_file ]
             self.output_files += [ self.outpath( "mppd.provi" ) ]
-            # self.output_files += [ self.stats_file ]
+            self.output_files += [ self.stats_file ]
+            self.output_files += [ self.stats2_file ]
 
     def _pre_exec( self ):
         pass
@@ -273,15 +374,19 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             if do( "info" ):
                 self.make_info()
             if do( "provi" ):
+                npdb = NumPdb( self.final_pdb, features=self.npdb_features )
                 self._make_provi_file(
                     pdb_id=self.pdb_id,
+                    pdb_title=self.pdb_info.get_info()["title"],
                     pdb_file=self.relpath( self.final_pdb ),
                     pdb_org_file=self.relpath( self.original_dry_pdb ),
                     mplane_file=self.relpath( self.opm.mplane_file ),
                     hbx_file=self.relpath( self.hbexplore_fin.hbx_file ),
                     vol_file=self.relpath( self.voronoia_fin.vol_file ),
                     msms_components=self.msms_vdw_fin.components_provi(
-                        color="lightgreen", translucent=0.5, relpath=self.relpath ),
+                        color="lightgreen", translucent=0.5, 
+                        relpath=self.relpath, max_atomno=len( npdb )
+                    ),
                 )
 
             for suffix, pdb_file in self.water_variants:
@@ -301,19 +406,22 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
     def _post_exec( self ):
         if self.parallel and self.check_only:
             dct = collections.defaultdict( list )
+            status_dct = {}
+            tag_dct = {}
             db_records = []
             for t in self.tool_list:
-                info = t.check( full=True )
-                tag = re.split( "/|\.", info )[0]
+                check_info = t.check( full=True )
+                cur_info = CURATED_INFO.get( t.pdb_id, {} )
+                tag = re.split( "/|\.", check_info )[0]
                 if tag=="mppd":
                     tag = "provi"
                 if tag!="opm":
                     # check if opm found two mplanes
                     try:
                         if len( t.opm.get_planes() )!=2:
-                            tag="mplane"
+                            tag = "mplane"
                     except:
-                        #print tag, info, t.id
+                        #print tag, check_info, t.id
                         pass
                 else:
                     if os.path.isfile( t.opm.outpath( "ppm_error.txt" ) ):
@@ -323,8 +431,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     info = t.pdb_info.get_info()
                     if "CA ATOMS ONLY" in info.get( "model_type", {} ):
                         tag = "calpha_only"
-                    if t.pdb_id in [ "3M9C", "4A82" ]:
-                        tag = "calpha_only"
+                    if cur_info.get("backbone_only"):
+                        tag = "backbone_only"
                     if "THEORETICAL MODEL"==info.get( "experiment", "" ):
                         tag = "theoretical_model"
                     res = info.get( "resolution" )
@@ -333,7 +441,14 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     if info.get( "obsolete" ):
                         tag = "obsolete"
 
+                if cur_info.get("no_pdb_entry"):
+                    tag = "no_pdb_entry"
+                if cur_info.get("no_transmembrane"):
+                    tag = "no_transmembrane"
+
+                tag_dct[ t.pdb_id ] = tag
                 dct[ tag ].append( t )
+
 
             # representative id search
             test_rep_list = flatten([
@@ -368,32 +483,100 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     dct[ "representative" ].append( t )
                 else:
                     dct[ "no_representative" ].append( t )
-                # dct[ tag ].remove( t )
-                
+
+            ignore_tags = [ 
+                "no_pdb_entry",
+                "mplane",
+                "representative",
+                "no_representative",
+                "no_transmembrane",
+                "theoretical_model",
+                "obsolete",
+            ]
+
+            # status types
+            #   included:   all good
+            #   linked:     only a representative available
+            #   pending:    to be included
+            #   obsolete:   superseeded
+            #   defect:     low resolution; missing atoms
+            #   model:      theoretical model
+            for pdb_id, tag in tag_dct.iteritems():
+                if tag=="Ok":
+                    status = "included"
+                elif tag=="obsolete":
+                    status = "obsolete"
+                elif tag=="theoretical_model":
+                    status = "model"
+                elif tag in [ "calpha_only", "backbone_only" ]:
+                    status = "backbone_only"
+                elif tag=="resolution":
+                    status = "low_resolution"
+                elif tag in [ "opm", "ppm", "msms0", "msms_vdw_fin" ]:
+                    if pdb_id in dct[ "representative" ]:
+                        status = "linked"
+                    else:
+                        status = "pending"
+                elif tag in ignore_tags:
+                    continue
+                else:
+                    status = "unknown"
+                    print tag
+                status_dct[ pdb_id ] = status
+
 
             for tag, t_list in dct.iteritems():
                 if tag!="Ok":
                     print tag, " ".join( map( lambda x: x.id, t_list ) ) 
             for tag, t_list in dct.iteritems():
                 print tag, len(t_list)
+
             if self.database:
-                for t in dct.get( 'Ok', [] ):
-                    t_info = t.get_info()
-                    db_records.append( MppdDbRecord(
-                        t_info['pdb_id'],
-                        t_info['pdb_title'],
-                        ",".join( t_info['pdb_keywords'] ),
-                        t_info['pdb_experiment'],
-                        t_info['pdb_resolution'],
+                for tag, t_list in dct.iteritems():
+                    if tag in ignore_tags:
+                        continue
+                    for t in t_list:
+                        t_info = t.get_info()
+                        if tag=="Ok":
+                            for s in t.get_stats():
+                                if s['source']=='fin' and s['segment']=='TM':
+                                    t_stats = s
+                                    break
+                            else:
+                                raise Exception('no stats found %s' % t.pdb_id)
+                        else:
+                            t_stats = {}
+                        cur_info = CURATED_INFO.get( t.pdb_id, {} )
+                        db_records.append( MppdDbRecord(
+                            t_info['pdb_id'],
+                            t_info['pdb_title'],
+                            ",".join( t_info['pdb_keywords'] ),
+                            t_info['pdb_experiment'],
+                            t_info['pdb_resolution'],
 
-                        t_info['opm_superfamily'],
-                        t_info['opm_family'],
-                        t_info['opm_representative'],
+                            t_info['opm_superfamily'],
+                            t_info['opm_family'],
+                            t_info['opm_representative'],
+                            t_info['opm_species'],
+                            ",".join( t_info['opm_related'] ),
 
-                        t_info['mpstruc_group'],
-                        t_info['mpstruc_subgroup'],
-                        t_info['mpstruc_name']
-                    ))
+                            t_info['mpstruc_group'],
+                            t_info['mpstruc_subgroup'],
+                            t_info['mpstruc_name'],
+                            t_info['mpstruc_species'],
+                            t_info['mpstruc_master'],
+                            ",".join( t_info['mpstruc_related'] ),
+
+                            cur_info.get('representative', ""),
+                            ",".join( cur_info.get('related', []) ),
+
+                            status_dct[ t.pdb_id ],
+
+                            t_stats.get('packdens_protein_buried'),
+                            t_stats.get('water_count'),
+                            t_stats.get('residue_count'),
+                            t_stats.get('msms'),
+                        ))
                 db = SqliteBackend( "mppd.db", MppdDbRecord )
                 db.write( db_records )
             if self.extract:
@@ -433,11 +616,13 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     stats = t.get_stats()
                     info = t.get_info()
                     for s in stats:
+                        if s["segment"]!="TM":
+                             continue
                         key = ( s["source"], s["segment"] )
                         nres[ key ].append( s["residue_count"] )
                         nwater[ key ].append( s["water_count"] )
                         resolution[ key ].append( 
-                            try_float( info["RESOLUTION"], 0.0 )    
+                            try_float( info["pdb_resolution"], 0.0 )    
                         )
                         ncav[ key ].append( s["msms"] )
                         sesvol[ key ].append( s["msms_ses"] )
@@ -445,7 +630,9 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                         packdens_buried[ key ].append( 
                             s["packdens_protein_buried"] 
                         )
+                print nres.keys()
                 for key in nres.keys():
+                    print key
                     x = np.array( nwater[ key ] )
                     y = np.array( nres[ key ] )
                     x_y = x/y
@@ -495,6 +682,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                         axis.scatter( x, y, alpha=alpha, s=size )
                         axis.set_xlabel( xlabel )
                         axis.set_ylabel( ylabel )
+                        axis.set_ylim( ( 0, axis.get_ylim()[1] ) )
                         summary = "r: %.4f\np: %.4f\n" % r
                         at = AnchoredText(
                             summary, loc=loc or 1, prop={ "size": 10 }, 
@@ -793,17 +981,22 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         info = {
             "pdb_id": self.pdb_id.upper(),
             "pdb_title": pdb_info.get("title"),
-            "pdb_keywords": pdb_info.get("keywords"),
+            "pdb_keywords": pdb_info.get("keywords", []),
             "pdb_experiment": pdb_info.get("experiment"),
             "pdb_resolution": pdb_info.get("resolution"),
 
             "opm_superfamily": opm_info.get("superfamily"),
             "opm_family": opm_info.get("family"),
             "opm_representative": opm_info.get("representative"),
+            "opm_species": opm_info.get("species"),
+            "opm_related": opm_info.get("related_ids", []),
 
             "mpstruc_group": mpstruc_info.get("group"),
             "mpstruc_subgroup": mpstruc_info.get("subgroup"),
             "mpstruc_name": mpstruc_info.get("name"),
+            "mpstruc_species": mpstruc_info.get("species"),
+            "mpstruc_master": mpstruc_info.get("master"),
+            "mpstruc_related": mpstruc_info.get("related", []),
         }
         with open( self.info_file, "w" ) as fp:
             json.dump( info, fp, indent=4 )
@@ -955,14 +1148,19 @@ def count_holes_voro( npdb, voronoia ):
 
 def count_holes_msms( npdb, msms, probe_radius, n ):
     try:
-        area = msms.get_area()
+        area = msms.get_area( max_atomno=n )
         components = msms.get_components()
     except Exception:
         return ( 0, 0, 0, 0 )
     components0 = []
+    # print "FOOBAR", n, len( npdb )
     for c in components:
+        # print c
+        if not area["ses"][ c[0] ]:
+            continue
         for nb_atomno in area["ses"][ c[0] ]:
             if not len( npdb.copy( atomno=nb_atomno ) ) and nb_atomno<=n:
+                # print nb_atomno, area["sas"][ c[0] ]
                 break
         else:
             components0.append( c )
