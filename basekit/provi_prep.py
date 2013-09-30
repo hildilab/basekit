@@ -306,16 +306,20 @@ def prep_tmhelix(tmhelix_file, pdb_file):
     tmhelix_out_fp.close()
 
 
-@memoize
-def get_pdb_chainresatom_dict(pdb_file):
+#@memoize
+def get_pdb_chainresatom_dict(pdb_file, ignore=None):
     pdb_fp = open(pdb_file)
     chainresatom_dict = {}
     i = 1
     for l in pdb_fp:
         if l.startswith('ATOM') or l.startswith('HETATM'):
-            key = ( l[21], int(l[22:26]), l[12:16].strip() )
+            key = ( l[21], int(l[22:26]), l[12:16].strip(), l[17:20] )
             if key in chainresatom_dict:
-                LOG.error( "key already in chainresatom dict. %s" % str(key) )
+                if ignore:
+                    continue
+                raise Exception(
+                    "key already in chainresatom dict. %s" % str(key)
+                )
             else:
                 chainresatom_dict[ key ] = i
             i += 1
@@ -323,18 +327,23 @@ def get_pdb_chainresatom_dict(pdb_file):
     return chainresatom_dict
 
 
-def prep_hbexplore(hbexplore_file, pdb_file):
+def prep_hbexplore(hbexplore_file, pdb_file, ignore=True):
     hbexplore_fp = open(hbexplore_file)
-    hbexplore_out_fp = open( "%s.bonds" % (hbexplore_file), "w")
+    hbexplore_out_fp = open( "%s.bonds" % hbexplore_file, "w")
     hbexplore_out_fp.write('data "connect_atoms"\n')
 
-    chainresatom_dict = get_pdb_chainresatom_dict(pdb_file)
+    chainresatom_dict = get_pdb_chainresatom_dict( pdb_file, ignore=ignore )
     id_dict = {}
     hbpart=0
     #   SG  CYS   127      O   ILE   124    3.2597     
     # TOM     18  CB  VAL     2       3.462  14.126   6.256  1.00 14.07      193L 162
     # parse HBX.anal file
-    #87     NH2 ARG A  71      O   MET A   1    3.0821  2.356   128.0    53.8   s-s
+#87     NH2 ARG A  71      O   MET A   1    3.0821  2.356   128.0    53.8   s-s
+#318        N   GLU C 1005      OD1 ASN C 1002    3.0937    2.094   170.1    51.1   s-s
+#821        OH  TYR D 1025      O   PRO D 1037    3.2233    2.294   152.5    60.5   s-s
+#967        OH  TYR D 1161      OD2 ASP D 1010    2.5670    1.661   146.9     8.9   s-s
+#711        N   GLN D 229      O   GLU D 225    3.1419  2.452   125.0    36.6   s-s
+#1080        O   HOH D 522      OE1 GLU D 225    2.4856  1.526   180.0    48.0   w-s
     for l in hbexplore_fp:
         if not l:
             continue
@@ -346,32 +355,39 @@ def prep_hbexplore(hbexplore_file, pdb_file):
             continue
         elif hbpart and l[0]!='-':
             # print l[:-1]
-            ts = l.split("\t")
-            t=ts[1]
-            id = int(ts[0])
-            if( id not in id_dict ):
-                id_dict[ id ] = True
+            ts = l.split()
+            hb_id = int(ts[0])
+            if( hb_id not in id_dict ):
+                id_dict[ hb_id ] = True
+                if len(ts)!=14:
+                    raise Exception(
+                        "hbx line not of length 14, but %i" % len(ts)
+                    )
                 # key = ( chain, resno, atomname )
                 key1 = (
-                    t[12:14].strip(),   # chain
-                    int(t[14:18]),      # resno
-                    t[4:7].strip()      # atomname
+                    ts[3],          # chain
+                    int(ts[4]),     # resno
+                    ts[1],          # atomname
+                    ts[2]           # resname
                 )
                 key2 = (
-                    t[31:33].strip(),   # chain
-                    int(t[33:37]),      # resno
-                    t[23:27].strip()    # atomname
+                    ts[7],          # chain
+                    int(ts[8]),     # resno
+                    ts[5],          # atomname
+                    ts[6]           # resname
                 )
                 if key1 in chainresatom_dict:
                     idx1 = chainresatom_dict[ key1 ]
                 else:
-                    LOG.error( "key not found in chainresatom dict. %s" % str(key1) )
-                    continue
+                    raise Exception(
+                        "key not found in chainresatom dict. %s" % str(key1)
+                    )
                 if key2 in chainresatom_dict:
                     idx2 = chainresatom_dict[ key2 ]
                 else:
-                    LOG.error( "key not found in chainresatom dict. %s" % str(key2) )
-                    continue
+                    raise Exception(
+                        "key not found in chainresatom dict. %s" % str(key2)
+                    )
                 # zero based atomindex
                 # hbexplore_out_fp.write( '%s %s 2049 0.1 0.0 hbond;\n' % ( idx1-1, idx2-1 ) )
                 hbexplore_out_fp.write( '%s %s 2048 0.1 0.0 hbond;\n' % ( idx1-1, idx2-1 ) )
