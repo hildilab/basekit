@@ -89,6 +89,7 @@ class HBexplore( CmdTool, ProviMixin ):
     def _init( self, *args, **kwargs ):
         self.cmd = [ HBEXPLORE_CMD ]
         self.cmd_input = self.params_file
+        self.no_cmd = False
     def _pre_exec( self ):
         with open(self.params_file, "w") as fp:
             fp.write( "\n".join([
