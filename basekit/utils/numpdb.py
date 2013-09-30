@@ -510,18 +510,19 @@ class NumAtoms:
             self._coords[begin:end], flag=flag 
         )
     def copy( self, **sele ):
-        _sele = self.sele( **sele )
-        if len(_sele):
-            return NumAtoms( self._atoms[ _sele ], self._coords[ _sele ] )
-        else:
-            return NumAtoms( self._atoms.copy(), self._coords.copy() )
+        coords, atoms = self._select( **sele )
+        return NumAtoms( atoms, coords )
     def _select( self, **sele ):
         coords = self._coords
         atoms = self._atoms
         if len(sele):
             _sele = self.sele( **sele )
-            coords = self._coords[ _sele ]
-            atoms = self._atoms[ _sele ]
+            if len(_sele):
+                coords = self._coords[ _sele ]
+                atoms = self._atoms[ _sele ]
+            else:
+                coords = np.array( [], dtype=coords.dtype )
+                atoms = np.array( [], dtype=atoms.dtype )
         return coords, atoms
     def get( self, key, **sele ):
         coords, atoms = self._select( **sele )
