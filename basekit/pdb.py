@@ -66,6 +66,7 @@ class CutpdbSSE (PyTool) :
                             #fp.write(stem1)
                             #fp.write("numa['resno'][-1]")
                             #fp.write("numa.sequence()") 
+
 def parse_het_dictionary( het_file ):
     het_dict = collections.defaultdict( list )
     key = None

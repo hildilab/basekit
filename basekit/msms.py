@@ -4,8 +4,6 @@ from __future__ import with_statement
 from __future__ import division
 
 import numpy as np
-import scipy.cluster
-import scipy.spatial
 
 import os
 import string
@@ -22,6 +20,8 @@ DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "msms" )
 MSMS_CMD = "msms"
 BABEL_CMD = "babel"
 
+
+# newest open babel helps 2.2.3
 
 
 """
