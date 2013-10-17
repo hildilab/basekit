@@ -8,7 +8,7 @@ import collections
 import json
 import tempfile
 
-from utils import working_directory
+from utils import working_directory, listify
 from utils.tool import _, _dir_init, PyTool
 
 
@@ -280,12 +280,16 @@ class ProjectRun( PyTool ):
                     d = collections.defaultdict(list)
                     for pid, p in parts.iteritems():
                         for k, v in kwargs["__append__"].iteritems():
-                            if isinstance( v, basestring ):
-                                v = v.format( 
-                                    dir=get_wd( self.project, p ),
-                                    **self.get_kwargs( tid, t, p )
-                                )
-                            d[ k ].append( v )
+                            v = listify( v )
+                            v2 = []
+                            for _v in v:
+                                if isinstance( _v, basestring ):
+                                    _v = _v.format( 
+                                        dir=get_wd( self.project, p ),
+                                        **self.get_kwargs( tid, t, p )
+                                    )
+                                v2.append( _v )
+                            d[ k ] += v2
                     del kwargs["__append__"]
                     kwargs.update( d )
 
