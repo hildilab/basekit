@@ -17,7 +17,7 @@ from basekit.utils import (
     try_int, try_float, get_index, copy_dict, iter_window, iter_stride,
     memoize_m
 )
-from math import mag, axis, Superposition, rmsd
+from math import mag, axis, Superposition, rmatrixu
 from bio import AA1
 
 try:
@@ -186,6 +186,29 @@ def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
         print "RMSD: %f" % sp.rmsd
     return sp
 
+
+# the rotamere lib needs the 'remaining_atoms' data
+ROTAMERE_LIB_PATH = os.path.join(
+    BASEKIT_DIR, "data", "bio", "bbind02.May.lib.json"
+)
+with open( ROTAMERE_LIB_PATH, "r" ) as fp:
+    ROTAMERE_LIB = json.load( fp )
+def get_rotno( resname ):
+    # number of available rotameres for that resname
+    pass
+def get_rotamere( resname, no ):
+    # return dihedral_angle, dihedral_atoms, remaining_atoms
+    pass
+def make_rotamere( npdb, sele, no ):
+    # use rmatrixu from utils.math, see test/test_utils_math.py
+    # for an example how to use the rotation matrix
+    # - for all chis (mind the order)
+    #   - calc current dihedral
+    #   - calc how much the dihedral needs to be rotated
+    #   - rotate...
+    # return npdb with changed rotamere
+    pass
+# put the "make all rotameres" function in pdb.py
 
 
 PDB_DELIMITER=(6,5,1,4,1,3,1,1,4,1,3,8,8,8,6,6,6,4,2,2)
@@ -510,18 +533,19 @@ class NumAtoms:
             self._coords[begin:end], flag=flag 
         )
     def copy( self, **sele ):
-        _sele = self.sele( **sele )
-        if len(_sele):
-            return NumAtoms( self._atoms[ _sele ], self._coords[ _sele ] )
-        else:
-            return NumAtoms( self._atoms.copy(), self._coords.copy() )
+        coords, atoms = self._select( **sele )
+        return NumAtoms( atoms, coords )
     def _select( self, **sele ):
         coords = self._coords
         atoms = self._atoms
         if len(sele):
             _sele = self.sele( **sele )
-            coords = self._coords[ _sele ]
-            atoms = self._atoms[ _sele ]
+            if len(_sele):
+                coords = self._coords[ _sele ]
+                atoms = self._atoms[ _sele ]
+            else:
+                coords = np.array( [], dtype=coords.dtype )
+                atoms = np.array( [], dtype=atoms.dtype )
         return coords, atoms
     def get( self, key, **sele ):
         coords, atoms = self._select( **sele )

@@ -42,7 +42,7 @@ def mpstruc_tree( xml_file=None ):
 def _format( s ):
     if not s:
         return s
-    s2 = re.sub( r"</?su(b|p)>", r"", s )
+    s2 = re.sub( r"</?(sub|sup|em)>", r"", s )
     s3 = re.sub( r"&([a-zA-Z]+);", r"\1", s2 )
     return s3
 

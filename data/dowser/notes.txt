@@ -1,0 +1,17 @@
+
+the number of atoms in residues types dowser
+can use is too low, therefore
+
+at the begining of dowser/CODE/reformatPDB.c
+
+replace
+#define MAXTYPES 500
+#define MAXMERGE 100
+
+with
+#define MAXTYPES 5000
+#define MAXMERGE 1000
+
+recompile
+./dowser/Install
+

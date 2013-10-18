@@ -186,6 +186,34 @@ class Superposition( object ):
 
 
 
+def rmatrixu(u, theta):
+    """
+    From: http://sourceforge.net/p/pymmlib/code/HEAD/tree/trunk/pymmlib/mmLib/AtomMath.py
+    Return a rotation matrix caused by a right hand rotation of theta
+    radians around vector u.
+    """
+    if np.allclose(theta, 0.0) or np.allclose(np.dot(u,u), 0.0):
+        return np.identity(3, float)
+
+    x, y, z = norm(u)
+    sa = np.sin(theta)
+    ca = np.cos(theta)
+
+    R = np.array([
+        [1.0+(1.0-ca)*(x*x-1.0), -z*sa+(1.0-ca)*x*y,     y*sa+(1.0-ca)*x*z],
+        [z*sa+(1.0-ca)*x*y,      1.0+(1.0-ca)*(y*y-1.0), -x*sa+(1.0-ca)*y*z],
+        [-y*sa+(1.0-ca)*x*z,     x*sa+(1.0-ca)*y*z,      1.0+(1.0-ca)*(z*z-1.0)]
+    ], float )
+
+    try:
+        assert np.allclose(np.linalg.det(R), 1.0)
+    except AssertionError:
+        print "rmatrixu(%s, %f) determinant(R)=%f" % (
+            u, theta, np.linalg.det(R))
+        raise
+    return R
+
+
 
 def hclust( data, threshold, criterion='distance',
             method='average', metric='euclidean' ):

@@ -677,11 +677,14 @@ class PyTool( Tool ):
 class CmdTool( Tool ):
     cmd_input = None
     use_shell = False
+    no_cmd = None
     def __init__( self, *args, **kwargs ):
         super(CmdTool, self).__init__( *args, **kwargs )
         if not hasattr( self, "cmd" ):
             raise Exception("A CmdTool needs a 'cmd' attribute")
     def _run( self ):
+        if self.no_cmd:
+            return
         cmd = self.cmd
         if self.verbose:
             print " ".join( map( str, cmd ) )

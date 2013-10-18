@@ -54,7 +54,7 @@ class VoronoiaMakeRefTestCase( unittest.TestCase ):
                 os.path.join( DATA_DIR, "2WFU_A.pdb" ),
             ]),
             parallel="list",
-            ex=0.2,
+            ex=0.3,
             output_dir=os.path.join( TMP_DIR, "voronoia" ),
             make_reference=True,
             run=False 

@@ -20,7 +20,7 @@
         "params": {
             "sort_key": -1,
             "parent_id": "tab_widgets",
-            "template": "<ul><li>PDB ID: <a target='_blank' href='http://www.rcsb.org/pdb/explore/explore.do?structureId=${pdb_id}'>${pdb_id}</a></li><li>Low energy waters are colored from red (-30 kcal/mol) to yellow (-10).</li><li>Additional waters from the experimental structure are colored pink.</li><li>Packing density of buried residue atoms is colored from red (0.0) over white (0.5) to blue (1.0).</li></ul>",
+            "template": "<ul><li><b>${pdb_id}</b> ${pdb_title}</li><li>Low energy waters are colored from red (-30 kcal/mol) to yellow (-10).</li><li>Additional waters from the experimental structure are colored pink.</li><li>Remaining (non water filled) cavities are shown by green translucent surfaces.</li><li>Packing density of buried residue atoms is colored from red (0.0) over white (0.5) to blue (1.0).</li></ul>",
             "data": {},
             "buttons": {
                 "waters":{

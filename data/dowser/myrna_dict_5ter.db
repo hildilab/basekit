@@ -1,4 +1,4 @@
-REMARK To keep xtal waters intact, add hydrogens using VMD. The parts end
+﻿REMARK To keep xtal waters intact, add hydrogens using VMD. The parts end
 REMARK up having resname TIP3 and atomnames OH2, HI, and H2. As DOWSER
 REMARK has a silly way of reading in the resname, this residue appears
 REMARK as TIP in the dictionary. Note that retaining oxygens (xtal waters
