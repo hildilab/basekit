@@ -3,7 +3,7 @@
 """A collection of tools loops linking residues."""
 
 from basekit.utils.tool import parse_subargs
-from basekit.linker import LinkIt, LinkItDensity, LinkerTest, LinkItDensityjason,LnkItVali
+from basekit.linker import LinkIt, LinkItDensity, LinkerTest, LnkItVali,AnalyseLiniktRun
 
 
 
@@ -12,8 +12,8 @@ def main():
         "linkit": LinkIt, 
         "linkit+dens": LinkItDensity,
         "test": LinkerTest,
-        "linkjson": LinkItDensityjason,
-        "linkvali": LnkItVali
+        "linkvali": LnkItVali,
+        "analyse" : AnalyseLiniktRun
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )

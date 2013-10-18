@@ -25,47 +25,41 @@ PDB_SEARCH_URL = 'http://www.rcsb.org/pdb/rest/search'
 PDB_DOWNLOAD_URL = 'http://www.rcsb.org/pdb/files/'
 PDBE_ASSEMBLY = 'http://www.ebi.ac.uk/pdbe-srv/view/files/{pdb_id:}_1.mmol'
 
-class CutpdbSSE (PyTool) :
+class SplitPdbSSE (PyTool) :
     args = [
-            _( "dataset_dir", type="dir" )            
+            _( "pdb_file", type="dir" )            
         ]
     out = [
-            _( "edited_pdb_file", file="edited.pdb" )
+            _( "pieces_dir", dir="pieces" )
         ]
     def func( self ):
-        
-        for fn in os.listdir(self.dataset_dir):
-            print fn
-            for files in os.listdir(self.dataset_dir+"/"+fn):
-                if files.endswith(".pdb"):
-                    print files
-                    npdb = numpdb.NumPdb( self.dataset_dir+"/"+fn+"/"+files, {
-                        "phi_psi": False,
-                        "sstruc": True,
-                        "backbone_only": False,
-                        "protein_only": False,
-                        "detect_incomplete": False,
-                        "configuration": False,
-                        "info": False
-                    })
-                    
-                    for i, numa in enumerate( npdb.iter_sstruc() ):
-                        #print numa['resname']
-                        print numa.sequence()
-                        values_dic ={}
-                        values_dic[1]=numa['resno'][0]
-                        values_dic[2]=numa['resno'][-1]
-                        values_dic[3]=numa.sequence()
-                        values_dic[4]=numa['chain'][0]
-                        if not os.path.exists(self.dataset_dir+"/"+fn+"/pieces/"):
-                            os.makedirs(self.dataset_dir+"/"+fn+"/pieces/")
-                        numa.write(self.dataset_dir+"/"+fn+"/pieces/"+str(files)[-8:-4]+"-"+str(numa['resno'][0])+"-"+str(numa['resno'][-1])+".pdb")
-                        #textdatei=self.dataset_dir+"/"+fn+"/pieces/"+str(files)[-8:-4]+"-"+str(numa['resno'][0])+"-"+str(numa['resno'][-1])+".json"
-                        with open(self.dataset_dir+"/"+fn+"/pieces/"+str(files)[-8:-4]+"-"+str(numa['resno'][0])+"-"+str(numa['resno'][-1])+".json", "w" ) as fp:
-                           json.dump( values_dic,fp, separators=(',',':') )
-                            #fp.write(stem1)
-                            #fp.write("numa['resno'][-1]")
-                            #fp.write("numa.sequence()") 
+        npdb = numpdb.NumPdb( self.pdb_file, {
+            "phi_psi": False,
+            "sstruc": True,
+            "backbone_only": False,
+            "protein_only": False,
+            "detect_incomplete": False,
+            "configuration": False,
+            "info": False
+        })
+        for i, numa in enumerate( npdb.iter_sstruc() ):
+            print numa["chain"][0], numa["resno"].min(), numa["resno"].max()
+            print numa.sequence()
+            values_dic ={}
+            values_dic[1]=numa['resno'][0]
+            values_dic[2]=numa['resno'][-1]
+            values_dic[3]=numa.sequence()
+            values_dic[4]=numa['chain'][0]
+            if not os.path.exists(self.pieces_dir):
+                os.makedirs(self.pieces_dir)
+            file_name=os.path.join(self.pieces_dir,  "%s_%s_%i-%i.%s" % (self.pdb_file[-8:-4],numa['chain'][0],numa['resno'][0],numa['resno'][-1],'pdb'))
+            file_namej=os.path.join(self.pieces_dir, "%s_%s_%i-%i.%s" % (self.pdb_file[-8:-4],numa['chain'][0],numa['resno'][0],numa['resno'][-1],'json'))
+            numa.write(file_name)
+            with open(file_namej, "w" ) as fp:
+                json.dump( values_dic,fp, indent=4 )
+
+
+
 def parse_het_dictionary( het_file ):
     het_dict = collections.defaultdict( list )
     key = None
@@ -236,8 +230,30 @@ class PdbSplit( PyTool ):
             resno_ignore=self.resno_ignore,
             zfill=self.zfill
         )
-
-
+class LoopDelete (PyTool):
+    args = [
+    _( "pdb_file", type="file", ext="pdb" ),
+    _( "chain", type="string"),
+    _( "res1", type="int"),
+    _( "res2", type="int"),
+    ]
+    out = [
+    _( "noloop_pdb_file", file="noloop.pdb" )
+    ]
+    def func( self ):
+        npdb = numpdb.NumPdb( self.pdb_file, {
+            "phi_psi": False,
+            "sstruc": False,
+            "backbone_only": False,
+            "protein_only": False,
+            "detect_incomplete": False,
+            "configuration": False,
+            "info": False
+        })
+        test =npdb.sele(chain=self.chain,resno=[ self.res1, self.res2], invert=True)
+        
+        npdb.write( self.noloop_pdb_file,sele=test )
+        
 class PdbEdit( PyTool ):
     """ Edits a pdb file. Manipulations are done in this order:
         center, shift, box.
