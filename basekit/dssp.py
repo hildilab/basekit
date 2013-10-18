@@ -1,7 +1,10 @@
 from __future__ import division
 
-import utils.path
+import collections
+
 from utils.tool import _, _dir_init, CmdTool
+from utils import numpdb
+from utils.numpdb import NumPdb
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "dssp" )
 
@@ -47,12 +50,31 @@ class Dssp( CmdTool ):
         self.cmd = [ 
             DSSP_CMD, self.pdb_file, self.dssp_file
         ]
+    def _post_exec( self ):
+        npdb = NumPdb( self.pdb_file, features={
+            "sstruc": False,
+            "phi_psi": False,
+            "extra": [( "dssp", "|S1", " " )]
+        })
+        self.get_numpdb_sstruc( npdb )
+    def get_records( self ):
+        return parse_dssp( self.dssp_file )
+    def get_numpdb_sstruc( self, npdb ):
+        return dssp2numpdb( self.get_records(), npdb )
 
 
 
 
 # http://swift.cmbi.ru.nl/gv/dssp/HTML/descrip.html
 #
+# G: 3_10 helix
+# H: alpha helix
+# I: pi helix
+# B: beta bridge
+# E: beta sheet
+# T: turn
+# S: bend
+#  : loop, coil
 def parse_dssp( dssp_path ):
     records = [ None ]
     with open( dssp_path, "r" ) as fp:
@@ -73,6 +95,20 @@ def parse_dssp( dssp_path ):
                         line[13],                       # aa1
                         line[33],                       # beta sheet label
                     ])
+    return records
+
+
+def dssp2numpdb( records, npdb ):
+    d = collections.OrderedDict()
+    for r in records:
+        if r:
+            d[( r[1], r[2] )] = r[3]
+    for a in npdb._iter_resno():
+        a['dssp'] = d.get(( a['resno'][0], a['chain'][0] ), ' ')
+    return npdb
+
+
+def dssp2pdb( records ):
     prev_ss = " "
     prev_chain = " "
     sstruc = [[]]

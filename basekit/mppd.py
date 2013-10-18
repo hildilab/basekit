@@ -30,6 +30,7 @@ from hbexplore import HBexplore
 from msms import Msms
 from mpstruc import MpstrucInfo
 from pdb import PdbInfo
+from dssp import Dssp
 
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "mppd" )
@@ -285,6 +286,12 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             self.output_files += self.msms0.output_files
             self.output_files += [ self.original_dry_pdb, self.final_pdb ]
 
+            self.dssp = Dssp(
+                self.final_pdb, **copy_dict( kwargs, run=False, 
+                output_dir=self.subdir( "dssp" )
+            ))
+            self.output_files += self.dssp.output_files
+
             self.opm_info = OpmInfo( self.pdb_id,
                 **copy_dict( kwargs, run=False, 
                     output_dir=self.subdir("opm_info") ) )
@@ -365,6 +372,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 self.make_dry_pdb()
             if do( "final" ):
                 self.make_final_pdb()
+            if do( "dssp" ):
+                self.dssp()
             if do( "pdb_info" ):
                 self.pdb_info()
             if do( "opm_info" ):
