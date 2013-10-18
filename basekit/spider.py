@@ -178,8 +178,11 @@ class SpiderConvert( Spider ):
     def _init( self, *args, **kwargs ):
         super(SpiderConvert, self)._init( "__tmpl__" )
     def _pre_exec( self ):
+        #
+        order=getMrc(self.mrc_file,'mapc' )
+                  
         self._make_script_file( 
-            mrc_file=self.relpath( self.mrc_file )
+            mrc_file=self.relpath( self.mrc_file ),order=order
         )
 
 class SpiderPdbBox( PyTool ):
