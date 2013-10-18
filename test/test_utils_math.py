@@ -1,7 +1,9 @@
 import unittest
 import collections
 
-from basekit.utils.math import hclust, HCLUST_PACKAGE
+import numpy as np
+
+from basekit.utils.math import hclust, HCLUST_PACKAGE, rmatrixu
 
 
 class HclustTestCase( unittest.TestCase ):
@@ -29,4 +31,13 @@ class HclustTestCase( unittest.TestCase ):
         )
         
 
-
+class RotateTestCase( unittest.TestCase ):
+    def test_rmatrixu( self ):
+        positions = np.array([[ -1, 2, 0 ]])
+        v = np.array([ 0, 1, 0 ])
+        rotmat = rmatrixu( v, np.deg2rad( 180 ) )
+        positions = ( np.dot( rotmat, positions.T ) ).T
+        np.testing.assert_almost_equal( 
+            positions, np.array([[ 1, 2, 0 ]]) 
+        )
+        
