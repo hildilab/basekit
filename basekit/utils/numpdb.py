@@ -198,17 +198,60 @@ def get_rotno( resname ):
     rnmbr=len(rota.get(resname))
     return rnmbr
     # number of available rotameres for that resname
-    pass
+
 def get_rotamere( resname, no ):
     rota=ROTAMERE_LIB.get('dihedral_angles')
     rotanrdi=rota.get(resname)[no]
     dihi=ROTAMERE_LIB.get('dihedral_atoms')
     dihiat=dihi.get(resname)
-    return rotanrdi, dihiat, 
+    remat=ROTAMERE_LIB.get('remaining_atoms')
+    remaining_atoms=remat.get(resname)
+    return rotanrdi, dihiat, remaining_atoms
 
     # return dihedral_angle, dihedral_atoms, remaining_atoms
-    pass
 def make_rotamere( npdb, sele, no ):
+    
+    dihedral_angle, dihedral_atoms, remaining_atoms =  get_rotamere( sele["resname"], no )
+    # geht ueber alle chi-angle (im Beispiel CYS nur einmal, da nur ein chi-angle)
+    for chi_index in range( 0,len( dihedral_angle )-1 ):
+        print 'chi angle:',chi_index
+        
+        coords = npdb.get( 'xyz', **sele )
+        print 'alle coordinaten:', coords
+        
+        # TODO: ptr = points to rotate --> oder alle rein?
+        #       waere dann coords
+        
+        # TODO: wtr = what should be rotated: defined by 0,1...
+        #       1 defines the coords, who are holded
+        
+        
+        #coords of remaining atoms:
+        coords_remat=np.empty( [len( dihedral_angle )-1, 3] )
+        for remat in remaining_atoms[ chi_index ]:
+            for index, diat in enumerate( dihedral_atoms[ chi_index ] ):
+                if remat==diat:
+                    coords_remat[ chi_index ]=coords[ index ]
+        print 'Koordinaten der remaining atoms:', coords_remat
+        
+        
+        # TODO: rotangl = calc rotation angle
+        #       curr_angle: calc_chi_angle
+        av_angel = dihedral_angle[ chi_index+1 ]
+        print 'Dihedral angle of ROTAMERE_LIB:', av_angel
+        
+        
+    
+    pass
+    #makes the rotation and gives the new coords back
+    #rotmat = rmatrixu( wtr, np.deg2rad( rotangl ) )
+    #newpoints = ( np.dot( rotmat, ptr.T ) ).T
+    
+    #TODO: put newpoints into npdb
+    
+
+    
+    
     # use rmatrixu from utils.math, see test/test_utils_math.py
     # for an example how to use the rotation matrix
     # - for all chis (mind the order)
@@ -216,7 +259,7 @@ def make_rotamere( npdb, sele, no ):
     #   - calc how much the dihedral needs to be rotated
     #   - rotate...
     # return npdb with changed rotamere
-    pass
+    #return npdbr
 # put the "make all rotameres" function in pdb.py
 
 

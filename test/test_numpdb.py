@@ -35,4 +35,26 @@ class NumpdbHeaderParseTestCase( unittest.TestCase ):
         print "\n"
         for ss in npdb.iter_sstruc():
             print ss._atoms["resno"].min(), ss._atoms["resno"].max()
+
+
+class RotamereTestCase( unittest.TestCase ):
+    def test_make_rotamere( self ):
+        npdb = numpdb.NumPdb( data( "1CRN.pdb" ))
+        sele={ "resno": 3, "chain": "A", "resname": "CYS" }
+        no = numpdb.get_rotno ( sele["resname"] )
+        for i in range(0, no):
+            print '###NEXT ROUND###', i
+            rotamere = numpdb.make_rotamere( npdb, sele, i )
+        
+
+        #positions = np.array([[ -1, 2, 0 ]])
+        #v = np.array([ 0, 1, 0 ])
+        #rotmat = rmatrixu( v, np.deg2rad( 180 ) )
+        #positions = ( np.dot( rotmat, positions.T ) ).T
+        #np.testing.assert_almost_equal( 
+        #    positions, np.array([[ 1, 2, 0 ]]) 
+        #)
+        
+        
+        
         
