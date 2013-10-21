@@ -336,6 +336,9 @@ SstrucRecord = collections.namedtuple( 'SstrucRecord', [
     'chain2', 'resno2', 'resname2',
     'hbond'
 ])
+
+class MissingParser( SimpleParser ):
+    pass
        
 class SstrucParser( SimpleParser ):
     def __init__( self ):
@@ -407,6 +410,8 @@ class InfoParser( object ):
             self._dict["model_type"] += line[10:].rstrip()
         elif line.startswith("TITLE"):
             self._dict["title"] += line[10:].rstrip()
+        elif line.startswith("SPLIT"):
+            self._dict["split"] += line[10:].rstrip()
         elif line.startswith("REMARK"):
             if line[9]=="2":
                 self._dict["resolution"] += line[10:].rstrip()
@@ -433,6 +438,7 @@ class InfoParser( object ):
                 ), 
                 None
             ),
+            "splited_entry": dct.get("split", "").split(),
             "model_type": mdl_dct,
             "obsolete": dct.get("obsolete", "").split()
         }
@@ -739,12 +745,14 @@ class NumPdb:
         self.features = {
             "phi_psi": True,
             "sstruc": True,
+            "detect_missing": False,
             "backbone_only": False,
             "protein_only": True,
             "detect_incomplete": True,
             "configuration": True,
             "no_sort": False,
-            "info": False
+            "info": False,
+            "extra": False
         }
         if features: self.features.update( features )
         self._parse()
@@ -775,6 +783,12 @@ class NumPdb:
             parsers[ "sstruc" ] = SstrucParser()
         if self.features["info"]:
             parsers[ "info" ] = InfoParser()
+        if self.features["detect_missing"]:
+            parsers[ "missing" ] = MissingParser()
+        if self.features["extra"]:
+            for xname, xtype, xdefault in self.features["extra"]:
+                types += [ ( xname, xtype ) ]
+                extra += [ xdefault ]
 
         atoms = []
         atoms_append = atoms.append
