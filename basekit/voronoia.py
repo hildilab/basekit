@@ -42,7 +42,7 @@ VolHole = collections.namedtuple( "VolHole", [
     "no", "type", "neighbours"
 ])
 InfoRecord = collections.namedtuple( "InfoRecord", [
-    "pdb", "res", "title", "experiment", "zscorerms"
+    "pdb_id", "pdb_res", "pdb_title", "pdb_experiment", "pdb_zscorerms"
 ])
 
 def parse_vol( vol_file, pdb_file ):
