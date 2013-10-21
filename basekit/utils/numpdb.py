@@ -194,9 +194,18 @@ ROTAMERE_LIB_PATH = os.path.join(
 with open( ROTAMERE_LIB_PATH, "r" ) as fp:
     ROTAMERE_LIB = json.load( fp )
 def get_rotno( resname ):
+    rota=ROTAMERE_LIB.get('dihedral_angles')
+    rnmbr=len(rota.get(resname))
+    return rnmbr
     # number of available rotameres for that resname
     pass
 def get_rotamere( resname, no ):
+    rota=ROTAMERE_LIB.get('dihedral_angles')
+    rotanrdi=rota.get(resname)[no]
+    dihi=ROTAMERE_LIB.get('dihedral_atoms')
+    dihiat=dihi.get(resname)
+    return rotanrdi, dihiat, 
+
     # return dihedral_angle, dihedral_atoms, remaining_atoms
     pass
 def make_rotamere( npdb, sele, no ):
