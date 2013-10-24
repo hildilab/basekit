@@ -213,11 +213,17 @@ def make_rotamere( npdb, sele, no ):
     
     dihedral_angle, dihedral_atoms, remaining_atoms =  get_rotamere( sele["resname"], no )
     # geht ueber alle chi-angle (im Beispiel CYS nur einmal, da nur ein chi-angle)
-    for chi_index in range( 0,len( dihedral_angle )-1 ):
-        print 'chi angle:',chi_index
+    coords = npdb.get( 'xyz', **sele )
+    #print 'alle coordinaten:', coords
+    for chi_index in range( 0,1):#len( dihedral_angle )-1 ):
+        #print 'chi angle_NR:',chi_index
         
-        coords = npdb.get( 'xyz', **sele )
-        print 'alle coordinaten:', coords
+        
+        atom_pos = npdb.get( 'atomname', **sele )
+        atom_no = npdb.get( 'atomno', **sele )
+        #print 'alle coordinaten:', coords
+        #print 'alle coordinaten:', atom_pos
+        #print 'alle coordinaten:', atom_no
         
         # TODO: ptr = points to rotate --> oder alle rein?
         #       waere dann coords
@@ -227,20 +233,127 @@ def make_rotamere( npdb, sele, no ):
         
         
         #coords of remaining atoms:
-        coords_remat=np.empty( [len( dihedral_angle )-1, 3] )
-        for remat in remaining_atoms[ chi_index ]:
-            for index, diat in enumerate( dihedral_atoms[ chi_index ] ):
-                if remat==diat:
-                    coords_remat[ chi_index ]=coords[ index ]
-        print 'Koordinaten der remaining atoms:', coords_remat
+        coords_remat=np.empty( [len( remaining_atoms[ chi_index ] ), 3] )
+        coords_diheat=np.empty( [4, 3] )
+        i=0;j=0;
+        for index, coord_atom in enumerate( atom_pos ):
+            for diheat in dihedral_atoms[ chi_index ]:
+                if diheat.split() == coord_atom.split():
+                    coords_diheat[ i ] = coords[ index ]
+                    i+=1
+                    break;
+            for remat in remaining_atoms[ chi_index ]:
+                if remat == coord_atom.split()[0]:
+                    coords_remat[j]=coords[ index ]
+                    j+=1
+                    break;
+            
+        #print 'Koordinaten der remaining atoms:', coords_remat
+        #print 'Koordinaten der dihedral atoms:', coords_diheat
         
         
-        # TODO: rotangl = calc rotation angle
-        #       curr_angle: calc_chi_angle
-        av_angel = dihedral_angle[ chi_index+1 ]
-        print 'Dihedral angle of ROTAMERE_LIB:', av_angel
+        curr_dihedral=dihedral(coords_diheat[0],coords_diheat[1],coords_diheat[2],coords_diheat[3])
+        #print dihedral(13.112 13.937 )
+        av_angle = dihedral_angle[ chi_index+1 ]
+        #print'#####', dihedral([15.036,  11.747,  18.715],[13.564,  11.573,  18.836],[12.933,  12.737,  19.580],[13.206,  12.785,  21.061])
         
         
+        
+        #rotation auf 180 gesetz um es besser visualisieren zu koennen
+        
+        rotation = 180#av_angle-curr_dihedral
+        #print 'Current dihedral angle', curr_dihedral
+        print 'rotation angles', rotation
+        print 'Dihedral angle of ROTAMERE_LIB:', av_angle
+        
+        newpoints = np.empty( [len( remaining_atoms[ chi_index ] ), 3] )
+        for index, remat_co in enumerate(coords_remat):
+            oldpoint=np.array(remat_co)
+            print 'old', oldpoint
+            wtr=coords_diheat[2]-coords_diheat[1]
+            #wtr= [6.31, -11.64,  -7.44] #wtr*10
+            #wtr=[0,1,0]#np.array(wtr)
+            #hurz=wtr.normalize()
+            print "coo", coords_diheat[1], coords_diheat[2]
+            print "vec", wtr
+            print "oldpoint_hu", oldpoint
+            
+            rotmat = rmatrixu( wtr, np.deg2rad( rotation ) )#3.14159
+            #rotmat/=10
+            print np.deg2rad (rotation)
+            print 'rot',rotmat
+            newpoint = ( np.dot( rotmat, oldpoint.T ) ).T
+            print "newpoint", newpoint
+            newpoints[index] = newpoint
+        
+        #print 'New points', newpoints
+        #
+        
+        
+        
+        # write new ref coords for next chi
+        newpdb=np.copy(coords)
+        j=0
+        for coord_atom in atom_pos:
+            for index, remat in enumerate(remaining_atoms[ chi_index ]):
+                if remat == coord_atom.split()[0]:
+                    newpdb[j]=newpoints[index]
+            j+=1
+
+        #print 'newpdb ', newpdb
+        coords = np.copy(newpdb)
+        
+    #update npdb
+    all_coords = npdb['xyz']
+    for index, at_num in enumerate(atom_no):
+        all_coords[at_num-1] = newpdb[index]
+    npdb['xyz'] = all_coords
+    
+    #print 'updated coords', npdb['xyz']
+    npdb.write( 'hallo.pdb' )
+    
+    return npdb
+    #
+        
+        #
+        #kjljl=jlkj
+        #for index, remat in enumerate(remaining_atoms[ chi_index ]):
+        #    if remat == atoms['atomname'].split()[0]:
+        #        newpdb[atind]['xyz']=newpoints[index]
+        #
+        #
+        #newpdb=np.copy(coords)
+        #atom_pos = npdb.get( 'atomname', **sele )
+        #for atind, atoms in enumerate(newpdb):
+        #    for index, remat in enumerate(remaining_atoms[ chi_index ]):
+        #        if remat == atoms['atomname'].split()[0]:
+        #            print newpdb['xyz']
+        #            newpdb[atind]['xyz']=newpoints[index]
+        #        
+        
+        #newpdb=np.copy(coords)
+        #j=0
+        #for coord_atom in atom_pos:
+        #    for index, remat in enumerate(remaining_atoms[ chi_index ]):
+        #        if remat == coord_atom.split()[0]:
+        #            newpdb[j]=newpoints[index]
+        #    j+=1
+        #npdb = np.copy(newpdb)
+        #print 'newpdb ', newpdb
+        #for elem in npdb:
+        ##    print elem
+        #
+        #coords['xyz']= coords
+        #
+        #for elem in npdb:
+        #    print elem
+        #
+        #
+        #
+        
+        #update coords
+        #coords=newpoints
+       # npdb.copy( sele=sele ).write( self.edited_pdb_file )
     
     pass
     #makes the rotation and gives the new coords back

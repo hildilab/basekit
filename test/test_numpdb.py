@@ -40,9 +40,9 @@ class NumpdbHeaderParseTestCase( unittest.TestCase ):
 class RotamereTestCase( unittest.TestCase ):
     def test_make_rotamere( self ):
         npdb = numpdb.NumPdb( data( "1CRN.pdb" ))
-        sele={ "resno": 3, "chain": "A", "resname": "CYS" }
+        sele={ "resno": 43, "chain": "A", "resname": "ASP" }
         no = numpdb.get_rotno ( sele["resname"] )
-        for i in range(0, no):
+        for i in range(0, 1):#no):
             print '###NEXT ROUND###', i
             rotamere = numpdb.make_rotamere( npdb, sele, i )
         
