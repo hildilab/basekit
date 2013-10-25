@@ -214,16 +214,16 @@ def make_rotamere( npdb, sele, no ):
     dihedral_angle, dihedral_atoms, remaining_atoms =  get_rotamere( sele["resname"], no )
     # geht ueber alle chi-angle (im Beispiel CYS nur einmal, da nur ein chi-angle)
     coords = npdb.get( 'xyz', **sele )
-    #print 'alle coordinaten:', coords
-    for chi_index in range( 0,1):#len( dihedral_angle )-1 ):
-        #print 'chi angle_NR:',chi_index
+    print 'alle coordinaten:', coords
+    for chi_index in range( 0,len( dihedral_angle )-1 ):#len( dihedral_angle )-1 ):
+        print 'chi angle_NR:',chi_index
         
         
         atom_pos = npdb.get( 'atomname', **sele )
         atom_no = npdb.get( 'atomno', **sele )
-        #print 'alle coordinaten:', coords
-        #print 'alle coordinaten:', atom_pos
-        #print 'alle coordinaten:', atom_no
+        print 'alle coordinaten:', coords
+        print 'alle coordinaten:', atom_pos
+        print 'alle coordinaten:', atom_no
         
         # TODO: ptr = points to rotate --> oder alle rein?
         #       waere dann coords
@@ -261,29 +261,34 @@ def make_rotamere( npdb, sele, no ):
         
         #rotation auf 180 gesetz um es besser visualisieren zu koennen
         
-        rotation = 180#av_angle-curr_dihedral
-        #print 'Current dihedral angle', curr_dihedral
+        rotation =av_angle-curr_dihedral
+        if rotation <0:
+            rotation =360+rotation
+        print 'Current dihedral angle', curr_dihedral
         print 'rotation angles', rotation
         print 'Dihedral angle of ROTAMERE_LIB:', av_angle
         
         newpoints = np.empty( [len( remaining_atoms[ chi_index ] ), 3] )
         for index, remat_co in enumerate(coords_remat):
             oldpoint=np.array(remat_co)
-            print 'old', oldpoint
+            #print 'old', oldpoint
+            
             wtr=coords_diheat[2]-coords_diheat[1]
+            shift=coords_diheat[2]*-1
             #wtr= [6.31, -11.64,  -7.44] #wtr*10
             #wtr=[0,1,0]#np.array(wtr)
             #hurz=wtr.normalize()
-            print "coo", coords_diheat[1], coords_diheat[2]
-            print "vec", wtr
-            print "oldpoint_hu", oldpoint
-            
+            #print "coo", coords_diheat[1], coords_diheat[2]
+            #print "vec", wtr
+            #print "oldpoint_hu", oldpoint
+            oldpoint=oldpoint+shift
             rotmat = rmatrixu( wtr, np.deg2rad( rotation ) )#3.14159
             #rotmat/=10
-            print np.deg2rad (rotation)
-            print 'rot',rotmat
+            #print np.deg2rad (rotation)
+            #print 'rot',rotmat
             newpoint = ( np.dot( rotmat, oldpoint.T ) ).T
-            print "newpoint", newpoint
+            newpoint=newpoint-shift
+            #print "newpoint", newpoint
             newpoints[index] = newpoint
         
         #print 'New points', newpoints
@@ -302,13 +307,14 @@ def make_rotamere( npdb, sele, no ):
 
         #print 'newpdb ', newpdb
         coords = np.copy(newpdb)
-        
+        print 'alle coordinaten2:', coords
     #update npdb
     all_coords = npdb['xyz']
     for index, at_num in enumerate(atom_no):
         all_coords[at_num-1] = newpdb[index]
     npdb['xyz'] = all_coords
-    
+    atom_pos = npdb.get( 'atomname', **sele )
+    print 'alle coordinaten:', atom_pos
     #print 'updated coords', npdb['xyz']
     npdb.write( 'hallo.pdb' )
     
