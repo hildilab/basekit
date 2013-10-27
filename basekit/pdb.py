@@ -488,7 +488,7 @@ def rna_list( max_res=3.5 ):
 
 # the rotamere lib needs the 'remaining_atoms' data
 ROTAMERE_LIB_PATH = os.path.join(
-    BASEKIT_DIR, "data", "bio", "bbind02.May.lib.json"
+    BASEKIT_DIR, "basekit","data", "bio", "bbind02.May.lib.json"
 )
 with open( ROTAMERE_LIB_PATH, "r" ) as fp:
     ROTAMERE_LIB = json.load( fp )
@@ -703,7 +703,11 @@ def make_all_rotameres(pdbfile, chain1, resno1):
     test =npdb.sele(chain=chain1,resno=resno1)
     for i in range(0, no):
         rotamere = make_rotamere( npdb, sele, i )
-        rotamere_dict[ (pdbfile, chain1, resno1, i) ] = rotamere
+        rotamere.copy(sele=test).write("%s_%s_%i.%s" % (resname1,resno1, i ,'pdb'))
+        #npdb.copy(rotamer)
+        #rotamere_dict[ (pdbfile, chain1, resno1, i) ] = rotamere
+        print rotamere
+        #npdb.write(test.pdb)
     return rotamere_dict, test
     
 class MakeAllRotameres( PyTool ):
@@ -718,10 +722,10 @@ class MakeAllRotameres( PyTool ):
     def func( self, *args, **kwargs ):
         print self.chain, self.resno
         self.rotamere_record, self.test = make_all_rotameres( self.pdb_input, self.chain, self.resno )
-    def _post_exec( self ):
-        self.rotamere_record
-        for index, elem in enumerate(self.rotamere_record):
-            self.rotamere_record[elem].write(self.rotamere_file+'.'+self.chain+'.'+str(self.resno)+'.'+str(index)+'.pdb', sele=self.test)
+    #def _post_exec( self ):
+    #    self.rotamere_record
+    #    for index, elem in enumerate(self.rotamere_record):
+    #        self.rotamere_record[elem].write(self.rotamere_file+'.'+self.chain+'.'+str(self.resno)+'.'+str(index)+'.pdb', sele=self.test)
 
 
 
