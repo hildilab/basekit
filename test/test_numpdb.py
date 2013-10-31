@@ -44,7 +44,7 @@ class RotamereTestCase( unittest.TestCase ):
         no = numpdb.get_rotno ( sele["resname"] )
         for i in range(0, 1):#no):
             print '###NEXT ROUND###', i
-            rotamere = numpdb.make_rotamere( npdb, sele, i )
+            rotamere = numpdb.rmake_rotamere( npdb, sele, i )
         
 
         #positions = np.array([[ -1, 2, 0 ]])

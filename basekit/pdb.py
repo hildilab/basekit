@@ -510,7 +510,19 @@ def get_rotamere( resname, no ):
     remat=ROTAMERE_LIB.get('remaining_atoms')
     remaining_atoms=remat.get(resname)
     return rotanrdi, dihiat, remaining_atoms
-    
+def rmake_rotamere(   npdb, sele, no ):
+    dihedral_angle, dihedral_atoms, remaining_atoms =  get_rotamere( sele["resname"], no )
+    #print sele
+    am1=npdb.sele(resname=sele["resname"],resno=sele["resno"],chain=sele["chain"])
+    print "sle",  am1
+    am=npdb.copy(sele=am1)
+    print am['xyz']
+    for chi_index in range( 0,len( dihedral_angle )-1 ):
+        test=am.sele(atomname=huhu)#(atomname=dihedral_atoms[chi_index])
+        print test
+        hurz=am.copy(sele=test)
+        print dihedral_atoms[chi_index]
+        print hurz['xyz']
 def make_rotamere( npdb, sele, no ):
     print  sele, no
     dihedral_angle, dihedral_atoms, remaining_atoms =  get_rotamere( sele["resname"], no )
@@ -573,32 +585,13 @@ def make_rotamere( npdb, sele, no ):
         newpoints = np.empty( [len( remaining_atoms[ chi_index ] ), 3] )
         for index, remat_co in enumerate(coords_remat):
             oldpoint=np.array(remat_co)
-            #print 'old', oldpoint
-            
             wtr=coords_diheat[2]-coords_diheat[1]
             shift=coords_diheat[2]*-1
-            #wtr= [6.31, -11.64,  -7.44] #wtr*10
-            #wtr=[0,1,0]#np.array(wtr)
-            #hurz=wtr.normalize()
-            #print "coo", coords_diheat[1], coords_diheat[2]
-            #print "vec", wtr
-            #print "oldpoint_hu", oldpoint
             oldpoint=oldpoint+shift
             rotmat = rmatrixu( wtr, np.deg2rad( rotation ) )#3.14159
-            #rotmat/=10
-            #print np.deg2rad (rotation)
-            #print 'rot',rotmat
             newpoint = ( np.dot( rotmat, oldpoint.T ) ).T
             newpoint=newpoint-shift
-            #print "newpoint", newpoint
             newpoints[index] = newpoint
-        
-        #print 'New points', newpoints
-        #
-        
-        
-        
-        # write new ref coords for next chi
         newpdb=np.copy(coords)
         j=0
         for coord_atom in atom_pos:
@@ -689,7 +682,7 @@ def make_rotamere( npdb, sele, no ):
     #return npdbr
 # put the "make all rotameres" function in pdb.py
 
-def make_all_rotameres(pdbfile, chain1, resno1):
+def make_all_rotameres(pdbfile, chain1, resno1,zfill):
     print pdbfile, chain1, resno1
     rotamere_dict={}
     npdb = numpdb.NumPdb( pdbfile)
@@ -703,7 +696,7 @@ def make_all_rotameres(pdbfile, chain1, resno1):
     test =npdb.sele(chain=chain1,resno=resno1)
     for i in range(0, no):
         rotamere = make_rotamere( npdb, sele, i )
-        rotamere.copy(sele=test).write("%s_%s_%i.%s" % (resname1,resno1, i ,'pdb'))
+        rotamere.copy(sele=test).write("%s_%s_%s.%s" % (resname1,resno1, str(i+1).zfill(zfill) ,'pdb'))
         #npdb.copy(rotamer)
         #rotamere_dict[ (pdbfile, chain1, resno1, i) ] = rotamere
         print rotamere
@@ -713,15 +706,16 @@ def make_all_rotameres(pdbfile, chain1, resno1):
 class MakeAllRotameres( PyTool ):
     args = [
         _( "pdb_input", type="file", ext="pdb" ),
-        _( "chain|ch", type="text", default="A" ),
-        _( "resno|r", type="int", default=41 )
+        _( "chain|ch", type="text" ),
+        _( "resno|r", type="int" ),
+        _( "zfill", type="slider", range=[0, 8], default=0 )
     ]
     out = [
         _( "rotamere_file", file="{pdb_input.stem}.pdb" )
     ]
     def func( self, *args, **kwargs ):
         print self.chain, self.resno
-        self.rotamere_record, self.test = make_all_rotameres( self.pdb_input, self.chain, self.resno )
+        make_all_rotameres( self.pdb_input, self.chain, self.resno ,self.zfill)
     #def _post_exec( self ):
     #    self.rotamere_record
     #    for index, elem in enumerate(self.rotamere_record):

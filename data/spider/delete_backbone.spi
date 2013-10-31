@@ -1,0 +1,68 @@
+;delete backbone density
+
+;input:
+
+;[out1]='usermap'
+[map]='${map_name}'
+[pdb]='${pdb_file}'
+
+;parameter
+
+
+[ps]=${pixelsize}
+
+;werte für filter
+;[f1]=([ps]/[rs])-0.05
+;[f2]=([ps]/[rs])+0.05
+
+FI [X1], [X2], [X3]
+[map] ;hier brauchen wir dann die originale usermap
+12,2,1
+
+CP FROM PDB
+[pdb]
+${pixelsize}  ;pixelsize (wo bekomme ich die her??)
+N
+A
+[X1] [X2] [X3] 
+_14
+
+;rotieren
+ RT 3d
+ _14
+ _9
+ -90,180,0
+ 
+; Filtern, erstmal mit festen werten
+
+FQ                        ; Filtern der pdb map
+_9                   ; Reference vol.  (input)
+_1                        ; Filtered vol    (output)
+7                         ; Butterworth filter
+.15,.25   ; Pass-band and stop-band frequencies
+
+FS [max],[min]            ; Max & min 
+_1                        ; Filtered vol    (input)
+
+fs [max2], [min2]
+[map]
+
+
+;gefilterete map an input anpassen
+
+[factor]=[max2]/[max]
+
+ar
+_1
+_2
+(p1*[factor])
+
+
+;die beiden maps voneinander abziehen:
+
+SU                      ; Subtract         
+[map]		        ; 2nd volume        (input)
+_2		        ; Reference         (input)
+deletebb		        ; Result            (output)
+*
+en

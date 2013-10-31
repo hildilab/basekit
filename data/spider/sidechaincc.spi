@@ -1,0 +1,142 @@
+; author: jochen ismer
+;calculate the crosscorrelation of different rotamers to the map
+
+
+;Needed values: Eingabefile,pixelzize, xyz of ca- atom
+[rs]='${resolution}'
+[ps]='${pixelsize}'
+[file]='${map_name}'
+[psf]= 1/[ps]          ;
+[x1]=${x_ca}
+[y1]=${y_ca}
+[z1]=${z_ca}
+[dim]=20
+
+;infos zum file
+FI [x8],[x9],[x10]
+[file]
+1,2,12
+
+;Auf pixelsize anpassen
+
+[x1]=[x1]*[psf]
+[y1]=[y1]*[psf]
+[z1]=[z1]*[psf]
+
+;für das ausschneiden der unrotierten box brauchen wir noch ein z4 aus den neg z werten
+[z4]=-1*[z1]
+
+;boxsize shift (weil der ursprung woander sitzt)
+
+[sx]=([x8]/2)+1
+[sy]=([x9]/2)+1
+[sz]=([x10]/2)+1
+
+;Ecke oben links bestimmen
+[hb]=[dim]/2
+[obenlinks1]=INT([x1]+[sx]-[hb])
+[obenlinks2]=INT([y1]+[sy]-[hb])
+[obenlinks3]=INT([z1]+[sz]-[hb])
+[obenlinks4]=INT([z4]+[sz]-[hb])
+
+;Ausschneiden us dem original...
+
+wi 
+[file]
+boxil
+[dim] [dim] [dim]
+[obenlinks1] [obenlinks2] [obenlinks3]
+
+
+;grenzwerte für Filter
+[f1]=([ps]/[rs])-0.05
+[f2]=([ps]/[rs])+0.05
+
+;maske bestimmen testen!
+;min max werte
+FS [X4], [X5]
+boxil
+;mitte des spektrums bestimmen
+[x6]=(X4+X5)/2
+
+;Maske erstellen noch zu testen
+TH M
+boxil
+mask
+B
+[x6]
+
+;anzahl rotamere
+[ar]=${num_rota}
+
+;Loops zu maps machen
+DO  [y]=1,[ar]
+ [filename]='${resname1}_${residue}_{**[y]}.pdb'; 
+;Dichten aus PDB erstellen
+ CP FROM PDB
+ [filename]
+ [ps]
+ N
+ A
+ [x8] [x9] [x10]
+ _1
+ vm
+ echo "PDB erstellt"
+
+
+;ausschneiden
+wi
+_1
+_2
+[dim] [dim] [dim]
+[obenlinks2] [obenlinks1] [obenlinks4]
+VM
+echo "window"
+
+;rotierem
+RT 3d
+_2
+_4
+-90,180,0
+
+;Map auf resolution filtern
+
+ FQ
+ _4
+ _5
+ 7
+ [f1] [f2]
+ 
+ VM
+ echo "Filter"
+;cross correlation ausrechnen
+ CC C [ccc]
+ boxil
+ _5
+ mask
+ 1
+ 
+ ;cross correlation in ein file schreiben
+ sd [y],[ccc]
+ crosscorrelation
+ 
+;zum loopmaps ausgeben:
+;CP
+;_5
+;{*[y]}S
+vm
+echo "CC"
+
+
+
+ENDDO
+sd 1,[dim],[obenlinks1],[obenlinks2],[obenlinks3],[obenlinks4],[ps], [rs]
+ecken
+doc sort
+crosscorrelation
+ccsort
+-1
+N N
+en
+
+
