@@ -7,7 +7,7 @@ from basekit.pdb import (
     PdbDownload, PdbSplit, PdbUnzip, PdbHetDictionary, 
     PdbSuperpose, PdbEdit, PdbInfo, NumpdbTest, RnaList,
     ListCompare, ListJoin, PdbAssembly,SplitPdbSSE, LoopDelete,
-    MakeAllRotameres
+    MakeAllRotameres, JoinSplitted
 )
 
 
@@ -29,7 +29,8 @@ def main():
         "join": ListJoin,
         "assembly": PdbAssembly,
         "delete": LoopDelete,
-	"rotamere": MakeAllRotameres
+	"rotamere": MakeAllRotameres,
+	"joinsplitted": JoinSplitted
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )

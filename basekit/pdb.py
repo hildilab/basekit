@@ -8,6 +8,7 @@ import collections
 import json
 import string
 import datetime
+import shutil
 
 import numpy as np
 np.seterr( all="raise" )
@@ -591,6 +592,48 @@ class MakeAllRotameres( PyTool ):
     #]
     def func( self, *args, **kwargs ):
         make_all_rotameres( self.pdb_input, self.chain, self.resno ,self.zfill, self.output_dir)
+
+
+def join_splitted( splitted_entrys, outdir, clear=False ):
+    
+    outdir = os.path.join(outdir, 'splitted_files/')
+    try:
+        os.mkdir(outdir)
+    except: pass
+    joined_file='all.pdb'
+    all_atoms=""
+    for split_file_id in splitted_entrys:
+        split_file = outdir+split_file_id+'.pdb'
+        pdb_download(split_file_id, split_file)
+        with open(split_file, 'r') as sp:
+            for line in sp:
+                if line.startswith('ATOM') or line.startswith('TER'):
+                    all_atoms += line
+    all_atoms += 'END'
+    
+    if clear:
+        shutil.rmtree(outdir)
+    return all_atoms
+
+
+class JoinSplitted( PyTool ):
+    args = [
+        _( "splitted_ids", type="str" ),
+        _( "clear", type="bool", default=False,
+            help="deletes the downloaded splited pdbs")
+    ]
+    out = [
+        _( "all_joined", file="all_joined.pdb" )
+    ]
+    def _init( self, *args, **kwargs ):
+        self.splitted_files=self.splitted_ids.split(',')
+    def func( self ):
+        self.joined = join_splitted( self.splitted_files, self.output_dir, self.clear )
+    def _post_exec( self ):
+        with open(self.all_joined, 'w') as fp:
+            fp.write(self.joined)
+        
+
 
 
 
