@@ -20,9 +20,10 @@ def tmp( *dir_name ):
 
 class RotamereTestCase( unittest.TestCase ):
     def test_make_rotamere( self ):
-        npdb = numpdb.NumPdb( data( "testprot.pdb" ))
-        sele={ "resno": 19, "chain": "A", "resname": "TRP" }
-        no = pdb.get_rotno ( sele["resname"] )
-        for i in range(0, 1):#no):
-            print '###NEXT ROUND###', i
-            rotamere = pdb.rmake_rotamere( npdb, sele, i )
+        npdb = numpdb.NumPdb( data( "testprot.pdb" ) )
+        sele={ "resno": 20, "chain": 'A', "resname": 'TYR' }
+        rotamere = pdb.make_rotamere( npdb, sele, 0 )
+        self.assertAlmostEqual(
+            rotamere.get( 'xyz', **sele )[-1][0],
+            76.1959444
+        )
