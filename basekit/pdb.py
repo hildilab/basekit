@@ -33,6 +33,12 @@ TMPL_DIR = os.path.join( PARENT_DIR, "data", "motif" )
 BASEKIT_DIR = os.path.split( PARENT_DIR )[0]
 DATA_DIR = os.path.join( BASEKIT_DIR, "data", "pdb" )
 
+# the rotamere lib needs the 'remaining_atoms' data
+ROTAMERE_LIB_PATH = os.path.join(
+    BASEKIT_DIR, "basekit","data", "bio", "bbind02.May.lib.json"
+)
+with open( ROTAMERE_LIB_PATH, "r" ) as fp:
+    ROTAMERE_LIB = json.load( fp )
 
 class SplitPdbSSE (PyTool) :
     args = [
@@ -483,16 +489,6 @@ def rna_list( max_res=3.5 ):
     return list_record
 
 
-#############ROTAMERE-START#############
-
-
-# the rotamere lib needs the 'remaining_atoms' data
-ROTAMERE_LIB_PATH = os.path.join(
-    BASEKIT_DIR, "basekit","data", "bio", "bbind02.May.lib.json"
-)
-with open( ROTAMERE_LIB_PATH, "r" ) as fp:
-    ROTAMERE_LIB = json.load( fp )
-
 
 
 def get_rotno( resname ):
@@ -510,198 +506,78 @@ def get_rotamere( resname, no ):
     remat=ROTAMERE_LIB.get('remaining_atoms')
     remaining_atoms=remat.get(resname)
     return rotanrdi, dihiat, remaining_atoms
-def rmake_rotamere(   npdb, sele, no ):
-    dihedral_angle, dihedral_atoms, remaining_atoms =  get_rotamere( sele["resname"], no )
-    #print sele
-    am1=npdb.sele(resname=sele["resname"],resno=sele["resno"],chain=sele["chain"])
-    print "sle",  am1
-    am=npdb.copy(sele=am1)
-    print am['xyz']
-    for chi_index in range( 0,len( dihedral_angle )-1 ):
-        test=am.sele(atomname=huhu)#(atomname=dihedral_atoms[chi_index])
-        print test
-        hurz=am.copy(sele=test)
-        print dihedral_atoms[chi_index]
-        print hurz['xyz']
+
 def make_rotamere( npdb, sele, no ):
-    print  sele, no
+    # Koordinaten zwischengespeichert, um Eindeutigkeit zu erhalten
+    pdb_array = []
+    for atomno in npdb.get( 'atomname', **sele ):
+        sele['atomname']=atomno
+        pdb_array.append( [ atomno, npdb.get( 'xyz', **sele  ) ] )
+    del sele['atomname']
+    
     dihedral_angle, dihedral_atoms, remaining_atoms =  get_rotamere( sele["resname"], no )
-    # geht ueber alle chi-angle (im Beispiel CYS nur einmal, da nur ein chi-angle)
-    coords = npdb.get( 'xyz', **sele )
-    print 'alle coordinaten:', coords
+    # geht ueber alle chi-angle
     for chi_index in range( 0,len( dihedral_angle )-1 ):#len( dihedral_angle )-1 ):
-        print 'chi angle_NR:',chi_index
-        
-        
-        atom_pos = npdb.get( 'atomname', **sele )
-        atom_no = npdb.get( 'atomno', **sele )
-        print 'alle coordinaten:', coords
-        print 'alle coordinaten:', atom_pos
-        print 'alle coordinaten:', atom_no
-        
-        # TODO: ptr = points to rotate --> oder alle rein?
-        #       waere dann coords
-        
-        # TODO: wtr = what should be rotated: defined by 0,1...
-        #       1 defines the coords, who are holded
-        
-        
-        #coords of remaining atoms:
+        #coords of remaining and dihedral atoms:
         coords_remat=np.empty( [len( remaining_atoms[ chi_index ] ), 3] )
         coords_diheat=np.empty( [4, 3] )
+        name_remat=list(range(len( remaining_atoms[ chi_index ])))
         i=0;j=0;
-        for index, coord_atom in enumerate( atom_pos ):
+        for at in pdb_array:
             for diheat in dihedral_atoms[ chi_index ]:
-                if diheat.split() == coord_atom.split():
-                    coords_diheat[ i ] = coords[ index ]
+                if diheat.split()[0] == at[0].split()[0]:
+                    coords_diheat[ i ] = at[1]
                     i+=1
-                    break;
+                    break;  
             for remat in remaining_atoms[ chi_index ]:
-                if remat == coord_atom.split()[0]:
-                    coords_remat[j]=coords[ index ]
+                if remat == at[0].split()[0]:
+                    coords_remat[j]=at[1]
+                    name_remat[ j ] = at[0]
                     j+=1
                     break;
-            
-        #print 'Koordinaten der remaining atoms:', coords_remat
-        #print 'Koordinaten der dihedral atoms:', coords_diheat
-        
-        
         curr_dihedral=numpdb.dihedral(coords_diheat[0],coords_diheat[1],coords_diheat[2],coords_diheat[3])
-        #print dihedral(13.112 13.937 )
         av_angle = dihedral_angle[ chi_index+1 ]
-        #print'#####', dihedral([15.036,  11.747,  18.715],[13.564,  11.573,  18.836],[12.933,  12.737,  19.580],[13.206,  12.785,  21.061])
-        
-        
-        
+
         #rotation auf 180 gesetz um es besser visualisieren zu koennen
-        
         rotation =av_angle-curr_dihedral
         if rotation <0:
             rotation =360+rotation
-        print 'Current dihedral angle', curr_dihedral
-        print 'rotation angles', rotation
-        print 'Dihedral angle of ROTAMERE_LIB:', av_angle
         
-        newpoints = np.empty( [len( remaining_atoms[ chi_index ] ), 3] )
+        # get new coords with rmatrixu
         for index, remat_co in enumerate(coords_remat):
             oldpoint=np.array(remat_co)
-            wtr=coords_diheat[2]-coords_diheat[1]
+            wtr=coords_diheat[2]-coords_diheat[1] #what_to_rotate
             shift=coords_diheat[2]*-1
             oldpoint=oldpoint+shift
             rotmat = rmatrixu( wtr, np.deg2rad( rotation ) )#3.14159
             newpoint = ( np.dot( rotmat, oldpoint.T ) ).T
             newpoint=newpoint-shift
-            newpoints[index] = newpoint
-        newpdb=np.copy(coords)
-        j=0
-        for coord_atom in atom_pos:
-            for index, remat in enumerate(remaining_atoms[ chi_index ]):
-                if remat == coord_atom.split()[0]:
-                    newpdb[j]=newpoints[index]
-            j+=1
-
-        #print 'newpdb ', newpdb
-        coords = np.copy(newpdb)
-        print 'alle coordinaten2:', coords
-    #update npdb
+            for ind, pos in enumerate(pdb_array):
+                if pos[0]==name_remat[index]:
+                    pdb_array[ind][1]=newpoint
+    #update the coords of the npdb
     all_coords = npdb['xyz']
+    atom_no = npdb.get( 'atomno', **sele )
     for index, at_num in enumerate(atom_no):
-        all_coords[at_num-1] = newpdb[index]
+        all_coords[at_num-1] = pdb_array[index][1]
     npdb['xyz'] = all_coords
-    
-    
-    print 'alle coordinaten:', npdb.get( 'atomname', **sele )
-    #print 'updated coords', npdb['xyz']
-    
-    
-    #
-    
-    
-    
-    
-    return npdb#rotamer_pdb
-    #
-        
-        #
-        #kjljl=jlkj
-        #for index, remat in enumerate(remaining_atoms[ chi_index ]):
-        #    if remat == atoms['atomname'].split()[0]:
-        #        newpdb[atind]['xyz']=newpoints[index]
-        #
-        #
-        #newpdb=np.copy(coords)
-        #atom_pos = npdb.get( 'atomname', **sele )
-        #for atind, atoms in enumerate(newpdb):
-        #    for index, remat in enumerate(remaining_atoms[ chi_index ]):
-        #        if remat == atoms['atomname'].split()[0]:
-        #            print newpdb['xyz']
-        #            newpdb[atind]['xyz']=newpoints[index]
-        #        
-        
-        #newpdb=np.copy(coords)
-        #j=0
-        #for coord_atom in atom_pos:
-        #    for index, remat in enumerate(remaining_atoms[ chi_index ]):
-        #        if remat == coord_atom.split()[0]:
-        #            newpdb[j]=newpoints[index]
-        #    j+=1
-        #npdb = np.copy(newpdb)
-        #print 'newpdb ', newpdb
-        #for elem in npdb:
-        ##    print elem
-        #
-        #coords['xyz']= coords
-        #
-        #for elem in npdb:
-        #    print elem
-        #
-        #
-        #
-        
-        #update coords
-        #coords=newpoints
-       # npdb.copy( sele=sele ).write( self.edited_pdb_file )
-    
-    pass
-    #makes the rotation and gives the new coords back
-    #rotmat = rmatrixu( wtr, np.deg2rad( rotangl ) )
-    #newpoints = ( np.dot( rotmat, ptr.T ) ).T
-    
-    #TODO: put newpoints into npdb
-    
+    return npdb
 
-    
-    
-    # use rmatrixu from utils.math, see test/test_utils_math.py
-    # for an example how to use the rotation matrix
-    # - for all chis (mind the order)
-    #   - calc current dihedral
-    #   - calc how much the dihedral needs to be rotated
-    #   - rotate...
-    # return npdb with changed rotamere
-    #return npdbr
-# put the "make all rotameres" function in pdb.py
 
-def make_all_rotameres(pdbfile, chain1, resno1,zfill):
-    print pdbfile, chain1, resno1
+def make_all_rotameres(pdbfile, chain1, resno1,zfill, outpath):
     rotamere_dict={}
     npdb = numpdb.NumPdb( pdbfile)
     sele={"resno": resno1, "chain": chain1}
     resname1=npdb.get('resname', **sele)[0]
-    print 'resname',resname1
-    sele={ "resno": resno1, "chain": chain1, "resname": resname1 }
-    print sele
-    print npdb.get( 'xyz', **sele )
-    no = get_rotno( sele["resname"] )
-    test =npdb.sele(chain=chain1,resno=resno1)
-    for i in range(0, no):
-        rotamere = make_rotamere( npdb, sele, i )
-        rotamere.copy(sele=test).write("%s_%s_%s.%s" % (resname1,resno1, str(i+1).zfill(zfill) ,'pdb'))
-        #npdb.copy(rotamer)
-        #rotamere_dict[ (pdbfile, chain1, resno1, i) ] = rotamere
-        print rotamere
-        #npdb.write(test.pdb)
-    return rotamere_dict, test
+    if resname1 != 'GLY':
+        sele={ "resno": resno1, "chain": chain1, "resname": resname1 }
+        no = get_rotno( sele["resname"] )
+        test =npdb.sele(chain=chain1,resno=resno1)
+        for i in range(0, no):
+            npdb = numpdb.NumPdb( pdbfile)
+            rotamere = make_rotamere( npdb, sele, i )
+            rotamere.copy(sele=test).write("%s%s_%s_%s.%s" % (outpath,resname1,resno1, str(i+1).zfill(zfill) ,'pdb'))
+        return rotamere_dict, test
     
 class MakeAllRotameres( PyTool ):
     args = [
@@ -710,20 +586,13 @@ class MakeAllRotameres( PyTool ):
         _( "resno|r", type="int" ),
         _( "zfill", type="slider", range=[0, 8], default=0 )
     ]
-    out = [
-        _( "rotamere_file", file="{pdb_input.stem}.pdb" )
-    ]
+    #out = [
+    #    _( "rotamere_file", file="{pdb_input.stem}.pdb" )
+    #]
     def func( self, *args, **kwargs ):
-        print self.chain, self.resno
-        make_all_rotameres( self.pdb_input, self.chain, self.resno ,self.zfill)
-    #def _post_exec( self ):
-    #    self.rotamere_record
-    #    for index, elem in enumerate(self.rotamere_record):
-    #        self.rotamere_record[elem].write(self.rotamere_file+'.'+self.chain+'.'+str(self.resno)+'.'+str(index)+'.pdb', sele=self.test)
+        make_all_rotameres( self.pdb_input, self.chain, self.resno ,self.zfill, self.output_dir)
 
 
-
-#############ROTAMERE-END#############
 
 class RnaList( PyTool ):
     args = [
