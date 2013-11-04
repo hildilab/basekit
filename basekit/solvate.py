@@ -5,8 +5,7 @@ from utils.tool import _, _dir_init, CmdTool
 
 pdbDIR, pdbPARENT_DIR, pdbTMPL_DIR = _dir_init( __file__, "pdb" )
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "solvate" )
-solvate_dir= '/home/student/Johanna/Software/solvate_1.0'
-solvate_CMD = os.path.join( solvate_dir, "solvate" )
+solvate_CMD = os.path.join( TMPL_DIR, "solvate" )
 
 
 class Solvate( CmdTool):
