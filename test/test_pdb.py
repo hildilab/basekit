@@ -21,7 +21,7 @@ def tmp( *dir_name ):
 class RotamereTestCase( unittest.TestCase ):
     def test_make_rotamere( self ):
         npdb = numpdb.NumPdb( data( "testprot.pdb" ))
-        sele={ "resno": 20, "chain": "A", "resname": "TYR" }
+        sele={ "resno": 19, "chain": "A", "resname": "TRP" }
         no = pdb.get_rotno ( sele["resname"] )
         for i in range(0, 1):#no):
             print '###NEXT ROUND###', i

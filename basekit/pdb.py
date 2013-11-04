@@ -510,19 +510,35 @@ def get_rotamere( resname, no ):
     remat=ROTAMERE_LIB.get('remaining_atoms')
     remaining_atoms=remat.get(resname)
     return rotanrdi, dihiat, remaining_atoms
+
+
 def rmake_rotamere(   npdb, sele, no ):
     dihedral_angle, dihedral_atoms, remaining_atoms =  get_rotamere( sele["resname"], no )
-    #print sele
     am1=npdb.sele(resname=sele["resname"],resno=sele["resno"],chain=sele["chain"])
-    print "sle",  am1
+    #print "sle",  am1
     am=npdb.copy(sele=am1)
-    print am['xyz']
+    #print am['xyz']
     for chi_index in range( 0,len( dihedral_angle )-1 ):
-        test=am.sele(atomname=huhu)#(atomname=dihedral_atoms[chi_index])
-        print test
-        hurz=am.copy(sele=test)
-        print dihedral_atoms[chi_index]
-        print hurz['xyz']
+        test=am.sele(atomname=dihedral_atoms[chi_index])
+        dihia=am.copy(sele=test)
+        #print dihia ['atomname']
+        curr_dihedral=numpdb.dihedral(dihia ['xyz'][0],dihia['xyz'][1],dihia['xyz'][2],dihia['xyz'][3])
+        #print curr_dihedral
+        av_angle = dihedral_angle[ chi_index+1 ]
+        remat=am.sele(atomname=remaining_atoms[chi_index])
+        remato=am.copy(sele=remat)
+        print remat
+        print remato ['xyz']
+        rotation =av_angle-curr_dihedral
+        if rotation <0:
+            rotation =360+rotation
+        print remaining_atoms[chi_index]   
+        print len(remaining_atoms[chi_index])
+        for i in range(0,len(remaining_atoms[chi_index-1])):
+            wtr=dihia['xyz'][2]-dihia['xyz'][1]
+            shift=dihia['xyz'][2]*-1
+            print "aktueller punkt", remato['xyz'] [i]
+            #print "ja",wtr
 def make_rotamere( npdb, sele, no ):
     print  sele, no
     dihedral_angle, dihedral_atoms, remaining_atoms =  get_rotamere( sele["resname"], no )
