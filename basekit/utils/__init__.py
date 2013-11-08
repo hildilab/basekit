@@ -179,7 +179,7 @@ def listify( item ):
     >>> listify( 'a' )
     ['a']
     """
-    if not item:
+    if item is None:
         return []
     elif isinstance( item, list ):
         return item
