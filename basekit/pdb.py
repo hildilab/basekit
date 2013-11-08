@@ -8,6 +8,7 @@ import collections
 import json
 import string
 import datetime
+import shutil
 
 import numpy as np
 np.seterr( all="raise" )
@@ -18,12 +19,27 @@ from utils.tool import _, _dir_init, PyTool, ProviMixin
 from utils.timer import Timer
 from utils.db import get_pdb_files
 from utils.listing import ListRecord, ListIO, list_compare, list_join
+from utils.math import rmatrixu
+
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "pdb" )
 
 PDB_SEARCH_URL = 'http://www.rcsb.org/pdb/rest/search'
 PDB_DOWNLOAD_URL = 'http://www.rcsb.org/pdb/files/'
 PDBE_ASSEMBLY = 'http://www.ebi.ac.uk/pdbe-srv/view/files/{pdb_id:}_1.mmol'
+
+DIR = os.path.split( os.path.abspath(__file__) )[0]
+PARENT_DIR = os.path.split( DIR )[0]
+TMPL_DIR = os.path.join( PARENT_DIR, "data", "motif" )
+BASEKIT_DIR = os.path.split( PARENT_DIR )[0]
+DATA_DIR = os.path.join( BASEKIT_DIR, "data", "pdb" )
+
+# the rotamere lib needs the 'remaining_atoms' data
+ROTAMERE_LIB_PATH = os.path.join(
+    BASEKIT_DIR, "basekit","data", "bio", "bbind02.May.lib.json"
+)
+with open( ROTAMERE_LIB_PATH, "r" ) as fp:
+    ROTAMERE_LIB = json.load( fp )
 
 class SplitPdbSSE (PyTool) :
     args = [
@@ -472,6 +488,153 @@ def rna_list( max_res=3.5 ):
         None, None, pdb_list
     )
     return list_record
+
+
+
+
+def get_rotno( resname ):
+    # get number of available rotameres for that resname
+    rota=ROTAMERE_LIB.get('dihedral_angles')
+    rnmbr=len(rota.get(resname))
+    return rnmbr
+
+def get_rotamere( resname, no ):
+    # return dihedral_angle, dihedral_atoms, remaining_atoms
+    rota=ROTAMERE_LIB.get('dihedral_angles')
+    rotanrdi=rota.get(resname)[no]
+    dihi=ROTAMERE_LIB.get('dihedral_atoms')
+    dihiat=dihi.get(resname)
+    remat=ROTAMERE_LIB.get('remaining_atoms')
+    remaining_atoms=remat.get(resname)
+    return rotanrdi, dihiat, remaining_atoms
+
+def make_rotamere( npdb, sele, no ):
+    # Koordinaten zwischengespeichert, um Eindeutigkeit zu erhalten
+    pdb_array = []
+    for atomno in npdb.get( 'atomname', **sele ):
+        sele['atomname']=atomno
+        pdb_array.append( [ atomno, npdb.get( 'xyz', **sele  ) ] )
+    del sele['atomname']
+    
+    dihedral_angle, dihedral_atoms, remaining_atoms =  get_rotamere( sele["resname"], no )
+    # geht ueber alle chi-angle
+    for chi_index in range( 0,len( dihedral_angle )-1 ):#len( dihedral_angle )-1 ):
+        #coords of remaining and dihedral atoms:
+        coords_remat=np.empty( [len( remaining_atoms[ chi_index ] ), 3] )
+        coords_diheat=np.empty( [4, 3] )
+        name_remat=list(range(len( remaining_atoms[ chi_index ])))
+        i=0;j=0;
+        for at in pdb_array:
+            for diheat in dihedral_atoms[ chi_index ]:
+                if diheat.split()[0] == at[0].split()[0]:
+                    coords_diheat[ i ] = at[1]
+                    i+=1
+                    break;  
+            for remat in remaining_atoms[ chi_index ]:
+                if remat == at[0].split()[0]:
+                    coords_remat[j]=at[1]
+                    name_remat[ j ] = at[0]
+                    j+=1
+                    break;
+        curr_dihedral=numpdb.dihedral(coords_diheat[0],coords_diheat[1],coords_diheat[2],coords_diheat[3])
+        av_angle = dihedral_angle[ chi_index+1 ]
+
+        #rotation auf 180 gesetz um es besser visualisieren zu koennen
+        rotation =av_angle-curr_dihedral
+        if rotation <0:
+            rotation =360+rotation
+        
+        # get new coords with rmatrixu
+        for index, remat_co in enumerate(coords_remat):
+            oldpoint=np.array(remat_co)
+            wtr=coords_diheat[2]-coords_diheat[1] #what_to_rotate
+            shift=coords_diheat[2]*-1
+            oldpoint=oldpoint+shift
+            rotmat = rmatrixu( wtr, np.deg2rad( rotation ) )#3.14159
+            newpoint = ( np.dot( rotmat, oldpoint.T ) ).T
+            newpoint=newpoint-shift
+            for ind, pos in enumerate(pdb_array):
+                if pos[0]==name_remat[index]:
+                    pdb_array[ind][1]=newpoint
+    #update the coords of the npdb
+    all_coords = npdb['xyz']
+    atom_no = npdb.get( 'atomno', **sele )
+    for index, at_num in enumerate(atom_no):
+        all_coords[at_num-1] = pdb_array[index][1]
+    npdb['xyz'] = all_coords
+    return npdb
+
+
+def make_all_rotameres(pdbfile, chain1, resno1,zfill, outpath):
+    rotamere_dict={}
+    npdb = numpdb.NumPdb( pdbfile)
+    sele={"resno": resno1, "chain": chain1}
+    resname1=npdb.get('resname', **sele)[0]
+    if resname1 != 'GLY':
+        sele={ "resno": resno1, "chain": chain1, "resname": resname1 }
+        no = get_rotno( sele["resname"] )
+        test =npdb.sele(chain=chain1,resno=resno1)
+        for i in range(0, no):
+            npdb = numpdb.NumPdb( pdbfile)
+            rotamere = make_rotamere( npdb, sele, i )
+            rotamere.copy(sele=test).write("%s%s_%s_%s.%s" % (outpath,resname1,resno1, str(i+1).zfill(zfill) ,'pdb'))
+        return rotamere_dict, test
+    
+class MakeAllRotameres( PyTool ):
+    args = [
+        _( "pdb_input", type="file", ext="pdb" ),
+        _( "chain|ch", type="text" ),
+        _( "resno|r", type="int" ),
+        _( "zfill", type="slider", range=[0, 8], default=0 )
+    ]
+    #out = [
+    #    _( "rotamere_file", file="{pdb_input.stem}.pdb" )
+    #]
+    def func( self, *args, **kwargs ):
+        make_all_rotameres( self.pdb_input, self.chain, self.resno ,self.zfill, self.output_dir)
+
+
+def join_splitted( splitted_entrys, outdir, clear=False ):
+    
+    outdir = os.path.join(outdir, 'splitted_files/')
+    try:
+        os.mkdir(outdir)
+    except: pass
+    joined_file='all.pdb'
+    all_atoms=""
+    for split_file_id in splitted_entrys:
+        split_file = outdir+split_file_id+'.pdb'
+        pdb_download(split_file_id, split_file)
+        with open(split_file, 'r') as sp:
+            for line in sp:
+                if line.startswith('ATOM') or line.startswith('TER'):
+                    all_atoms += line
+    all_atoms += 'END'
+    
+    if clear:
+        shutil.rmtree(outdir)
+    return all_atoms
+
+
+class JoinSplitted( PyTool ):
+    args = [
+        _( "splitted_ids", type="str" ),
+        _( "clear", type="bool", default=False,
+            help="deletes the downloaded splited pdbs")
+    ]
+    out = [
+        _( "all_joined", file="all_joined.pdb" )
+    ]
+    def _init( self, *args, **kwargs ):
+        self.splitted_files=self.splitted_ids.split(',')
+    def func( self ):
+        self.joined = join_splitted( self.splitted_files, self.output_dir, self.clear )
+    def _post_exec( self ):
+        with open(self.all_joined, 'w') as fp:
+            fp.write(self.joined)
+        
+
+
 
 
 class RnaList( PyTool ):

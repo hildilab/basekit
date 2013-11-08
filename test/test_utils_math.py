@@ -34,9 +34,13 @@ class HclustTestCase( unittest.TestCase ):
 class RotateTestCase( unittest.TestCase ):
     def test_rmatrixu( self ):
         positions = np.array([[ -1, 2, 0 ]])
-        v = np.array([ 0, 1, 0 ])
+        print positions
+        v = np.array([ 0, 2, 0 ])
+        print v
         rotmat = rmatrixu( v, np.deg2rad( 180 ) )
+        print rotmat
         positions = ( np.dot( rotmat, positions.T ) ).T
+        print positions
         np.testing.assert_almost_equal( 
             positions, np.array([[ 1, 2, 0 ]]) 
         )

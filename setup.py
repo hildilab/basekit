@@ -50,6 +50,7 @@ setup(
         'scripts/opm.py',
         'scripts/pdb.py',
         'scripts/project.py',
+        'scripts/solvate.py',
         'scripts/spider.py',
         'scripts/sstruc.py',
         'scripts/tmdet.py',

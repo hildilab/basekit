@@ -6,7 +6,8 @@ from basekit.utils.tool import parse_subargs
 from basekit.pdb import (
     PdbDownload, PdbSplit, PdbUnzip, PdbHetDictionary, 
     PdbSuperpose, PdbEdit, PdbInfo, NumpdbTest, RnaList,
-    ListCompare, ListJoin, PdbAssembly,SplitPdbSSE, LoopDelete
+    ListCompare, ListJoin, PdbAssembly,SplitPdbSSE, LoopDelete,
+    MakeAllRotameres, JoinSplitted
 )
 
 
@@ -27,7 +28,9 @@ def main():
         "compare": ListCompare,
         "join": ListJoin,
         "assembly": PdbAssembly,
-        "delete": LoopDelete
+        "delete": LoopDelete,
+	"rotamere": MakeAllRotameres,
+	"joinsplitted": JoinSplitted
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )

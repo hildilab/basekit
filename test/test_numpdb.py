@@ -35,4 +35,4 @@ class NumpdbHeaderParseTestCase( unittest.TestCase ):
         print "\n"
         for ss in npdb.iter_sstruc():
             print ss._atoms["resno"].min(), ss._atoms["resno"].max()
-        
+
