@@ -171,6 +171,13 @@ def wrap(text, width):
                   text.split(' ')
                  )
 
+def sizeof_fmt(num):
+    for x in ['bytes','KB','MB','GB']:
+        if num < 1024.0 and num > -1024.0:
+            return "%3.1f%s" % (num, x)
+        num /= 1024.0
+    return "%3.1f%s" % (num, 'TB')
+
 def listify( item ):
     """
     Makes a single item a single item list, or returns a list if passed a
