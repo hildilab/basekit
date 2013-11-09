@@ -515,7 +515,6 @@ def make_rotamere( npdb, sele, no ):
         sele['atomname']=atomno
         pdb_array.append( [ atomno, npdb.get( 'xyz', **sele  ) ] )
     del sele['atomname']
-    
     dihedral_angle, dihedral_atoms, remaining_atoms =  get_rotamere( sele["resname"], no )
     # geht ueber alle chi-angle
     for chi_index in range( 0,len( dihedral_angle )-1 ):#len( dihedral_angle )-1 ):
@@ -559,9 +558,12 @@ def make_rotamere( npdb, sele, no ):
     #update the coords of the npdb
     all_coords = npdb['xyz']
     atom_no = npdb.get( 'atomno', **sele )
+    sele_hetatm = npdb.sele(record="HETATM")
+    num_hetatm = sum(1 for i in sele_hetatm if i == True)
     for index, at_num in enumerate(atom_no):
-        all_coords[at_num-1] = pdb_array[index][1]
+        all_coords[at_num-1+num_hetatm] = pdb_array[index][1]
     npdb['xyz'] = all_coords
+    
     return npdb
 
 
