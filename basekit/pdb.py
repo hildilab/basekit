@@ -557,11 +557,9 @@ def make_rotamere( npdb, sele, no ):
                     pdb_array[ind][1]=newpoint
     #update the coords of the npdb
     all_coords = npdb['xyz']
-    atom_no = npdb.get( 'atomno', **sele )
-    sele_hetatm = npdb.sele(record="HETATM")
-    num_hetatm = sum(1 for i in sele_hetatm if i == True)
+    atom_no= npdb.index( **sele )
     for index, at_num in enumerate(atom_no):
-        all_coords[at_num-1+num_hetatm] = pdb_array[index][1]
+        all_coords[at_num] = pdb_array[index][1]
     npdb['xyz'] = all_coords
     
     return npdb
