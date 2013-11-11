@@ -27,3 +27,14 @@ class RotamereTestCase( unittest.TestCase ):
             rotamere.get( 'xyz', **sele )[-1][0],
             76.1959444
         )
+        
+class JoinSplittedTestCase( unittest.TestCase ):
+    def test_join_splitted( self ):
+        splitted = pdb.join_splitted( ['4GD1', '4GD2', '3R8S', '3R8T'], '', clear=True )
+        self.assertEqual(
+            splitted[0:20],
+            'ATOM      1  P     A'
+        )
+
+
+
