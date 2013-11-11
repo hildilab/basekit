@@ -472,27 +472,110 @@ class LoopSidechainCorrelation (PyTool):
         self.delete_backbone= SpiderDeleteBackbone(self.map_file,self.pdb_file,self.pixelsize ,           **copy_dict( 
                 kwargs, run=False
             ))
-        #self.sidechain=SpiderSidechainCorrelation(self.delete.backbone.delete_map_file,)
     def func( self ):
         self.delete_backbone()
         npdb=NumPdb( self.pdb_file )
         for i, numa in enumerate( npdb.iter_resno() ):
+            sele={'resno':i+1}
+            resname1=numa.get('resname') [0]
+            resno1=numa.get('resno') [0]
+            chain1=numa.get('chain') [0]
+            dirg="%s_%s_%i" %(chain1,resname1,resno1)
+            
+            print resname1, resno1, chain1
             if   numa.get('resname') [0] not in ('ALA', 'GLY'): 
-                sele={'resno':i+1}
-                resname1=numa.get('resname') [0]
-                resno1=numa.get('resno') [0]
-                chain1=numa.get('chain') [0]
-                dirg="%s_%s_%i" %(chain1,resname1,resno1)
-                print resname1, resno1, chain1
                 SpiderSidechainCorrelation('deletebb.cpv', self.pdb_file, self.pixelsize,self.resolution, resno1, chain1,output_dir=self.subdir(dirg))
+                aaname="%s.%s" %(dirg,'pdb')
+                aa=npdb.sele(resname=resname1,resno=resno1)
+                dire="%s/%s" %(dirg,aaname)
+                npdb.copy(sele=aa).write(dire)
+                OriSidechainCorrel('deletebb.cpv',dire,self.pixelsize,self.resolution,resno1,chain1,output_dir=self.subdir(dirg))
             else:
-                continue
-            
-            
-            
-            
-            
-            
+                aaname="%s.%s" %(dirg,'pdb')
+                aa=npdb.sele(resname=resname1,resno=resno1)
+                dire="%s/%s" %(dirg,aaname)
+                if not os.path.exists(self.subdir(dirg)): os.makedirs(self.subdir(dirg))
+                npdb.copy(sele=aa).write(dire)
+                
+    #def _make_result_pdb( self ):
+    #    b=open('bestrotamers.pdb', "w")
+    #    gesamt=[]
+    #    for fn in os.listdir(self.subdir(dirg)):
+    #        print fn
+    #        path=os.path.join(self.subdir(dirg))
+    #        ccsort="%s/%s" % (path, 'ccsort.cpv')
+    #        
+    #        with open (ccsort,"r") as fil:
+    #            file_lines=fil.readlines()
+    #            loc_file = file_lines[1].split()
+    #            nbr=str(loc_file [0]).zfill(2)
+    #            rota="%s/%s/%s_%s.%s" % (path,'rotamere',fn[2:],nbr,'pdb')
+    #        with open (rota, "r") as pd:
+    #            pdb_lines=pd.readlines()
+    #            
+    #            for lines in pdb_lines:
+    #                if lines.startswith ("END"):
+    #                    continue
+    #                else:
+    #                    gesamt.append(lines)
+    #        
+    #        gesamt.sort(key=lambda x: x[7:11])              
+    #        
+    #        b.writelines(gesamt)        
+    #
+#############################
+###CLASHES#####
+
+
+def get_tree( coords ):
+    if len( coords )==0:
+        coords = np.array([[ np.inf, np.inf, np.inf ]])
+    return scipy.spatial.KDTree( coords )
+
+class OriSidechainCorrel ( Spider ):
+    args = [
+    _( "map_file", type="file", ext="cpv" ),  
+     _( "pdb_file", type="file", ext="pdb" ),
+     _( "pixelsize", type="slider", range=[0, 10], fixed=True ),
+     _( "resolution", type="slider", range=[0, 10], fixed=True )  ,
+     _( "residue", type="slider", range=[0, 999],fixed=True),
+    _( "chain", type="str")
+     ]
+    out = [
+        _( "sidechain_dir", dir="sidechains" )           
+    ]
+    script_tmpl = "orisidechain.spi"
+    def _init( self, *args, **kwargs ):
+        super(OriSidechainCorrel, self)._init( "__tmpl__" )    
+    def _pre_exec( self ):
+        npdb=NumPdb( self.pdb_file )
+        sele={"resno": self.residue, "chain": self.chain}
+        resname1=npdb.get('resname', **sele)[0]
+        num_rota=get_rotno(resname1)
+        coords=self._get_ca(self.pdb_file,self.chain, self.residue)
+        print "huh" ,coords [0] [0]
+        x_ca= coords[0] [0]
+        y_ca=coords [0][1]
+        z_ca=coords [0] [2]
+        self._make_script_file(
+        x_ca= x_ca,
+        y_ca=y_ca,
+        z_ca=z_ca,
+        map_name=self.relpath(self.map_file, no_ext=True) ,
+        pixelsize=self.pixelsize,
+        resolution=self.resolution,
+        pdb_file=self.relpath(self.pdb_file, no_ext=False) ,
+        )
+    #def _post_exec( self ):
+    #    self._make_result_pdb()
+
+    def _get_ca (self,pdb_file,chain, residue):
+        npdb=NumPdb( pdb_file )
+        sele1={"resno": self.residue, "chain": self.chain}
+        resname1=npdb.get('resname', **sele1)[0]
+        sele={"resno": residue, "chain": chain, "resname": resname1 ,"atomname":'CA'}
+        cacoord=npdb.get('xyz',**sele)
+        return cacoord
 class LoopCrosscorrel( PyTool ):
     args = [
         _( "mrc_file", type="file", ext="mrc" ),
