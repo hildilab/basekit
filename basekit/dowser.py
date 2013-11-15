@@ -61,13 +61,13 @@ class DowserMixin( object ):
 
 DOWSER_ARGS = [
     _( "pdb_file", type="file", ext="pdb" ),
-    _( "hetero", type="checkbox", default=False ),
-    _( "noxtalwater", type="checkbox", default=False ),
-    _( "onlyxtalwater", type="checkbox", default=False ),
+    _( "hetero", type="bool", default=False ),
+    _( "noxtalwater", type="bool", default=False ),
+    _( "onlyxtalwater", type="bool", default=False ),
     _( "probe", type="float", default=0.4 ),
     _( "separation", type="float", default=1.0 ),
-    _( "atomtypes", type="text", default=DOWSER_ATOMDICT ),
-    _( "atomparms", type="text", default=DOWSER_ATOMPARMS )
+    _( "atomtypes", type="str", default=DOWSER_ATOMDICT ),
+    _( "atomparms", type="str", default=DOWSER_ATOMPARMS )
 ]
 DOWSER_OUT = [
     _( "input_file", file="myinput.pdb" ),
@@ -80,7 +80,7 @@ DOWSER_OUT = [
 class Dowser( DowserMixin, CmdTool, ProviMixin ):
     """ A wrapper around the 'dowser' programm. """
     args = DOWSER_ARGS + [
-        _( "alt", type="select", options=["x", "repeat"], default=None )
+        _( "alt", type="str", options=["x", "repeat"], default=None )
     ]
     out = DOWSER_OUT
     tmpl_dir = TMPL_DIR
@@ -109,7 +109,7 @@ class DowserRepeat( DowserMixin, PyTool, ProviMixin ):
         called until no more new waters are found.
     """
     args = DOWSER_ARGS + [
-        _( "alt", type="select", options=["x"], default=None ),
+        _( "alt", type="str", options=["x"], default=None ),
         _( "max_repeats", type="int", default=None )
     ]
     out = DOWSER_OUT + [

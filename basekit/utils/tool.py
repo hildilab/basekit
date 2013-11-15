@@ -106,23 +106,25 @@ def get_argument( params ):
         kwargs["dest"] = params["dest"]
     if "action" in params:
         kwargs["action"] = params["action"]
-    if "choices" in params:
-        kwargs["choices"] = params["choices"]
+    if "options" in params:
+        kwargs["choices"] = params["options"]
 
     if params.get( "nargs" ):
         kwargs["nargs"] = params["nargs"]
 
-    if params.get('fixed') or params["type"] in [ "float" ]:
+    if params["type"] in [ "float" ]:
         kwargs["type"] = float
-    elif params["type"] in [ "slider", "int" ]:
+    elif params["type"] in [ "int" ]:
         kwargs["type"] = int
-    elif params["type"] in [ "file", "dir", "text", "select", "str" ]:
+    elif params["type"] in [ "file", "dir", "sele", "str" ]:
         kwargs["type"] = str
-    elif params["type"]=="checkbox":
+    elif params["type"] in [ "bool" ]:
         if kwargs["default"]==False:
             kwargs["action"] = "store_true"
         else:
             kwargs["type"] = boolean
+    else:
+        raise Exception( "type '%s' not known" % params["type"] )
     
     return kwargs
 

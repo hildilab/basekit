@@ -155,13 +155,13 @@ class Msms( CmdTool, ProviMixin ):
             default=1.5 ),
         _( "density", type="float", range=[0.5, 10], step=0.5, default=1.0 ),
         _( "hdensity", type="float", range=[1.0, 20], step=1.0, default=3.0 ),
-        _( "all_components", type="checkbox", default=False ),
-        _( "no_area", type="checkbox", default=False ),
+        _( "all_components", type="bool", default=False ),
+        _( "no_area", type="bool", default=False ),
         _( "envelope", type="float", range=[0.0, 10], step=0.1, 
             default=0 ),
         _( "envelope_hclust", type="str", default="", 
             options=[ "", "ward", "average" ], help="'', average, ward" ),
-        _( "atom_radius_add", type="float", default=None ),
+        _( "atom_radius_add", type="float", default=0 ),
     ]
     out = [
         _( "area_file", file="area.area" ),
