@@ -9,7 +9,8 @@ import json
 import string
 import datetime
 import shutil
-
+import scipy.spatial
+import itertools
 import numpy as np
 np.seterr( all="raise" )
 
@@ -699,5 +700,42 @@ class ListJoin( PyTool ):
         ListIO( self.joined_list ).write( joined_list )
 
 
+def get_tree( coords ):
+    if len( coords )==0:
+        coords = np.array([[ np.inf, np.inf, np.inf ]])
+    return scipy.spatial.KDTree( coords )
 
 
+
+def find_all_clashes (npdb):
+
+    clashes=[]
+    lastatom=[]
+    lastatom=npdb['xyz'] 
+    test=get_tree(lastatom)
+    k=test.query_pairs(2)
+    
+    if  len(k) != 0:
+        for i in k:
+            z=3
+            e=npdb.get('resno') [i[0]]
+            f=npdb.get('resno') [i[1]]
+            #print e, f
+            if e!=f:
+                h=npdb.get('atomname')[i[0]]
+                j=npdb.get('atomname')[i[1]]
+                if h and j  in ( " N  ", " CA ", " C  ", " O  " ):
+                    continue
+                else:
+                #    if h in ( " N  ", " CA ", " C  ", " O  " ):
+                #        z=0
+                #    if j in ( " N  ", " CA ", " C  ", " O  " ):
+                #        z=1
+                    clashes.append([e,f])
+    clashes=sorted(clashes)            
+    clashes=list(clashes for clashes,_ in itertools.groupby(clashes))
+    if len (clashes) !=0:
+        #print clashes
+        return  clashes, True
+    else:
+        return False       

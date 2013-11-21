@@ -497,40 +497,7 @@ class LoopSidechainCorrelation (PyTool):
                 if not os.path.exists(self.subdir(dirg)): os.makedirs(self.subdir(dirg))
                 npdb.copy(sele=aa).write(dire)
                 
-    #def _make_result_pdb( self ):
-    #    b=open('bestrotamers.pdb', "w")
-    #    gesamt=[]
-    #    for fn in os.listdir(self.subdir(dirg)):
-    #        print fn
-    #        path=os.path.join(self.subdir(dirg))
-    #        ccsort="%s/%s" % (path, 'ccsort.cpv')
-    #        
-    #        with open (ccsort,"r") as fil:
-    #            file_lines=fil.readlines()
-    #            loc_file = file_lines[1].split()
-    #            nbr=str(loc_file [0]).zfill(2)
-    #            rota="%s/%s/%s_%s.%s" % (path,'rotamere',fn[2:],nbr,'pdb')
-    #        with open (rota, "r") as pd:
-    #            pdb_lines=pd.readlines()
-    #            
-    #            for lines in pdb_lines:
-    #                if lines.startswith ("END"):
-    #                    continue
-    #                else:
-    #                    gesamt.append(lines)
-    #        
-    #        gesamt.sort(key=lambda x: x[7:11])              
-    #        
-    #        b.writelines(gesamt)        
-    #
-#############################
-###CLASHES#####
-
-
-def get_tree( coords ):
-    if len( coords )==0:
-        coords = np.array([[ np.inf, np.inf, np.inf ]])
-    return scipy.spatial.KDTree( coords )
+      
 
 class OriSidechainCorrel ( Spider ):
     args = [
@@ -576,6 +543,146 @@ class OriSidechainCorrel ( Spider ):
         sele={"resno": residue, "chain": chain, "resname": resname1 ,"atomname":'CA'}
         cacoord=npdb.get('xyz',**sele)
         return cacoord
+##build the pdb file from the best rotamers
+
+class OptimizeRotamer ( PyTool ):
+    args = [
+    _("result_direc",type="directory")
+    ]
+    out=[
+    _( "verybestrotamers", file="verybestrotamers.pdb" )
+    
+    ]
+        
+    def  _init( self , *args, **kwargs ):
+        self.bestbuild=BuildBest(self.result_direc)
+    def func (self):
+        self.bestbuild()
+        npdb=NumPdb( "bestrotamers.pdb" )
+        
+        a=True
+        z=2
+        #while a==True:
+        clashes,a=find_all_clashes(npdb)
+        gtree=get_tree(npdb['xyz'])
+        print clashes
+        for i in clashes:
+            localresi=[]
+            #hole CA atom vom ersten clashpartner 
+            r=npdb.sele(resno=i[0],atomname='CA')
+            p=npdb.get('xyz',sele=r)
+            #indices im 6 A umkreis um den clash
+            l=gtree.query_ball_point(p,6)
+            print l[0]
+            #aus den indices eine liste mit residuname und nummer machen
+            for x in l[0]:
+                a=npdb.get('resname')[x]
+                b=npdb.get('resno')[x]
+                c=npdb.get('chain')[x]
+                localresi.append([b,a,c])
+            localresi=sorted(localresi)
+            localresi=list(localresi for localresi,_ in itertools.groupby(localresi))
+            #print localresi
+            for index,i in enumerate (localresi):
+                if i[1] not in ('ALA','GLY'):
+                    rotadir="%s_%s_%i" % (i[2],i[1],i[0])
+                    ccsortpath=os.path.join(self.result_direc,rotadir)
+                    ccsort="%s/%s" % (ccsortpath,'ccsort.cpv')
+                    print ccsortpath
+                    
+            break
+                
+            #for i in clashes:
+            #    as1=i[0]
+            #    as2=i[1]
+            #    resname100=npdb.get('resname',resno=as1)[0]
+            #    resname101=npdb.get('resname',resno=as2)[0]
+            #    #print resname100, resname101, i
+            #    if (resname100 and resname101) not in ('ALA','GLY'):
+            #        chain100=npdb.get('chain',resno=as1)[0]
+            #        chain101=npdb.get('chain',resno=as2)[0]
+            #        #print resname101
+            #        resno1=get_rotno(resname100)
+            #        resno2=get_rotno(resname101)
+            #        if resno1 >= resno2 :
+            #            #print "anzahl rota" ,resno1,resno2
+            #            sele={'resno':as1}
+            #            atom_no= npdb.index(**sele)
+            #            #erster clashpartner
+            #            rotadir="%s_%s_%i" % (chain100,resname100,as1)
+            #            ccsortpath=os.path.join(self.result_direc,rotadir)
+            #            ccsort="%s/%s" % (ccsortpath,'ccsort.cpv')
+            #        else:
+            #            sele={'resno':as2}
+            #            atom_no= npdb.index(**sele)
+            #            rotadir="%s_%s_%i" % (chain101,resname101,as2)
+            #            ccsortpath=os.path.join(self.result_direc,rotadir)
+            #            ccsort="%s/%s" % (ccsortpath,'ccsort.cpv')
+            #        
+            #        with open (ccsort,"r") as fil:
+            #            file_lines=fil.readlines()
+            #            loc_file = file_lines[z].split()
+            #            nbr=str(loc_file [0]).zfill(2)
+            #            rota="%s/%s/%s_%s.%s" % (ccsortpath,'rotamere',rotadir[2:],nbr,'pdb')
+            #        newrot=NumPdb(rota)
+            #        newroti=newrot.index()
+            #        all_coords = npdb['xyz']
+            #        for index, at_num in enumerate(atom_no):
+            #            all_coords[at_num] = newrot['xyz'][index]
+            #        npdb['xyz'] = all_coords
+            #    else:
+            #        print "buhu"
+            #print "round", z-1
+            #z +=1
+            #npdb.write("bestrotamers.pdb")
+            #roundd="%s_%i.%s" % ("bestrotaround",z-1,'pdb')
+            #npdb.write(roundd)
+            #clashes,a=find_all_clashes(npdb)
+
+        
+class BuildBest ( PyTool ):
+    args = [
+        _("result_direc",type="directory")
+        ]
+    out=[
+        _( "bestrotamers", file="bestrotamers.pdb" )
+        
+    ]
+    def func (self):
+        b=open(self.bestrotamers, "w")
+        gesamt=[]
+        for fn in os.listdir(self.result_direc):
+            #print fn[2:5]
+            path=os.path.join(self.result_direc,fn)
+            ccsort="%s/%s" % (path, 'ccsort.cpv')
+            if fn[2:5] not in ('ALA','GLY'):
+                with open (ccsort,"r") as fil:
+                    file_lines=fil.readlines()
+                    loc_file = file_lines[1].split()
+                    nbr=str(loc_file [0]).zfill(2)
+                    rota="%s/%s/%s_%s.%s" % (path,'rotamere',fn[2:],nbr,'pdb')
+                with open (rota, "r") as pd:
+                    pdb_lines=pd.readlines()
+                    
+                    for lines in pdb_lines:
+                        if lines.startswith ("END"):
+                            continue
+                        else:
+                            gesamt.append(lines)
+            else:
+                norota="%s/%s.%s" % (path,fn,'pdb')
+                with open (norota, "r") as pd:
+                    pdb_lines=pd.readlines()
+                    
+                    for lines in pdb_lines:
+                        if lines.startswith ("END"):
+                            continue
+                        else:
+                            gesamt.append(lines)   
+        gesamt.sort(key=lambda x: x[7:11])              
+        
+        b.writelines(gesamt)
+    
 class LoopCrosscorrel( PyTool ):
     args = [
         _( "mrc_file", type="file", ext="mrc" ),
