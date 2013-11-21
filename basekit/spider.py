@@ -227,8 +227,8 @@ class SpiderDeleteFilledDensities( Spider ):
         _( "pdb_file", type="file", ext="pdb" ),
         _( "result_file", type="file" , ext="cpv", help="ergebnisse.cpv"),
         #_( "pixelsize", type="slider", range=[1, 10], fixed=True ),
-        _( "resolution", type="slider", range=[1, 10], 
-            fixed=True, help="of the map_file" ),
+        _( "resolution", type="float", range=[1, 10], 
+            help="of the map_file" ),
         #_( "boxsize", type="slider", range=[1, 500], fixed=True , help = "of the input map")
     ]
     out = [
@@ -259,10 +259,10 @@ class SpiderBox( Spider ):
         _( "pdb_file", type="file", ext="pdb" ),
         _( "res1", type="sele", help="resno:chain, i.e. 10:A" ),
         _( "res2", type="sele" ),
-        _( "length", type="slider", range=[1, 30] ),
+        _( "length", type="int", range=[1, 30] ),
         #_( "pixelsize", type="slider", range=[1, 10], fixed=True ),
-        _( "resolution", type="slider", range=[1, 10], 
-            fixed=True, help="of the map_file" )
+        _( "resolution", type="float", range=[1, 10], 
+            help="of the map_file" )
     ]
     out = [
         _( "var_file", file="variables.cpv" ),
@@ -329,7 +329,7 @@ class SpiderCrosscorrelation( Spider ):
         _( "box_map_file", type="file", ext="cpv" ),
         _( "box_file", type="file", ext="cpv" ),
         _( "loop_file", type="file", ext="pdb" ),
-        _( "max_loops", type="slider", range=[0, 200], default=100 )
+        _( "max_loops", type="int", range=[0, 200], default=100 )
     ]
     out = [
         _( "loop_dir", dir="loops" ),
@@ -378,10 +378,10 @@ class SpiderSidechainCorrelation ( Spider ) :
     args = [
         _( "map_file", type="file", ext="cpv" ),
         _( "pdb_file", type="file", ext="pdb" ),
-        _( "pixelsize", type="slider", range=[0, 10], fixed=True ),
-        _( "resolution", type="slider", range=[0, 10], fixed=True ),
-        _( "residue", type="slider", range=[0, 999],fixed=True),
-        _( "chain", type="str")
+        _( "pixelsize", type="float", range=[0, 10] ),
+        _( "resolution", type="float", range=[0, 10] ),
+        _( "residue", type="int", range=[0, 999] ),
+        _( "chain", type="str" )
     ]
     out = [
         _( "sidechain_dir", dir="rotamere" ),
@@ -432,7 +432,7 @@ class SpiderDeleteBackbone (Spider):
     args = [
      _( "map_file", type="file", ext="cpv" ),
      _( "pdb_file", type="file", ext="pdb" ),
-     _( "pixelsize", type="slider", range=[0, 10], fixed=True )
+     _( "pixelsize", type="float", range=[0, 10] )
         
             
      ]
@@ -459,8 +459,8 @@ class LoopSidechainCorrelation (PyTool):
     args = [
      _( "map_file", type="file", ext="cpv" ),
      _( "pdb_file", type="file", ext="pdb" ),
-     _( "pixelsize", type="slider", range=[0, 10], fixed=True ),
-     _( "resolution", type="slider", range=[0, 10], fixed=True ),    
+     _( "pixelsize", type="float", range=[0, 10] ),
+     _( "resolution", type="float", range=[0, 10] ),    
             
      ]
     out = [

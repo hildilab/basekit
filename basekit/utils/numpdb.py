@@ -337,8 +337,6 @@ SstrucRecord = collections.namedtuple( 'SstrucRecord', [
     'hbond'
 ])
 
-class MissingParser( SimpleParser ):
-    pass
        
 class SstrucParser( SimpleParser ):
     def __init__( self ):
@@ -394,6 +392,58 @@ class SstrucParser( SimpleParser ):
         self._list = filtered
         return self._list
 
+MissingRecord = collections.namedtuple( 'MissingRecord', [
+    'type', 'model',
+    'resname', 'chain', 'ssseqi',
+    'identifier','atoms'
+])
+
+
+class MissingParser( SimpleParser ):
+    def __init__( self ):
+        self._list = []
+    def _test_line( self, line ):
+        return line.startswith("REMARK 465") or line.startswith("REMARK 470")
+    def _parse_line( self, line ):
+        if line.startswith("REMARK 465"):
+            model = line[11:15]
+            resname = line[15:18]
+            chain = line[18:20]
+            ssseq = line[20:26]
+            identifier = line[26:28]
+            if try_int(ssseq, 'False' )!='False':
+                return MissingRecord(
+                    "Residue",
+                    model,     # model
+                    resname,  # resname
+                    chain,  # chain
+                    try_int(ssseq, False ),                        # ssseqi
+                    identifier,
+                    None  #atoms
+                )
+            else:
+                return MissingRecord(None,None,None,None,None,None,None)
+        elif line.startswith("REMARK 470"):
+            model = line[13:15]
+            resname = line[15:18]
+            chain = line[19]
+            ssseq = line[20:25]
+            identifier = line[25:28]
+            atoms = line[28:].rstrip()
+            if try_int(ssseq, 'False' )!='False':
+                return MissingRecord(
+                    "Atoms",
+                    model,     # model
+                    resname,  # resname
+                    chain,  # chain
+                    try_int(ssseq, False ),                        # ssseqi
+                    identifier,
+                    atoms  # atoms
+                )
+            else:
+                return MissingRecord(None,None,None,None,None,None,None)
+    def get( self ):
+        return self._list
 
 class InfoParser( object ):
     def __init__( self ):
@@ -415,6 +465,7 @@ class InfoParser( object ):
         elif line.startswith("REMARK"):
             if line[9]=="2":
                 self._dict["resolution"] += line[10:].rstrip()
+            
         elif line.startswith("OBSLTE"):
             self._dict["obsolete"] += line[31:].rstrip()
 

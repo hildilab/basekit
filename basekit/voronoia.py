@@ -245,14 +245,14 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
     args = [
         _( "pdb_input", type="file" ),
         _( "ex", type="float", range=[0.01, 0.5], step=0.01, default=0.1 ),
-        _( "radii", type="select", options=["protor"], default="protor" ),
+        _( "radii", type="str", options=["protor"], default="protor" ),
         # TODO run the tool multiple times 
         # when it fails without the shuffle option
-        _( "shuffle", type="checkbox", default=False, 
+        _( "shuffle", type="bool", default=False, 
             help="slightly changes the input coordinates to"
                 "circumvent numerical problems" ),
-        _( "make_reference|mr", type="checkbox", default=False ),
-        _( "analyze_only|ao", type="checkbox", default=False )
+        _( "make_reference|mr", type="bool", default=False ),
+        _( "analyze_only|ao", type="bool", default=False )
     ]
     out = [
         _( "vol_file", file="{pdb_input.stem}.vol" ),

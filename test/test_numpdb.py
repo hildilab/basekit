@@ -19,14 +19,15 @@ def tmp( *dir_name ):
 
 class NumpdbHeaderParseTestCase( unittest.TestCase ):
     def test_secondary_structure( self ):
-        npdb = numpdb.NumPdb( data( "1CRN.pdb" ), {
+        npdb = numpdb.NumPdb( data( "3SN6.pdb" ), {#1CRN.pdb" ), {
             "phi_psi": False,
             "sstruc": True,
             "backbone_only": False,
             "protein_only": False,
             "detect_incomplete": False,
             "configuration": False,
-            "info": True
+            "info": True,
+            "detect_missing": True
         })
         print "\n" + json.dumps( npdb._info, indent=4 )
         print "\n"
@@ -35,4 +36,6 @@ class NumpdbHeaderParseTestCase( unittest.TestCase ):
         print "\n"
         for ss in npdb.iter_sstruc():
             print ss._atoms["resno"].min(), ss._atoms["resno"].max()
-
+        print "\n"
+        for ss in npdb._missing:
+            print ss

@@ -22,10 +22,11 @@ from pdb import PdbEdit, SplitPdbSSE, LoopDelete
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "linker" ) 
 
+def LINKIT_DIR():
+    return os.environ.get("LINKIT_DIR", "")
 
-LINKIT_DIR = os.environ.get("LINKIT_DIR", "")
-LINKIT_CMD = os.path.join( LINKIT_DIR, "Link_It_dos2n.exe" )
-
+def LINKIT_CMD():
+    return os.path.join( LINKIT_DIR(), "Link_It_dos2n.exe" )
 
 
 class LinkerTest( PyTool ):
@@ -56,7 +57,7 @@ class LinkIt( CmdTool, ProviMixin ):
         _( "pdb_file", type="file", ext="pdb" ),
         _( "res1", type="sele" ),
         _( "res2", type="sele" ),
-        _( "seq", type="text" )
+        _( "seq", type="str" )
     ]
     out = [
         _( "bin_file", file="{pdb_file.stem}_linker.bin" ),
@@ -70,7 +71,7 @@ class LinkIt( CmdTool, ProviMixin ):
     tmpl_dir = TMPL_DIR
     provi_tmpl = "link_it.provi"
     def _init( self, *args, **kwargs ):
-        self.cmd = [ "wine", LINKIT_CMD, self.kos_file, self.bin_file, "t" ]
+        self.cmd = [ "wine", LINKIT_CMD(), self.kos_file, self.bin_file, "t" ]
     def _pre_exec( self ):
         self._make_kos_file()
     def _post_exec( self ):
@@ -145,15 +146,15 @@ class LinkItDensity( PyTool, ProviMixin ):
         _( "mrc_file", type="file", ext="mrc" ),
         _( "res1", type="sele" ),
         _( "res2", type="sele" ),
-        _( "seq", type="text" ),
+        _( "seq", type="str" ),
         #_( "pixelsize", type="slider", range=[1, 10], fixed=True ),
-        _( "resolution", type="slider", range=[1, 10], fixed=True ),
+        _( "resolution", type="float", range=[1, 10], fixed=True ),
         #_( "boxsize", type="slider", range=[1, 500], fixed=True ),
         #_( "originx", type ="slider", range=[-500,500]),
         #_( "originy", type ="slider", range=[-500,500]),
         #_( "originz", type ="slider", range=[-500,500]),
         _( "cutoff", type="float", default=5 ),
-        _( "max_loops", type="slider", range=[0, 200], default=100 )
+        _( "max_loops", type="int", range=[0, 200], default=100 )
     ]
     out = [
         _( "linker_correl_file", file="linker_correl.json" ),
@@ -236,7 +237,7 @@ class LnkItVali(PyTool, ProviMixin):
     args = [
         _( "dataset_dir", type="dir" ),
         _( "cutoff", type="float", default=5 ),
-        _( "max_loops", type="slider", range=[0, 200], default=100 )
+        _( "max_loops", type="int", range=[0, 200], default=100 )
     ]
     out = [
         _( "linker_correl_file", file="linker_correl.json" ),

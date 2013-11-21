@@ -72,8 +72,8 @@ class Capture( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
     """
     args = [
         _( "pdb_input", type="file", ext="pdb" ),
-        _( "parse_only", type="checkbox", default=False ),
-        _( "occupancy_one", type="checkbox", default=False ),
+        _( "parse_only", type="bool", default=False ),
+        _( "occupancy_one", type="bool", default=False ),
     ]
     out = [
         _( "capture_file", file="CaPTURE_{pdb_input.stem}.txt" ),

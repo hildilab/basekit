@@ -49,7 +49,10 @@ class Apbs( CmdTool ):
         self.pdb2pqr = Pdb2pqr( 
             self.pdb_file, **copy_dict( kwargs, run=False ) 
         )
-        self.cmd = [ APBS_CMD, self.pdb2pqr.apbsin_file ]
+        self.cmd = [ 
+            APBS_CMD,
+            self.relpath( self.pdb2pqr.apbsin_file )
+        ]
         self.output_files.extend( self.pdb2pqr.output_files )
     def _pre_exec( self ):
         self.pdb2pqr()

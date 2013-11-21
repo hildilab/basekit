@@ -32,10 +32,10 @@ class Jmol( CmdTool, ScriptMixin ):
 class JmolImage( Jmol ):
     args = [
         _( "jmol_file", type="file", ext="jmol" ),
-        _( "scale", type="slider", range=[0, 8], default=2, fixed=True ),
-        _( "width", type="slider", range=[0, 4096], default=0 ),
-        _( "height", type="slider", range=[0, 4096], default=0 ),
-        _( "cartoon_fancy", type="checkbox", default=True )
+        _( "scale", type="float", range=[0, 8], step=1, default=2 ),
+        _( "width", type="int", range=[0, 4096], default=0 ),
+        _( "height", type="int", range=[0, 4096], default=0 ),
+        _( "cartoon_fancy", type="bool", default=True )
     ]
     out = [
         _( "image_file", file="image.jpg" )
