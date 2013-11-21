@@ -547,7 +547,7 @@ class OriSidechainCorrel ( Spider ):
 
 class OptimizeRotamer ( PyTool ):
     args = [
-    _("result_direc",type="directory")
+    _("result_direc",type="str")
     ]
     out=[
     _( "verybestrotamers", file="verybestrotamers.pdb" )
@@ -642,7 +642,7 @@ class OptimizeRotamer ( PyTool ):
         
 class BuildBest ( PyTool ):
     args = [
-        _("result_direc",type="directory")
+        _("result_direc",type="str")
         ]
     out=[
         _( "bestrotamers", file="bestrotamers.pdb" )
