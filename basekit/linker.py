@@ -98,7 +98,9 @@ class LinkIt( CmdTool, ProviMixin ):
                 fp.write( "%s\n" % "\n".join(map( str, coords[0] ) ) )
             fp.write( "%s\n" % self.seq )
             for sele in ( self.res1, self.res2 ):
-                fp.write( "%s\t%s\n" % ( sele.get("chain", " "), sele["resno"] ) )
+                fp.write( 
+                    "%s %s\n" % ( sele.get("chain") or " ", sele["resno"] )
+                )
     def _fix_linker_pdb( self, output_file, atoms_only=False, stems=True ):
         backbone = ( ' N  ',' C  ', ' CA ',' O  ' )
         with open( self.pdb_linker_file, "r" ) as fp:

@@ -6,7 +6,8 @@
         "name": "linker_pdb",
         "filename": "${pdb_linker_file3}",
         "params": {
-            "load_as": "trajectory+append"
+            "load_as": "trajectory+append",
+            "style": "color {*} tomato;"
         }
     },
     { 
