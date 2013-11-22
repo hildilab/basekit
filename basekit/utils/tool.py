@@ -359,10 +359,10 @@ def records_backend( backend, file_name, records_cls ):
 
 class RecordsMixin( Mixin ):
     args = [
-        _( "backend|rb", type="select", default="json", 
+        _( "backend|rb", type="str", default="json", 
             options=BACKEND_REGISTER.keys(), metavar="B" ),
         # TODO only when ParallelMixin
-        _( "backend_parallel|rbp", type="select", default="json", 
+        _( "backend_parallel|rbp", type="str", default="json", 
             options=BACKEND_REGISTER.keys(), metavar="B" )
     ]
     def _init_records( self, input_file, **kwargs ):
@@ -418,7 +418,7 @@ def call( tool ):
 
 class ParallelMixin( Mixin ):
     args = [
-        _( "parallel|p", type="select", default=False,
+        _( "parallel|p", type="str", default=False,
             options=[ "", "directory", "pdb_archive", "list" ] ),
         _( "interval|i", type="int", default=[ 0, None ], 
             metavar=("BEG", "END"), nargs=2 ),

@@ -36,5 +36,8 @@ class JoinSplittedTestCase( unittest.TestCase ):
             'ATOM      1  P     A'
         )
 
-
+class ClashTestCase ( unittest.TestCase ):
+    def test_clash ( self ):
+        npdb = numpdb.NumPdb("bestrotamerschain_n.pdb")
+        hurz=pdb.find_all_clashes(npdb)
 
