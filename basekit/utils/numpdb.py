@@ -117,9 +117,13 @@ def numsele( string ):
         return sele
     atomname = string.split(".")
     if len(atomname)>1 and atomname[1]:
+        if len(atomname[1])>4:
+            raise Exception("atomname must be one to four characters")
         sele["atomname"] = atomname[1][0:4]
     chain = atomname[0].split(":")
     if len(chain)>1 and chain[1]:
+        if len(chain[1])>1:
+            raise Exception("chain identifier must be one character")
         sele["chain"] = chain[1][0]
     if chain[0]:
         resno = map( int, chain[0].split("-") )
