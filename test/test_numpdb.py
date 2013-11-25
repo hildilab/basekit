@@ -67,10 +67,11 @@ class NumpdbHeaderParseTestCase( unittest.TestCase ):
             "configuration": False,
             "detect_missing": True
         })
-        print npdb._missing[0]
-        return
-        for ss in npdb._missing:
-            print ss
+        self.assertEqual(
+        str(npdb._missing[7]),
+        "MissingRecord(type='Residue', model='    ', "+
+        "resname='MET', chain=' A', ssseqi=1, identifier='  ', "+
+        "atoms=None)")
 
 
 

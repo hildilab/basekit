@@ -421,12 +421,12 @@ class MissingParser( SimpleParser ):
                     model,     # model
                     resname,  # resname
                     chain,  # chain
-                    try_int(ssseq, False ),                        # ssseqi
+                    try_int(ssseq, False ),  # ssseqi
                     identifier,
                     None  #atoms
                 )
-            else:
-                return MissingRecord(None,None,None,None,None,None,None)
+            #else:
+                #return MissingRecord(None,None,None,None,None,None,None)
         elif line.startswith("REMARK 470"):
             model = line[13:15]
             resname = line[15:18]
@@ -440,12 +440,12 @@ class MissingParser( SimpleParser ):
                     model,     # model
                     resname,  # resname
                     chain,  # chain
-                    try_int(ssseq, False ),                        # ssseqi
+                    try_int(ssseq, False ), # ssseqi
                     identifier,
                     atoms  # atoms
                 )
-            else:
-                return MissingRecord(None,None,None,None,None,None,None)
+            #else:
+                #return MissingRecord(None,None,None,None,None,None,None)
     def get( self ):
         return self._list
 
