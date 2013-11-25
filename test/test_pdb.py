@@ -10,12 +10,16 @@ DIR = os.path.split( os.path.abspath( __file__ ) )[0]
 PARENT_DIR = os.path.split( DIR )[0]
 DATA_DIR = os.path.join( PARENT_DIR, "data", "test" )
 TMP_DIR = os.path.join( DIR, "tmp" )
+TMP_DIR2 = os.path.join( PARENT_DIR, "data","cionize" )
 
 def data( file_name ):
     return os.path.join( DATA_DIR, file_name )
 
 def tmp( *dir_name ):
     return os.path.join( TMP_DIR, "pdb", *dir_name )
+
+def tmp2( *dir_name ):
+    return os.path.join( TMP_DIR2, "cionize", *dir_name )
 
 
 class RotamereTestCase( unittest.TestCase ):
@@ -35,6 +39,16 @@ class JoinSplittedTestCase( unittest.TestCase ):
             splitted[0:20],
             'ATOM      1  P     A'
         )
+        
+class CionizeTestCase( unittest.TestCase ):
+    def test_cionize( self ):
+        ionized = pdb.Cionize(
+            data( "3SN6.pdb" ),
+            configfile=tmp2( "test.cfg" ),
+            run=False,
+            verbose=False)
+        print ionized
+
 
 class ClashTestCase ( unittest.TestCase ):
     def test_clash ( self ):

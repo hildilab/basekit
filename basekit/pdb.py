@@ -16,7 +16,7 @@ np.seterr( all="raise" )
 
 import utils.numpdb as numpdb
 from utils import try_int, copy_dict
-from utils.tool import _, _dir_init, PyTool, ProviMixin
+from utils.tool import _, _dir_init, PyTool, ProviMixin, CmdTool
 from utils.timer import Timer
 from utils.db import get_pdb_files
 from utils.listing import ListRecord, ListIO, list_compare, list_join
@@ -34,6 +34,12 @@ PARENT_DIR = os.path.split( DIR )[0]
 TMPL_DIR = os.path.join( PARENT_DIR, "data", "motif" )
 BASEKIT_DIR = os.path.split( PARENT_DIR )[0]
 DATA_DIR = os.path.join( BASEKIT_DIR, "data", "pdb" )
+
+
+TMPL_DIR_CIONIZE = _dir_init( PARENT_DIR, "cionize" )
+cionize_CMD = os.path.join( PARENT_DIR, "cionize" )
+
+
 
 # the rotamere lib needs the 'remaining_atoms' data
 ROTAMERE_LIB_PATH = os.path.join(
@@ -633,7 +639,50 @@ class JoinSplitted( PyTool ):
     def _post_exec( self ):
         with open(self.all_joined, 'w') as fp:
             fp.write(self.joined)
-        
+
+
+class Cionize( CmdTool):
+    #/home/student/Johanna/Software/vmd-1.9.1/plugins/LINUXAMD64/bin/cionize1.0/cionize -p 8 -i test.cfg -f pdb 2GC_Bdna.pdb.pdb 
+
+    """
+    CIonize (short for "coulombic ionize") is a threaded program for placing counterions near a biological molecule in preparation for molecular dynamics simulations. In this case, placement is performed by calculating the coulombic potential due to the molecule in the nearby volume, and placing ions at points of minimal energy. After each ion is placed, the potential is updated, so that subsequent ions will be placed in response to this. Unlike some ion placement tools, ionize should be used prior to solvation so that the potential from unequilibrated water does not interfere with it (the addition of water would also make the energy calculations even more time consuming). Ionize is designed to be used on multiple processors; it uses a pthreads parallel implementation to run on shared memory machines (any traditional multiprocessor machine, or shared memory clusters such as an SGI Altix). After ionize is finished, you should solvate your system normally.
+    cionize: Place ions by finding minima in a coulombic potential
+    Usage:
+        cionize (-p numprocs) (-i configfile) (-m calctype) (-f inputformat) inputfile
+        -i inputfile (stdin)
+        -p max_processors (1)
+        -m calctype (Defaults to single precision; can be double for double precision or multigrid to use multilevel summation)
+        -f Input file format (guesses from extension if not given)
+        """
+    args = [
+        _( "pdb_input", type="file" ),
+        _( "max_processors|p", type="int", default=1,
+            help="Default: 1" ),
+        _( "configfile|i", type="file",
+            help="configfile" ),
+        _( "calctype|m", type="str", default="",
+            help="Can be double for double precision or "+
+                 "multigrid to use multilevel summation. "+
+                 "Defaults to single precision" ),
+        _( "inputformat|f", type="str", default='pdb',
+            help="guesses from extension if not given. Default: pdb" ),
+    ]
+    out = [
+        #_( "solvate_file", file="{pdb_input.stem}_solvate.pdb" )
+    ]
+    tmpl_dir = TMPL_DIR
+
+    def _init( self, *args, **kwargs ):
+        self.cmd = [ 
+            cionize_CMD,
+            "-p", self.max_processors,
+            "-i", self.configfile,
+            "-m", self.calctype,
+            "-f", self.inputformat,
+            self.pdb_input
+        ]
+        self.cmd=self.cmd
+
 
 
 
