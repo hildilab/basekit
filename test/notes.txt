@@ -1,9 +1,14 @@
 
+### RUN ###
 
 cd ./test/
 
 # all
 python -m unittest discover
+
+# exclude long running
+# 	TODO not working: need to write custom test runner/discover
+python -m unittest discover -quick
 
 # individual file
 python -m unittest discover . test_opm.py
@@ -14,4 +19,9 @@ python -m unittest test_opm.PpmParseTestCase
 python -m unittest test_opm.PpmParseTestCase.test_parse
 
 
+
+### CODE ###
+
+# please decorate long running tests with
+@unittest.skipIf( '-quick' in sys.argv, 'Long running' )
 
