@@ -20,6 +20,8 @@ import logging
 import signal
 import multiprocessing
 
+import jinja2
+
 import basekit.utils.numpdb as numpdb
 from basekit import utils
 from basekit.utils import (
@@ -238,15 +240,19 @@ class Mixin( object ):
 
 class TmplMixin( Mixin ):
     def _make_file_from_tmpl( self, tmpl_name, output_dir=None, 
-                              prefix=None, **values_dict ):
+                              prefix=None, use_jinja2=False, **values_dict ):
         output_dir = output_dir or self.output_dir
         tmpl_file = os.path.join( self.tmpl_dir, tmpl_name )
         with open( tmpl_file, "r" ) as fp:
             tmpl_str = fp.read()
         out_file = os.path.join( output_dir, tmpl_name )
         out_file = utils.path.mod( out_file, prefix=prefix )
+        if use_jinja2:
+            out = jinja2.Template( tmpl_str ).render( **values_dict )
+        else:
+            out = string.Template( tmpl_str ).substitute( **values_dict )
         with open( out_file, "w" ) as fp:
-            fp.write( string.Template( tmpl_str ).substitute( **values_dict ) )
+            fp.write( out )
         return out_file
 
 
