@@ -16,7 +16,7 @@ import numpy as np
 from utils import memoize_m, try_float
 from utils.math import norm
 from utils.tool import _, _dir_init, PyTool, ProviMixin
-from utils.list import ListRecord, ListIO
+from utils.listing import ListRecord, ListIO
 
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "tmdet" )

@@ -46,12 +46,13 @@ class CionizeTestCase( unittest.TestCase ):
             data( "3SN6.pdb" ),
             configfile=tmp2( "test.cfg" ),
             run=False,
-            verbose=False)
-        print ionized
+            verbose=False
+        )
+        # print ionized
 
 
-class ClashTestCase ( unittest.TestCase ):
-    def test_clash ( self ):
-        npdb = numpdb.NumPdb("bestrotamerschain_n.pdb")
-        hurz=pdb.find_all_clashes(npdb)
+# class ClashTestCase ( unittest.TestCase ):
+#     def test_clash ( self ):
+#         npdb = numpdb.NumPdb("bestrotamerschain_n.pdb")
+#         hurz=pdb.find_all_clashes(npdb)
 
