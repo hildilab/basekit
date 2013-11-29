@@ -1,0 +1,39 @@
+[
+    {
+        "filename": "{{pdb_file}}",
+        "params": {
+            "style": "provi_style('backbone');"
+        }
+    },
+    {% for linker in linker_list %}
+    {
+        "name": "linker_pdb_{{linker.i}}",
+        "filename": "{{linker.pdb_linker_file3}}",
+        "params": {
+            "load_as": "trajectory+append",
+            "style": "color {*} tomato; provi_style('backbone');"
+        }
+    },
+    { 
+        "name": "linker_json_{{linker.i}}",
+        "filename": "{{linker.json_file}}"
+    },
+    {
+        "name": "linker_datalist_{{linker.i}}",
+        "datalist": "Provi.Bio.Linker.LinkerDatalist", 
+        "params": {
+            "linker_ds": "DATASET_linker_json_{{linker.i}}",
+            "pdb_ds": "DATASET_linker_pdb_{{linker.i}}"
+        }
+    },
+    {
+        "widget": "Provi.Widget.Grid.GridWidget",
+        "params": {
+            "sort_key": {{linker.i}},
+            "heading": "{{linker.name}}",
+            "parent_id": "tab_widgets",
+            "datalist": "DATALIST_linker_datalist_{{linker.i}}"
+        }
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+]

@@ -123,10 +123,10 @@ class ProjectRun( PyTool ):
             help="parts to consider, leave empty for all" ),
         _( "tools", type="str", nargs="*", default=None,
             help="tools to consider, leave empty for all" ),
-        _( "print_args|pa", type="checkbox", default=False ),
-        _( "simulate|sim", type="checkbox", default=False ),
-        _( "verbose_tool|vt", type="checkbox", default=False ),
-        _( "traceback|tr", type="checkbox", default=False ),
+        _( "print_args|pa", type="bool", default=False ),
+        _( "simulate|sim", type="bool", default=False ),
+        _( "verbose_tool|vt", type="bool", default=False ),
+        _( "traceback|tr", type="bool", default=False ),
 
         # mdkit extension
         _( "analyze_only|ao", type="int", default=None ),

@@ -1,12 +1,16 @@
 [
     {
-        "filename": "${pdb_file}"
+        "filename": "${pdb_file}",
+        "params": {
+            "style": "provi_style('backbone');"
+        }
     },
     {
         "name": "linker_pdb",
         "filename": "${pdb_linker_file3}",
         "params": {
-            "load_as": "trajectory+append"
+            "load_as": "trajectory+append",
+            "style": "color {*} tomato; provi_style('backbone');"
         }
     },
     { 
