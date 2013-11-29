@@ -2,6 +2,7 @@ import os
 import json
 import unittest
 
+from basekit import utils
 from basekit import utils, pdb
 from basekit.utils import numpdb
 from pdb import * 
@@ -32,23 +33,31 @@ class RotamereTestCase( unittest.TestCase ):
             76.1959444
         )
         
-class JoinSplittedTestCase( unittest.TestCase ):
-    def test_join_splitted( self ):
-        splitted = pdb.join_splitted( ['4GD1', '4GD2', '3R8S', '3R8T'], '', clear=True )
-        self.assertEqual(
-            splitted[0:20],
-            'ATOM      1  P     A'
-        )
-        
+# class JoinSplittedTestCase( unittest.TestCase ):
+#     def test_join_splitted( self ):
+#         splitted = pdb.join_splitted( 
+#             ['4GD1', '4GD2', '3R8S', '3R8T'], 
+#             tmp( "join_splitted" ),
+#             clear=True 
+#         )
+#         self.assertEqual(
+#             splitted[0:20],
+#             'ATOM      1  P     A'
+#         )
+
+
+@unittest.skipUnless( 
+    utils.path.which( 'cionize' ), 'cionize cmd not found' )
 class CionizeTestCase( unittest.TestCase ):
     def test_cionize( self ):
         ionized = pdb.Cionize(
             data( "3SN6.pdb" ),
             configfile=tmp2( "test.cfg" ),
+            output_dir=tmp( "cionize" ),
             run=False,
             verbose=False
         )
-        # print ionized
+        ionized()
 
 
 # class ClashTestCase ( unittest.TestCase ):

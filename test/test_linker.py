@@ -3,7 +3,8 @@ import sys
 import shutil
 import unittest
 
-from basekit.linker import LinkIt, MultiLinkIt
+from basekit import utils
+from basekit.linker import LinkIt, MultiLinkIt, LINKIT_CMD
 
 DIR = os.path.split( os.path.abspath( __file__ ) )[0]
 PARENT_DIR = os.path.split( DIR )[0]
@@ -17,6 +18,8 @@ def tmp( *dir_name ):
     return os.path.join( TMP_DIR, "linker", *dir_name )
 
 
+@unittest.skipUnless( 
+        utils.path.which( 'wine' ), 'wine cmd not found' )
 class LinkItTestCase( unittest.TestCase ):
     def setUp( self ):
         self.link_it = LinkIt(
@@ -33,6 +36,8 @@ class LinkItTestCase( unittest.TestCase ):
 
 
 
+@unittest.skipUnless( 
+        utils.path.which( 'wine' ), 'wine cmd not found' )
 class MultiLinkItTestCase( unittest.TestCase ):
     def setUp( self ):
         shutil.rmtree( tmp( "ssfe_p2y12_multi" ), True )

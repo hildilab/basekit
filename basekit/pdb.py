@@ -158,7 +158,7 @@ def pdb_download( pdb_id, output_file ):
 
 class PdbDownload( PyTool ):
     args = [
-        _( "pdb_id", type="text", 
+        _( "pdb_id", type="str", 
             help="single id or multiple, seperated by spaces or commas" )
     ]
     def _init( self, *args, **kwargs ):
@@ -187,7 +187,7 @@ def pdb_assembly( pdb_id ):
 
 class PdbAssembly( PyTool ):
     args = [
-        _( "pdb_id", type="text", 
+        _( "pdb_id", type="str", 
             help="pdb id" )
     ]
     out = [
@@ -236,10 +236,10 @@ def pdb_split( pdb_file, output_dir, backbone_only=False,
 class PdbSplit( PyTool ):
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
-        _( "backbone_only", type="checkbox", default=False ),
-        _( "max_models", type="slider", range=[0, 100], default=0 ),
-        _( "resno_ignore", type="text", default="" ),
-        _( "zfill", type="slider", range=[0, 8], default=0 )
+        _( "backbone_only", type="bool", default=False ),
+        _( "max_models", type="int", range=[0, 100], default=0 ),
+        _( "resno_ignore", type="str", default="" ),
+        _( "zfill", type="int", range=[0, 8], default=0 )
     ]
     def _init( self, *args, **kwargs ):
         if self.resno_ignore:
@@ -283,7 +283,7 @@ class PdbEdit( PyTool ):
     """
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
-        _( "center", type="checkbox", default=False ),
+        _( "center", type="bool", default=False ),
         _( "shift", type="float", nargs=3, default=None,
             metavar=("X", "Y", "Z") ),
         _( "box", type="float", nargs=6, default=None,
@@ -331,7 +331,7 @@ class PdbSuperpose( PyTool, ProviMixin ):
         _( "pdb_file2", type="file", ext="pdb" ),
         _( "sele1", type="sele" ),
         _( "sele2", type="sele" ),
-        _( "subset|ss", type="text", default="CA" ),
+        _( "subset|ss", type="str", default="CA" ),
         _( "rmsd_cutoff|co", type="float", default=1.0 )
     ]
     out = [
@@ -443,14 +443,6 @@ def numpdb_test( pdb_file ):
     with Timer("resno iter new"):
         for numa in npdb.iter_resno():
             pass
-
-
-class NumpdbTest( PyTool ):
-    args = [
-        _( "pdb_file", type="file", ext="pdb" )
-    ]
-    def func( self ):
-        numpdb_test( self.pdb_file )
 
 
 
@@ -590,15 +582,16 @@ def make_all_rotameres(pdbfile, chain1, resno1,zfill, outpath):
 class MakeAllRotameres( PyTool ):
     args = [
         _( "pdb_input", type="file", ext="pdb" ),
-        _( "chain|ch", type="text" ),
+        _( "chain|ch", type="str" ),
         _( "resno|r", type="int" ),
-        _( "zfill", type="slider", range=[0, 8], default=0 )
+        _( "zfill", type="int", range=[0, 8], default=0 )
     ]
     #out = [
     #    _( "rotamere_file", file="{pdb_input.stem}.pdb" )
     #]
     def func( self, *args, **kwargs ):
         make_all_rotameres( self.pdb_input, self.chain, self.resno ,self.zfill, self.output_dir)
+
 
 
 def join_splitted( splitted_entrys, outdir, clear=False ):
@@ -717,7 +710,7 @@ class ListCompare( PyTool ):
     args = [
         _( "list1", type="file", ext="json" ),
         _( "list2", type="file", ext="json" ),
-        _( "list_name|ln", type="text", default=None )
+        _( "list_name|ln", type="str", default=None )
     ]
     out = [
         _( "list1_only", file="list1_only.json" ),
@@ -736,7 +729,7 @@ class ListCompare( PyTool ):
 class ListJoin( PyTool ):
     args = [
         _( "list", type="file", ext="json", nargs="+" ),
-        _( "list_name|ln", type="text", default=None )
+        _( "list_name|ln", type="str", default=None )
     ]
     out = [
         _( "joined_list", file="joined_list.json" )
