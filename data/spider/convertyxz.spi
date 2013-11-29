@@ -1,0 +1,21 @@
+;convert mrc file wo die daten als yxz gespeichert sind
+
+[file]='${mrc_file}'
+cp from mrc
+[file]
+_1; output file
+N N
+
+;spiegeln über die z achse
+
+mr
+_1
+_2
+z
+;rotieren
+
+rt 3d
+_2
+mapupload
+-90.0   180.  0.00 
+EN

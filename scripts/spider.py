@@ -7,7 +7,8 @@ from basekit.spider import (
     MrcHeaderPrinter,
     Spider, SpiderShift, SpiderConvert, SpiderDeleteFilledDensities, 
     SpiderBox, SpiderReConvert, SpiderCrosscorrelation, LoopCrosscorrel, 
-    SpiderPdbBox,SpiderSidechainCorrelation,  LoopSidechainCorrelation,SpiderDeleteBackbone,BuildBest,OptimizeRotamer
+    SpiderPdbBox,SpiderSidechainCorrelation,  LoopSidechainCorrelation,SpiderDeleteBackbone,BuildBest,OptimizeRotamer,
+    LoopRotamerOptimize
 )
 
 
@@ -28,7 +29,8 @@ def main():
         "loopsidechain": LoopSidechainCorrelation,
         "deletebb":SpiderDeleteBackbone,
         "buildbest":BuildBest,
-        "optimize":OptimizeRotamer
+        "optimize":OptimizeRotamer,
+        "loopoptimize":LoopRotamerOptimize
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )

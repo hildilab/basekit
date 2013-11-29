@@ -591,33 +591,61 @@ class OptimizeRotamer ( PyTool ):
                     print ccsortpath
                     
             break
-                
-            #for i in clashes:
-            #    as1=i[0]
-            #    as2=i[1]
-            #    resname100=npdb.get('resname',resno=as1)[0]
-            #    resname101=npdb.get('resname',resno=as2)[0]
+
+class  LoopRotamerOptimize ( PyTool ):
+    args = [
+    _("pdb_file", type="file"),  
+    _("result_direc",type="str"),
+    _("residue_1",type="int"),
+    _("residue_2",type="int")
+    ]
+    out=[
+    _( "verybestrotamers", file="verybestrotamers.pdb" )
+    
+    ]
+   # clashes fuer das ganze Protein bestimmen
+    def func (self):
+        npdb=NumPdb( self.pdb_file )
+        clashes,a=find_all_clashes(npdb)
+        gtree=get_tree(npdb['xyz'])
+        lclashes=[]
+        print clashes
+        resi=range(self.residue_1,self.residue_2)
+        print resi
+        for i in clashes:
+            print i[0], i[1]
+            if (i[0] or i[1]) in resi:
+                lclashes.append(i)
+            else:
+                continue
+        for x in lclashes:
+            print x 
+        
+            as1=x[0]
+            as2=x[1]
+            resname100=npdb.get('resname',resno=as1)[0]
+            resname101=npdb.get('resname',resno=as2)[0]
             #    #print resname100, resname101, i
-            #    if (resname100 and resname101) not in ('ALA','GLY'):
-            #        chain100=npdb.get('chain',resno=as1)[0]
-            #        chain101=npdb.get('chain',resno=as2)[0]
-            #        #print resname101
-            #        resno1=get_rotno(resname100)
-            #        resno2=get_rotno(resname101)
-            #        if resno1 >= resno2 :
+            if (resname100 and resname101) not in ('ALA','GLY'):
+                    chain100=npdb.get('chain',resno=as1)[0]
+                    chain101=npdb.get('chain',resno=as2)[0]
+                    #print resname101
+                    resno1=get_rotno(resname100)
+                    resno2=get_rotno(resname101)
+                    if resno1 >= resno2 :
             #            #print "anzahl rota" ,resno1,resno2
-            #            sele={'resno':as1}
-            #            atom_no= npdb.index(**sele)
+                        sele={'resno':as1}
+                        atom_no= npdb.index(**sele)
             #            #erster clashpartner
-            #            rotadir="%s_%s_%i" % (chain100,resname100,as1)
-            #            ccsortpath=os.path.join(self.result_direc,rotadir)
-            #            ccsort="%s/%s" % (ccsortpath,'ccsort.cpv')
-            #        else:
-            #            sele={'resno':as2}
-            #            atom_no= npdb.index(**sele)
-            #            rotadir="%s_%s_%i" % (chain101,resname101,as2)
-            #            ccsortpath=os.path.join(self.result_direc,rotadir)
-            #            ccsort="%s/%s" % (ccsortpath,'ccsort.cpv')
+                        rotadir="%s_%s_%i" % (chain100,resname100,as1)
+                        ccsortpath=os.path.join(self.result_direc,rotadir)
+                        ccsort="%s/%s" % (ccsortpath,'ccsort.cpv')
+                    else:
+                        sele={'resno':as2}
+                        atom_no= npdb.index(**sele)
+                        rotadir="%s_%s_%i" % (chain101,resname101,as2)
+                        ccsortpath=os.path.join(self.result_direc,rotadir)
+                        ccsort="%s/%s" % (ccsortpath,'ccsort.cpv')
             #        
             #        with open (ccsort,"r") as fil:
             #            file_lines=fil.readlines()
