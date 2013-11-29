@@ -204,8 +204,11 @@ class ProjectRun( PyTool ):
             if p.get("__sub__"):
                 sub_pp = collections.OrderedDict()
                 for pid, sub in p["__sub__"].iteritems():
-                    if "__range__" in sub:
-                        r = sub.pop("__range__")
+                    if "__range__" in sub or "__list__" in sub:
+                        if "__range__" in sub:
+                            r = sub.pop("__range__")
+                        elif "__list__" in sub:
+                            r = sub.pop("__list__")
                         for i in range( r[0], r[1]+1 ):
                             sub_pp[ pid+str(i) ] = copy.deepcopy(
                                 p["__sub__"][pid]
