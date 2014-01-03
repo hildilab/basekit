@@ -256,7 +256,7 @@ class PdbSplit( PyTool ):
 class LoopDelete (PyTool):
     args = [
     _( "pdb_file", type="file", ext="pdb" ),
-    _( "chain", type="string"),
+    _( "chain", type="str"),
     _( "res1", type="int"),
     _( "res2", type="int"),
     ]
@@ -284,6 +284,7 @@ class PdbEdit( PyTool ):
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
         _( "center", type="bool", default=False ),
+        _( "remove_h", type="bool", default=False ),
         _( "shift", type="float", nargs=3, default=None,
             metavar=("X", "Y", "Z") ),
         _( "box", type="float", nargs=6, default=None,
@@ -301,11 +302,11 @@ class PdbEdit( PyTool ):
             "sstruc": False,
             "backbone_only": False,
             "protein_only": False,
-            "detect_incomplete": False,
+            "detect_incomplete": True,
             "configuration": False,
             "info": False
         })
-        sele = None
+        sele = npdb.sele()
 
         if self.center:
             npdb['xyz'] -= npdb['xyz'].mean( axis=0 )
@@ -317,12 +318,15 @@ class PdbEdit( PyTool ):
         if self.box:
             corner1 = np.array( self.box[0:3] )
             corner2 = corner1 + np.array( self.box[3:6] )
-            sele = (
+            sele &= (
                 ( npdb['xyz']>corner1 ) & 
                 ( npdb['xyz']<corner2 )
             ).all( axis=1 )
 
-        npdb.copy( sele=sele ).write( self.edited_pdb_file )
+        if self.remove_h:
+            sele &= ( npdb['element'] != ' H' )
+
+        npdb.write2( self.edited_pdb_file, sele=sele )
 
 
 class PdbSuperpose( PyTool, ProviMixin ):

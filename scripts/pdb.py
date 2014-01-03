@@ -5,7 +5,7 @@
 from basekit.utils.tool import parse_subargs
 from basekit.pdb import (
     PdbDownload, PdbSplit, PdbUnzip, PdbHetDictionary, 
-    PdbSuperpose, PdbEdit, PdbInfo, NumpdbTest, RnaList,
+    PdbSuperpose, PdbEdit, PdbInfo, RnaList,
     ListCompare, ListJoin, PdbAssembly,SplitPdbSSE, LoopDelete,
     MakeAllRotameres, JoinSplitted
 )
@@ -23,7 +23,6 @@ def main():
         "superpose": PdbSuperpose,
         "edit": PdbEdit,
         "info": PdbInfo,
-        "test": NumpdbTest,
         "rna": RnaList,
         "compare": ListCompare,
         "join": ListJoin,
