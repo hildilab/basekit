@@ -140,9 +140,9 @@ class LinkIt( CmdTool, ProviMixin ):
 class MultiLinkIt( PyTool, ProviMixin ):
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
-        _( "input", type="list", nargs=3, action="append",
+        _( "input", type="str", nargs=3, action="append",
             help="sele,sele,str" ),
-        _( "names", type="list", nargs="*", default=None )
+        _( "names", type="str", nargs="*", default=None )
     ]
     out = [
 

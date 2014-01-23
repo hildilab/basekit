@@ -109,8 +109,8 @@ class DowserRepeat( DowserMixin, PyTool, ProviMixin ):
         called until no more new waters are found.
     """
     args = DOWSER_ARGS + [
-        _( "alt", type="str", options=["x"], default=None ),
-        _( "max_repeats", type="int", default=None )
+        _( "alt", type="str", options=["", "x"], default="" ),
+        _( "max_repeats", type="int", default=5 )
     ]
     out = DOWSER_OUT + [
         _( "repeat_dir", dir="repeats" )

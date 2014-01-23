@@ -243,7 +243,7 @@ def make_ref( tool_results ):
 class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
     """A wrapper around the 'voronoia' aka 'get_volume' programm."""
     args = [
-        _( "pdb_input", type="file" ),
+        _( "pdb_input", type="file", ext="pdb" ),
         _( "ex", type="float", range=[0.01, 0.5], step=0.01, default=0.1 ),
         _( "radii", type="str", options=["protor"], default="protor" ),
         # TODO run the tool multiple times 
