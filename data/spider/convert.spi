@@ -10,7 +10,7 @@ cp from mrc
 mapupload	; output file
 N N
 
-GOTO LB666
+GOTO LB66
 
 ;wenn daten yxz gespeichert dann
 
@@ -34,7 +34,7 @@ _2
 mapupload
 -90.0   180.  0.00
 
-GOTO LB666
+GOTO LB66
 
 ELSEIF ([o].EQ.3) THEN
 [file]='${mrc_file}'
@@ -70,5 +70,5 @@ Z
 
 
 
-LB 666
+LB66
 EN
