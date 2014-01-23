@@ -69,13 +69,14 @@ class MultiLinkItTestCase( unittest.TestCase ):
 class LinkitDensTestCase( unittest.TestCase ):
     def setUp( self ):
         self.linkitdens= LinkItDensity(
-            data( "ribosomexample.pdb", "ribocut4a.mrc"),
-            "154:C", "164:C", "EDKVEGYKK", "4.2",
+            data( "ribosomexample.pdb"),
+            data(  "ribocut4a.mrc"),
+            "154:C", "164:C", "EDKVEGYKK", 4.2,
             output_dir=tmp( "ribosomexample" ),
             run=False,
             verbose=False
         )
-    def set_check( self ):
+    def test_check( self ):
         self.linkitdens()
-        self.assertEquals( self.linkitdens( full=True ), "Ok" )
+        self.assertEquals( self.linkitdens.check( full=True ), "Ok" )
 
