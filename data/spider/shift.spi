@@ -12,13 +12,81 @@
 ;den origin in die ins zentrum der box setzen
 [x]=(([bs]/2)*(-1))*[ps]
 [file]='${mrc_file}' 
+
+;flag for order of axes
+[o]=${order}
+;convert mrc file wo die daten als xyz gespeichert sind
+IF ([o].EQ.1) THEN
+[file]='${mrc_file}'
 cp from mrc
 [file]
-_1
+_3	; output file
 N N
 
-cp to mrc
+GOTO LB66
+
+;wenn daten yxz gespeichert dann
+
+ELSEIF ([o].EQ.2) THEN
+[file]='${mrc_file}'
+cp from mrc
+[file]
+_1; output file
+N N
+
+;spiegeln über die z achse
+
+mr
 _1
+_2
+z
+;rotieren
+
+rt 3d
+_2
+_3
+-90.0   180.  0.00
+
+GOTO LB66
+
+ELSEIF ([o].EQ.3) THEN
+[file]='${mrc_file}'
+cp from mrc
+[file]
+_1; output file
+N N
+
+ ;Infos auslesen
+ 
+FI [x8],[x9],[x10]
+_1
+1,2,12
+
+;rt 90 um rotation auszugleichen
+rt 90
+_1
+_2
+1 [x10]
+1 [x9]
+1 [x8]
+y
+90
+
+rt 90
+_2
+_3
+1 [x8]
+1 [x9]
+1 [x10]
+Z
+90
+
+
+
+LB66
+
+cp to mrc
+_3
 shift.mrc
 32       0
 *

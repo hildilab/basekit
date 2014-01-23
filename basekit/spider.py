@@ -148,9 +148,11 @@ class SpiderShift( Spider ):
         originz=abs(getMrc(self.mrc_file,'nzstart'))#'zorg' ))
         print originx
         size=getMrc(self.mrc_file,'xlen' )
+        order=getMrc(self.mrc_file,'mapc' )
         pixelsize=(size/boxsize)
         self._make_script_file(    
             mrc_file=self.relpath( self.mrc_file ),
+            order=order,
             pixelsize=pixelsize,
             boxsize=boxsize,
             originx=originx,
@@ -161,7 +163,9 @@ class SpiderShift( Spider ):
         shx = (originx -(boxsize/2)) * pixelsize
         shy = (originy -(boxsize/2)) * pixelsize
         shz = (originz -(boxsize/2)) * pixelsize
-        #print shx
+        print shx
+        print shy
+        print shz
         PdbEdit( 
             self.pdb_file, shift= [shx, shy, shz]
         )    
@@ -180,7 +184,7 @@ class SpiderConvert( Spider ):
     def _pre_exec( self ):
         #
         order=getMrc(self.mrc_file,'mapc' )
-                  
+        print "order", order          
         self._make_script_file( 
             mrc_file=self.relpath( self.mrc_file ),order=order
         )
@@ -388,7 +392,7 @@ class SpiderSidechainCorrelation ( Spider ) :
         _( "sccrosscorrel_file", file="sccrosscorrelation.cpv" ),
         _( "crosscorrel_json", file="crosscorrelation.json" )
     ]
-    script_tmpl = "sidechaincc.spi"
+    script_tmpl = "sidechaincca.spi"
     def _init( self, *args, **kwargs ):
         super(SpiderSidechainCorrelation, self)._init( "__tmpl__" )    
     def _pre_exec( self ):

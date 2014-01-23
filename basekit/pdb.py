@@ -326,7 +326,7 @@ class PdbEdit( PyTool ):
         if self.remove_h:
             sele &= ( npdb['element'] != ' H' )
 
-        npdb.write2( self.edited_pdb_file, sele=sele )
+        npdb.write( self.edited_pdb_file, sele=sele )
 
 
 class PdbSuperpose( PyTool, ProviMixin ):

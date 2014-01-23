@@ -4,7 +4,7 @@ import shutil
 import unittest
 
 from basekit import utils
-from basekit.linker import LinkIt, MultiLinkIt, LINKIT_CMD
+from basekit.linker import LinkIt, MultiLinkIt, LINKIT_CMD, LinkItDensity
 
 DIR = os.path.split( os.path.abspath( __file__ ) )[0]
 PARENT_DIR = os.path.split( DIR )[0]
@@ -61,4 +61,22 @@ class MultiLinkItTestCase( unittest.TestCase ):
     def test_check( self ):
         self.multi_link_it()
         self.assertEquals( self.multi_link_it.check( full=True ), "Ok" )
+
+
+        
+@unittest.skipUnless( 
+        utils.path.which( 'wine' ), 'wine cmd not found' )
+class LinkitDensTestCase( unittest.TestCase ):
+    def setUp( self ):
+        self.linkitdens= LinkItDensity(
+            data( "ribosomexample.pdb"),
+            data(  "ribocut4a.mrc"),
+            "154:C", "164:C", "EDKVEGYKK", 4.2,
+            output_dir=tmp( "ribosomexample" ),
+            run=False,
+            verbose=False
+        )
+    def test_check( self ):
+        self.linkitdens()
+        self.assertEquals( self.linkitdens.check( full=True ), "Ok" )
 
