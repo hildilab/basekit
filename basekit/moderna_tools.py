@@ -1,9 +1,8 @@
 import os
 
 import moderna as modeRNA
-import numpy as np
 from utils.tool import _, _dir_init, PyTool
-import os
+
 
 
 
@@ -76,29 +75,6 @@ def removes_all_modifications( model ):
         """
     return modeRNA.remove_all_modifications( model )
 
-def add_pdbs( original_file, pdb_file, moderna_file, chain ):
-    def write_to_file(read_file, write_file, chain):
-        with open(write_file, "a") as fp:
-                with open(read_file, "r") as fp2:
-                    for line in fp2:
-                        if line.startswith("ATOM") and line[21]==chain:
-                            fp.write(line)
-    try:
-        if os.stat(pdb_file).st_size > 0:
-            write_to_file(pdb_file, moderna_file, chain)
-            with open(pdb_file, "w"):
-                pass
-        else:
-            write_to_file(original_file, moderna_file, chain)
-            print chain
-    except OSError:
-        write_to_file(original_file, moderna_file, chain)
-    
-
-
-def finish_pdbs( moderna_file ):
-    with open(moderna_file, "a") as fp:
-        fp.write("TER")
 
 class Moderna( PyTool ):
     """
@@ -106,6 +82,8 @@ class Moderna( PyTool ):
         """
     args = [
         _( "pdb_input", type="file" ),
+        _( "chain|ch", type="str", default='A',
+            help="Default: A" ),
         _( "logfile|l", type="bool", default=False,
             help="Default: False" ),
         _( "write_structure|ws", type="bool", default=True,
@@ -120,44 +98,26 @@ class Moderna( PyTool ):
                     "removes_all_modifications. Default: finds_modifications" )
     ]
     out = [
-        _( "moderna_file_temp", file="fixed_structure.pdb" ),
-        _( "moderna_file", file="moderna.pdb" ),
+        _( "moderna_file", file="fixed_structure.pdb" ),
         _( "log_file", file="moderna.log" )
     ]
     tmpl_dir = TMPL_DIR
 
     def func( self ):
-        sele = []
-        with open(self.pdb_input, "r") as fp:
-            for line in fp:
-                if line.startswith("ATOM"):
-                    sele.append(line[21])
-        sele = np.array(sele)
-        chains = np.unique(sele)
+        print self.tool
         if self.tool=='finds_modifications':
-            for chain in chains:
-                pdbfile = load_templates( self.pdb_input, chain )
-                finds_modifications( pdbfile )
-                add_pdbs( self.pdb_input, self.moderna_file_temp, self.moderna_file, chain )
-            finish_pdbs( self.moderna_file )
+            pdbfile = load_templates( self.pdb_input, self.chain )
+            finds_modifications( pdbfile )
         if self.tool=='examine_structures':
-            for chain in chains:
-                pdbfile = load_templates( self.pdb_input, chain )
-                examine_structures( pdbfile, self.logfile )
-                add_pdbs( self.pdb_input, self.moderna_file_temp, self.moderna_file, chain )
-            finish_pdbs( self.moderna_file )
+            pdbfile = load_templates( self.pdb_input, self.chain )
+            examine_structures( pdbfile, self.logfile )
         if self.tool=='clean_structures':
-            for chain in chains:
-                pdbfile = load_templates( self.pdb_input, chain )
-                clean_structures( pdbfile, self.write_structure )
-                add_pdbs( self.pdb_input, self.moderna_file_temp, self.moderna_file, chain )
-            finish_pdbs( self.moderna_file )
+            pdbfile = load_templates( self.pdb_input, self.chain )
+            clean_structures( pdbfile, self.write_structure )
         if self.tool=='removes_all_modifications':
-            for chain in chains:
-                pdbfile = load_models( self.pdb_input, chain )
-                removes_all_modifications( pdbfile )
-                add_pdbs( self.pdb_input, self.moderna_file_temp, self.moderna_file, chain )
-            finish_pdbs( self.moderna_file )
+            pdbfile = load_models( self.pdb_input, self.chain )
+            removes_all_modifications( pdbfile )
+
         
         
         
