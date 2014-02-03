@@ -90,7 +90,6 @@ def add_pdbs( original_file, pdb_file, moderna_file, chain ):
                 pass
         else:
             write_to_file(original_file, moderna_file, chain)
-            print chain
     except OSError:
         write_to_file(original_file, moderna_file, chain)
     

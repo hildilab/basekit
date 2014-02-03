@@ -483,7 +483,7 @@ def dump_garbage():
         if l>5000:
             print type(x),"\n  ", s, "\n ", l
 
-from memory_profiler import profile
+#from memory_profiler import profile
 
 class LoopSidechainCorrelation (PyTool):            
     args = [
@@ -505,7 +505,7 @@ class LoopSidechainCorrelation (PyTool):
             self.pixelsize,
             **copy_dict( kwargs, run=False )
         )
-    @profile
+    #@profile
     def func( self ):
         self.delete_backbone()
         
