@@ -53,7 +53,7 @@ def examine_structures( structure, logfile=False ):
         """
     return modeRNA.examine_structure( structure, logfile )
 
-def clean_structures( structure, write_structure=False ):
+def clean_structures( structure, write_structures=True ):
     """
     Eliminates features that may cause problems during modeling from a template or model structure:
         water molecules, ions, amino acids, and unidentified residues are deleted.
@@ -65,7 +65,7 @@ def clean_structures( structure, write_structure=False ):
         Stucture object (RnaModel or Template)
         True/False - whether structure should be written to a PDB file (optional)
         """
-    return modeRNA.clean_structure( structure, write_structure )
+    return modeRNA.clean_structure( structure, write_structure=write_structures )
 
 def removes_all_modifications( model ):
     """
@@ -86,7 +86,7 @@ class Moderna( PyTool ):
             help="Default: A" ),
         _( "logfile|l", type="bool", default=False,
             help="Default: False" ),
-        _( "write_structure|ws", type="bool", default=False,
+        _( "write_structure|ws", type="bool", default=True,
             help="Writes after cleaning the pdb-structure out. Default: False" ),
         
         _( "tool", type="str",
@@ -107,16 +107,16 @@ class Moderna( PyTool ):
         print self.tool
         if self.tool=='finds_modifications':
             pdbfile = load_templates( self.pdb_input, self.chain )
-            print finds_modifications( pdbfile )
+            finds_modifications( pdbfile )
         if self.tool=='examine_structures':
             pdbfile = load_templates( self.pdb_input, self.chain )
-            print examine_structures( pdbfile, logfile=self.logfile )
+            examine_structures( pdbfile, self.logfile )
         if self.tool=='clean_structures':
             pdbfile = load_templates( self.pdb_input, self.chain )
-            print clean_structures( pdbfile, write_structure=self.write_structure )
+            clean_structures( pdbfile, self.write_structure )
         if self.tool=='removes_all_modifications':
             pdbfile = load_models( self.pdb_input, self.chain )
-            print removes_all_modifications( pdbfile )
+            removes_all_modifications( pdbfile )
 
         
         
