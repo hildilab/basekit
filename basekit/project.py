@@ -66,11 +66,12 @@ def get_tool( t ):
     return importlib.import_module( module ).__dict__[ tool ]
 
 
-def get_wd( project_json, p ):
-    return os.path.join(
+def get_wd( project_json, p, **kwargs ):
+    wd = os.path.join(
         project_json["project"].get("__dir__", ""),
         p["__dir__"]
     )
+    return wd.format( **kwargs )
 
 
 def project_info( project_json ):
@@ -207,9 +208,10 @@ class ProjectRun( PyTool ):
                     if "__range__" in sub or "__list__" in sub:
                         if "__range__" in sub:
                             r = sub.pop("__range__")
+                            range_list = range( r[0], r[1]+1 )
                         elif "__list__" in sub:
-                            r = sub.pop("__list__")
-                        for i in range( r[0], r[1]+1 ):
+                            range_list = sub.pop("__list__")
+                        for i in range_list:
                             sub_pp[ pid+str(i) ] = copy.deepcopy(
                                 p["__sub__"][pid]
                             )
@@ -261,7 +263,6 @@ class ProjectRun( PyTool ):
 
             if "__summary__" in t:
                 kwargs = copy.deepcopy( self.get_kwargs( tid, t, {} ) )
-                wd = self.output_dir
 
                 print " `-- SUMMARY: %s" % ", ".join([ "all" ])
 
@@ -305,6 +306,8 @@ class ProjectRun( PyTool ):
                             tid=tid, **kwargs
                         )
 
+                wd = self.output_dir.format( tid=tid, **kwargs )
+
                 if self.print_args:
                     print "      `-- WD: %s" % wd
                     print json.dumps( kwargs, indent=4 )
@@ -320,7 +323,6 @@ class ProjectRun( PyTool ):
                     )
                     
                     kwargs = self.get_kwargs( tid, t, p )
-                    wd = get_wd( self.project, p )
                     
                     for k, v in kwargs.iteritems():
                         if isinstance( v, basestring ):
@@ -335,6 +337,9 @@ class ProjectRun( PyTool ):
                                 kwargs[ k ] = v.format( 
                                     pid=pid, tid=tid, **kwargs 
                                 )
+
+                    wd = get_wd( self.project, p, pid=pid, tid=tid, **kwargs )
+
                     if "__variables__" in kwargs:
                         del kwargs["__variables__"]
 
