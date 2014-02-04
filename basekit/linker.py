@@ -13,11 +13,11 @@ import utils.path
 from utils import copy_dict, iter_stride
 from utils.tool import _, _dir_init, CmdTool, PyTool, ProviMixin
 from utils.numpdb import NumPdb, numsele
+from utils.mrc import get_mrc_header, getMrc
 import numpy as np
 
 import provi_prep as provi
 from spider import LoopCrosscorrel
-from spider import MrcHeaderPrinter, MrcHeader, mrc_header
 from pdb import PdbEdit, SplitPdbSSE, LoopDelete 
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "linker" ) 
@@ -129,7 +129,6 @@ class LinkIt( CmdTool, ProviMixin ):
                         continue
                     if not atoms_only:
                         fp_out.write( line )
-
     def _make_linker_json( self, compact=False ):
         linker_dict = {}
         with open( self.txt_file, "r" ) as fp:
@@ -186,11 +185,7 @@ class MultiLinkIt( PyTool, ProviMixin ):
             linker_list=linker_list
         )
 
-def getMrc( mrc_file, param ):
-    header = mrc_header( mrc_file )
-    for name, value in zip(header._fields, header):
-        if name==param:
-            return value    
+
 
 class LinkItDensity( PyTool, ProviMixin ):
     args = [
@@ -199,12 +194,7 @@ class LinkItDensity( PyTool, ProviMixin ):
         _( "res1", type="sele" ),
         _( "res2", type="sele" ),
         _( "seq", type="str" ),
-        #_( "pixelsize", type="slider", range=[1, 10], fixed=True ),
         _( "resolution", type="float", range=[1, 10], step=0.1, fixed=True ),
-        #_( "boxsize", type="slider", range=[1, 500], fixed=True ),
-        #_( "originx", type ="slider", range=[-500,500]),
-        #_( "originy", type ="slider", range=[-500,500]),
-        #_( "originz", type ="slider", range=[-500,500]),
         _( "cutoff", type="float", default=5 ),
         _( "max_loops", type="int", range=[0, 200], default=100 )
     ]
@@ -231,7 +221,7 @@ class LinkItDensity( PyTool, ProviMixin ):
                 max_loops=self.max_loops,
             )
         )
-        self.output_files = list( itertools.chain(
+        self.output_files += list( itertools.chain(
             self.link_it.output_files, 
             self.loop_correl.output_files,
         ))
@@ -256,10 +246,8 @@ class LinkItDensity( PyTool, ProviMixin ):
         self._make_provi_file(
             # pdb_file=self.relpath( self.pdb_file ),
             pdb_file=self.relpath( self.loop_correl.spider_shift.edited_pdb_file ),
-
             #mrc_file=self.relpath( self.mrc_file ),
             mrc_file=self.relpath( self.loop_correl.spider_shift.map_shift ),
-
             cutoff=self.cutoff,
             box_mrc_file=self.relpath( 
                 self.loop_correl.spider_reconvert.mrc_file 
@@ -323,7 +311,6 @@ class LinkItDensity( PyTool, ProviMixin ):
                     line = line = line[0:30] + a + line[38:]
                     line = line = line[0:38] + b + line[46:]
                     line = line = line[0:46] + c + line[53:]
-
 
                     fp_out.write( line )
 

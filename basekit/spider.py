@@ -2,14 +2,13 @@ from __future__ import with_statement
 from __future__ import division
 
 import os
-import struct
 import json
 import itertools
-import collections
 
 from utils import copy_dict
 from utils.tool import _, _dir_init, PyTool, CmdTool, ScriptMixin
 from utils.numpdb import NumPdb
+from utils.mrc import get_mrc_header, getMrc
 
 from pdb import *#PdbSplit
 #from pdb import PdbEdit, NumpdbTest
@@ -22,77 +21,6 @@ SPIDER_CMD = "spider"
             
 # 2010 Cryo-EM Modeling Challenge: http://ncmi.bcm.edu/challenge
 
-
-MrcHeader = collections.namedtuple( "MrcHeader", [
-    "nx", "ny", "nz", "mode", 
-    "nxstart", "nystart", "nzstart",
-    "mx", "my", "mz",
-    "xlen", "ylen", "zlen",
-    "alpha", "beta", "gamma",
-    "mapc", "mapr", "maps",
-    "amin", "amax", "amean",
-    "ispg", "next", "createid", 
-    "extra_data1", "nint", "nreal", 
-    "extra_data2", "imod_stamp", "imod_flags",
-    "idtype", "lens", "nd1", "nd2", "vd1", "vd2",
-    "current_tilt_x", "current_tilt_y", "current_tilt_z",
-    "original_tilt_x", "original_tilt_y", "original_tilt_z",
-    "xorg", "yorg", "zorg",
-    "cmap", "stamp", "rms", "nlabl",
-    "label1", "label2", "label3", "label4", "label5", 
-    "label6", "label7", "label8", "label9", "label10"
-])
-def mrc_header( mrc_file ):
-    """ http://bio3d.colorado.edu/imod/doc/mrc_format.txt
-    """
-    byteorder = {
-        0x1111: '>',    # big,
-        0x4144: '<'     # little
-    }
-    with open( mrc_file, "rb" ) as fp:
-        header = fp.read( 1024 )
-    stamp = struct.unpack( "i", header[212:216] )[0]
-    if header[208:212]!="MAP ":
-        raise Exception("can only read new style mrc files")
-    if stamp not in byteorder:
-        raise Exception("could not deduce byteorder")
-    h = struct.unpack(
-        (
-            byteorder.get( stamp )+
-            "3i"    # number of cols, rows, sections
-            "i"     # mode
-            "3i"    # xyz start
-            "3i"    # grid size
-            "3f"    # cell size
-            "3f"    # cell angles
-            "3i"    # map col row section
-            "3f"    # min max mean
-            "2i"    # space group, no bytes in ext header
-            "h"     # create id
-            "30s"   # extra data
-            "2h"    # nint, nreal
-            "20s"   # extra data
-            "2i"    # imodStamp, imodFlag
-            "6h"    # idtype, lens, nd1, nd2, vd1, vd2
-            "6f"    # tiltangles
-            "3f"    # origin of image
-            "4s"    # "MAP "
-            "i"     # First two bytes have 
-                    # 17 and 17 for big-endian or 
-                    # 68 and 65 for little-endian
-            "f"     # RMS deviation of densities from mean density
-            "i"     # Number of labels with useful data
-            +("80s"*10)  # 10 labels of 80 charactors
-        ),
-        header
-    )
-    return MrcHeader._make( h )
-
-def getMrc( mrc_file, param ):
-    header = mrc_header( mrc_file )
-    for name, value in zip(header._fields, header):
-        if name==param:
-            return value
 
 class MrcHeaderPrinter( PyTool ):
     args = [
@@ -122,18 +50,12 @@ class Spider( CmdTool, ScriptMixin ):
             "@%s" % self.relpath( self.script_file, no_ext=True )
         ]
 
+
 class SpiderShift( Spider ):
     """Shifts and converts mrc file and pdb"""
     args = [
         _( "mrc_file", type="file", ext="map" ),
         _( "pdb_file", type="file", ext="pdb" ),
-       # _( "pixelsize", type="slider", range=[1, 10], fixed=True ),
-       # _( "boxsize", type="slider", range=[1, 500], fixed=True ),
-       # _( "originx", type ="slider", range=[-500,500]),
-        #_( "originy", type ="slider", range=[-500,500]),
-        #_( "originz", type ="slider", range=[-500,500]),
-        #_( "shift", type="float", nargs=3, default=None,
-        #   metavar=("X", "Y", "Z") ),
     ]
     out = [
         _( "map_shift", file="shift.mrc" ),
@@ -144,9 +66,9 @@ class SpiderShift( Spider ):
         super(SpiderShift, self)._init( "__tmpl__" )
     def _pre_exec( self ):
         boxsize=getMrc(self.mrc_file,'nx' )
-        originx=abs(getMrc(self.mrc_file,'nxstart'))#'xorg' ))
-        originy=abs(getMrc(self.mrc_file,'nystart'))#'yorg' ))
-        originz=abs(getMrc(self.mrc_file,'nzstart'))#'zorg' ))
+        originx=abs(getMrc(self.mrc_file,'nxstart'))
+        originy=abs(getMrc(self.mrc_file,'nystart'))
+        originz=abs(getMrc(self.mrc_file,'nzstart'))
         print originx
         size=getMrc(self.mrc_file,'xlen' )
         order=getMrc(self.mrc_file,'mapc' )
@@ -171,6 +93,7 @@ class SpiderShift( Spider ):
             self.pdb_file, shift= [shx, shy, shz]
         )    
 
+
 class SpiderConvert( Spider ):
     """Simple tool that converts mrc files to the spider format"""
     args = [
@@ -189,6 +112,7 @@ class SpiderConvert( Spider ):
         self._make_script_file( 
             mrc_file=self.relpath( self.mrc_file ),order=order
         )
+
 
 class SpiderPdbBox( PyTool ):
     args = [
@@ -222,19 +146,16 @@ class SpiderPdbBox( PyTool ):
             z =  (ol3 - (bbs/2)) * ps - 1
             print [x,y,z, bs,bbs]
         PdbEdit (self.pdb_file, box = [ x, y, z, obs, obs, obs ] )
-        
 
-        
+    
 class SpiderDeleteFilledDensities( Spider ):
     args = [
         _( "mrc_file", type="file", ext="mrc" ),
         _( "map_file", type="file", ext="cpv" , help= "boxil.cpv" ),
         _( "pdb_file", type="file", ext="pdb" ),
         _( "result_file", type="file" , ext="cpv", help="ergebnisse.cpv"),
-        #_( "pixelsize", type="slider", range=[1, 10], fixed=True ),
         _( "resolution", type="float", range=[1, 10], 
             help="of the map_file" ),
-        #_( "boxsize", type="slider", range=[1, 500], fixed=True , help = "of the input map")
     ]
     out = [
         _( "empty_map_file", file="usermap.cpv" )
@@ -374,11 +295,8 @@ class SpiderCrosscorrelation( Spider ):
                 json.dump( crosscorrel_dict, fp, separators=(',',':') )
             else:
                 json.dump( crosscorrel_dict, fp, indent=4 )
-                
-                
-                
-                
-                
+
+
 class SpiderSidechainCorrelation ( Spider ) :
     args = [
         _( "map_file", type="file", ext="cpv" ),
@@ -461,30 +379,6 @@ class SpiderDeleteBackbone (Spider):
         )
 
 
-import gc
-import sys
-def dump_garbage():
-    """
-    show us what's the garbage about
-    """
-        
-    # force collection
-    print "\nGARBAGE:"
-    gc.collect()
-
-    print "\nGARBAGE OBJECTS:"
-    for x in gc.garbage:
-        s = str(x)
-        if len(s) > 80: s = s[:80]
-        try:
-            l = sys.getsizeof(x)
-        except:
-            l = 0   
-        if l>5000:
-            print type(x),"\n  ", s, "\n ", l
-
-#from memory_profiler import profile
-
 class LoopSidechainCorrelation (PyTool):            
     args = [
      _( "map_file", type="file", ext="cpv" ),
@@ -505,19 +399,11 @@ class LoopSidechainCorrelation (PyTool):
             self.pixelsize,
             **copy_dict( kwargs, run=False )
         )
-    #@profile
     def func( self ):
         self.delete_backbone()
-        
-        import gc
-        #gc.enable()
-        #gc.set_debug(gc.DEBUG_LEAK)
-        
+                
         npdb=NumPdb( self.pdb_file )
         for i, numa in enumerate( npdb.iter_resno() ):
-            #print i
-            #if i>100:
-            #    break
             sele={'resno':i+1}
             resname1=numa.get('resname') [0]
             resno1=numa.get('resno') [0]
@@ -527,7 +413,6 @@ class LoopSidechainCorrelation (PyTool):
             print resname1, resno1, chain1
             if   numa.get('resname') [0] not in ('ALA', 'GLY'): 
                 SpiderSidechainCorrelation('deletebb.cpv', self.pdb_file, self.pixelsize,self.resolution, resno1, chain1,output_dir=self.subdir(dirg))
-                #print aaname
                 aaname="%s.%s" %(dirg,'pdb')
                 print aaname
                 aa=npdb.sele(resname=resname1,resno=resno1)
@@ -535,18 +420,14 @@ class LoopSidechainCorrelation (PyTool):
                 npdb.copy(sele=aa).write(dire)
                 OriSidechainCorrel('deletebb.cpv',dire,self.pixelsize,self.resolution,resno1,chain1,output_dir=self.subdir(dirg))
             else:
-                #print aaname
                 aaname="%s.%s" %(dirg,'pdb')
                 print aaname
                 aa=npdb.sele(resname=resname1,resno=resno1)
                 dire="%s/%s" %(dirg,aaname)
                 if not os.path.exists(self.subdir(dirg)): os.makedirs(self.subdir(dirg))
                 npdb.copy(sele=aa).write(dire)
-                
-            # show the dirt ;-)
-            #dump_garbage()
-      
 
+      
 class OriSidechainCorrel ( Spider ):
     args = [
     _( "map_file", type="file", ext="cpv" ),  
@@ -592,6 +473,7 @@ class OriSidechainCorrel ( Spider ):
         cacoord=npdb.get('xyz',**sele)
         return cacoord
 ##build the pdb file from the best rotamers
+
 
 class OptimizeRotamer ( PyTool ):
     args = [
@@ -639,6 +521,7 @@ class OptimizeRotamer ( PyTool ):
                     print ccsortpath
                     
             break
+
 
 class  LoopRotamerOptimize ( PyTool ):
     args = [
@@ -758,7 +641,8 @@ class BuildBest ( PyTool ):
         gesamt.sort(key=lambda x: x[7:11])              
         
         b.writelines(gesamt)
-    
+
+
 class LoopCrosscorrel( PyTool ):
     args = [
         _( "mrc_file", type="file", ext="mrc" ),
@@ -767,13 +651,8 @@ class LoopCrosscorrel( PyTool ):
         _( "res1", type="sele" ),
         _( "res2", type="sele" ),
         _( "length", type="int", range=[1, 30] ),
-        #_( "pixelsize", type="float", range=[1, 10], step=0.1 ),
         _( "resolution", type="float", range=[1, 10], step=0.1 ),
-        #_( "boxsize", type="float", range=[1, 500] ),
-        #_( "originx", type="float", range=[-500, 500] ),
-        #_( "originy", type="float", range=[-500, 500] ),
-        #_( "originz", type="float", range=[-500, 500] ),
-        _( "max_loops", type="int", range=[0, 200], default=100 )
+        _( "max_loops", type="int", range=[0, 500], default=100 )
     ]
     out = [
         _( "cropped_pdb", file="cropped.pdb" )
@@ -812,9 +691,7 @@ class LoopCrosscorrel( PyTool ):
                 kwargs, run=False, 
                 output_dir=self.subdir("delete_filled_densities") 
             )
-        )   
-
-
+        )
         self.spider_reconvert = SpiderReConvert(
             self.spider_box.box_file,
             self.spider_convert.map_file,
