@@ -192,7 +192,7 @@ class LinkItDensity( PyTool, ProviMixin ):
         _( "res2", type="sele" ),
         _( "seq", type="str" ),
         #_( "pixelsize", type="slider", range=[1, 10], fixed=True ),
-        _( "resolution", type="float", range=[1, 10], fixed=True ),
+        _( "resolution", type="float", range=[1, 10], step=0.1, fixed=True ),
         #_( "boxsize", type="slider", range=[1, 500], fixed=True ),
         #_( "originx", type ="slider", range=[-500,500]),
         #_( "originy", type ="slider", range=[-500,500]),
@@ -244,8 +244,12 @@ class LinkItDensity( PyTool, ProviMixin ):
     def _post_exec( self ):
         self._make_correl_json()
         self._make_provi_file(
-            pdb_file=self.relpath( self.pdb_file ),
-            mrc_file=self.relpath( self.mrc_file ),
+            # pdb_file=self.relpath( self.pdb_file ),
+            pdb_file=self.relpath( self.loop_correl.spider_shift.edited_pdb_file ),
+
+            #mrc_file=self.relpath( self.mrc_file ),
+            mrc_file=self.relpath( self.loop_correl.spider_shift.map_shift ),
+
             cutoff=self.cutoff,
             box_mrc_file=self.relpath( 
                 self.loop_correl.spider_reconvert.mrc_file 

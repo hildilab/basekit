@@ -157,7 +157,7 @@ class SpiderShift( Spider ):
             boxsize=boxsize,
             originx=originx,
             originy=originy,
-            originz=originz,
+            originz=originz
         )
 
         shx = (originx -(boxsize/2)) * pixelsize

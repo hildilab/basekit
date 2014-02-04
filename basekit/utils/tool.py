@@ -545,6 +545,8 @@ class Tool( object ):
                 with open( self.args_file, "w" ) as fp:
                     json.dump( ( args, kwargs ), fp, indent=4 )
 
+        self.params = { "args": args, "kwargs": kwargs }
+
         self.input_files_dict = { "cls": self }
         args_iter = iter(args)
         for name, params in self.args.iteritems():
@@ -641,7 +643,7 @@ class Tool( object ):
     def relpath( self, path, no_ext=False ):
         if no_ext:
             path = os.path.splitext( path )[0]
-        return os.path.relpath( path, self.output_dir )
+        return str( os.path.relpath( path, self.output_dir ) )
     def outpath( self, file_name ):
         file_name = file_name.format( **self.input_files_dict )
         return os.path.join( self.output_dir, file_name )

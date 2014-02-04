@@ -14,7 +14,7 @@
         }
     },
     {
-        "widget": "Provi.Widget.Grid.GridWidget",
+        "widget": "Provi.Widget.Grid.GridWidget2",
         "params": {
             "heading": "Cavities",
             "parent_id": "tab_widgets",

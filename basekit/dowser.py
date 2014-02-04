@@ -80,7 +80,7 @@ DOWSER_OUT = [
 class Dowser( DowserMixin, CmdTool, ProviMixin ):
     """ A wrapper around the 'dowser' programm. """
     args = DOWSER_ARGS + [
-        _( "alt", type="str", options=["x", "repeat"], default=None )
+        _( "alt", type="str", options=["", "x", "repeat"], default="" )
     ]
     out = DOWSER_OUT
     tmpl_dir = TMPL_DIR

@@ -1,6 +1,9 @@
 [
     {
-        "filename": "${pdb_file}"
+        "filename": "${pdb_file}",
+        "params": {
+            "style": "provi_style('backbone');"
+        }
     },
     {
         "filename": "${mrc_file}",
@@ -14,35 +17,13 @@
             "style": "MESH NOFILL NODOTS"
         }
     },
-    {
-        "filename": "${box_mrc_file}",
-        "type": "mrc",
-        "params": {
-            "sigma": 0,
-            "cutoff": ${cutoff},
-            "sign": false,
-            "color": "tomato",
-            "frontonly": true,
-            "style": "MESH NOFILL NODOTS"
-        }
-    },
-    {
-        "filename": "${box_ori_mrc_file}",
-        "type": "mrc",
-        "params": {
-            "sigma": 0,
-            "cutoff": ${cutoff},
-            "sign": false,
-            "color": "gold",
-            "frontonly": true,
-            "style": "MESH NOFILL NODOTS"
-        }
-    },
+
     {
         "name": "linker_pdb",
         "filename": "${pdb_linker_file3}",
         "params": {
-            "load_as": "trajectory+append"
+            "load_as": "trajectory+append",
+            "style": "color {*} tomato; provi_style('backbone');"
         }
     },
     { 
@@ -54,11 +35,13 @@
         "datalist": "Provi.Bio.Linker.LinkerDatalist", 
         "params": {
             "linker_ds": "DATASET_linker_json",
-            "pdb_ds": "DATASET_linker_pdb"
+            "pdb_ds": "DATASET_linker_pdb",
+            "sort_column": "correl",
+            "sort_dir": "DESC"
         }
     },
     {
-        "widget": "Provi.Widget.Grid.GridWidget",
+        "widget": "Provi.Widget.Grid.GridWidget2",
         "params": {
             "heading": "Linker",
             "parent_id": "tab_widgets",
