@@ -27,7 +27,7 @@
         }
     },
     {
-        "widget": "Provi.Widget.Grid.GridWidget",
+        "widget": "Provi.Widget.Grid.GridWidget2",
         "params": {
             "sort_key": {{linker.i}},
             "heading": "{{linker.name}}",

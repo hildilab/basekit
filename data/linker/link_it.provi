@@ -26,7 +26,7 @@
         }
     },
     {
-        "widget": "Provi.Widget.Grid.GridWidget",
+        "widget": "Provi.Widget.Grid.GridWidget2",
         "params": {
             "heading": "Linker",
             "parent_id": "tab_widgets",

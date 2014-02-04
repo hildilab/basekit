@@ -29,28 +29,6 @@ def LINKIT_CMD():
     return os.path.join( LINKIT_DIR(), "Link_It_dos2n.exe" )
 
 
-class LinkerTest( PyTool ):
-    args = [
-        _( "linker_txt", type="file", ext="txt" )
-    ]
-    out = [
-        _( "linker_json", file="{linker_txt.stem}.json" )
-    ]
-    def func( self ):
-        self._make_linker_json( compact=True )
-    def _make_linker_json( compact=False ):
-        linker_dict = {}
-        with open( self.linker_txt, "r" ) as fp:
-            x = fp.next()
-            n = fp.next()
-            for i, d in enumerate( iter_stride( fp, 3 ), start=1 ):
-                linker_dict[ i ] = [ float(d[0]), float(d[1]), d[2].strip() ]
-        with open( self.linker_json, "w" ) as fp:
-            if compact:
-                json.dump( linker_dict, fp, separators=(',',':') )
-            else:
-                json.dump( linker_dict, fp, indent=4 )
-
 
 class LinkIt( CmdTool, ProviMixin ):
     args = [
@@ -72,7 +50,7 @@ class LinkIt( CmdTool, ProviMixin ):
     provi_tmpl = "link_it.provi"
     def _init( self, *args, **kwargs ):
         if self.res1['resno']>self.res2['resno']:
-            self.res1,self.res2=self.res2,self.res1
+            self.res1, self.res2 = self.res2, self.res1
         self.cmd = [ "wine", LINKIT_CMD(), self.kos_file, self.bin_file, "t" ]
     def _pre_exec( self ):
         self._make_kos_file()
@@ -132,8 +110,8 @@ class LinkIt( CmdTool, ProviMixin ):
     def _make_linker_json( self, compact=False ):
         linker_dict = {}
         with open( self.txt_file, "r" ) as fp:
-            x = fp.next()
-            n = fp.next()
+            fp.next()
+            fp.next()
             for i, d in enumerate( iter_stride( fp, 4 ), start=1 ):
                 linker_dict[ i ] = [ float(d[0]), float(d[1]), str(d[2].strip()),str(d[3].strip()) ]
 
@@ -147,13 +125,11 @@ class LinkIt( CmdTool, ProviMixin ):
 class MultiLinkIt( PyTool, ProviMixin ):
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
-        _( "input", type="str", nargs=3, action="append",
+        _( "input", type="list", nargs=3, action="append",
             help="sele,sele,str" ),
-        _( "names", type="str", nargs="*", default=None )
+        _( "names", type="list", nargs="*", default=None )
     ]
-    out = [
-
-    ]
+    out = []
     tmpl_dir = TMPL_DIR
     provi_tmpl = "multi_link_it.provi"
     def _init( self, *args, **kwargs ):
@@ -184,7 +160,6 @@ class MultiLinkIt( PyTool, ProviMixin ):
             pdb_file=self.relpath( self.pdb_file ),
             linker_list=linker_list
         )
-
 
 
 class LinkItDensity( PyTool, ProviMixin ):
@@ -326,9 +301,8 @@ class LinkItDensity( PyTool, ProviMixin ):
                 npdb['resno']+=self.loop_correl.res1['resno']
                 npdb.write(outfile)
 
-                
-        
- 
+
+
 class LnkItVali(PyTool, ProviMixin):
     args = [
         _( "dataset_dir", type="dir" ),
@@ -388,6 +362,7 @@ class LnkItVali(PyTool, ProviMixin):
                         continue
 #   Analyse 
 #found the original fragment?
+
 
 class AnalyseLiniktRun( PyTool , ProviMixin):
     args = [
