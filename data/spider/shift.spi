@@ -93,6 +93,8 @@ shift.mrc
 [ps] [ps] [ps]
 [x] [x] [x]
 
-sd 1, [shx] [shy] [shz]
+;[xy]=[x]+[bs]
+
+sd 1, [x] [x] [x]
 shift
 en

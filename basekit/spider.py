@@ -18,6 +18,7 @@ DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "spider" )
 SPIDER_CMD = "spider" 
 
 
+
             
 # 2010 Cryo-EM Modeling Challenge: http://ncmi.bcm.edu/challenge
 
@@ -392,7 +393,7 @@ class SpiderSidechainCorrelation ( Spider ) :
         _( "sccrosscorrel_file", file="sccrosscorrelation.cpv" ),
         _( "crosscorrel_json", file="crosscorrelation.json" )
     ]
-    script_tmpl = "sidechaincca.spi"
+    script_tmpl = "sidechaincc.spi"
     def _init( self, *args, **kwargs ):
         super(SpiderSidechainCorrelation, self)._init( "__tmpl__" )    
     def _pre_exec( self ):
@@ -458,7 +459,32 @@ class SpiderDeleteBackbone (Spider):
             pixelsize=self.pixelsize,
             pdb_file='nobb.pdb'
         )
+
+
+import gc
+import sys
+def dump_garbage():
+    """
+    show us what's the garbage about
+    """
         
+    # force collection
+    print "\nGARBAGE:"
+    gc.collect()
+
+    print "\nGARBAGE OBJECTS:"
+    for x in gc.garbage:
+        s = str(x)
+        if len(s) > 80: s = s[:80]
+        try:
+            l = sys.getsizeof(x)
+        except:
+            l = 0   
+        if l>5000:
+            print type(x),"\n  ", s, "\n ", l
+
+#from memory_profiler import profile
+
 class LoopSidechainCorrelation (PyTool):            
     args = [
      _( "map_file", type="file", ext="cpv" ),
@@ -473,13 +499,25 @@ class LoopSidechainCorrelation (PyTool):
     tmpl_dir = TMPL_DIR
     def _init( self, *args, **kwargs ):
         
-        self.delete_backbone= SpiderDeleteBackbone(self.map_file,self.pdb_file,self.pixelsize ,           **copy_dict( 
-                kwargs, run=False
-            ))
+        self.delete_backbone= SpiderDeleteBackbone(
+            self.map_file,
+            self.pdb_file,
+            self.pixelsize,
+            **copy_dict( kwargs, run=False )
+        )
+    #@profile
     def func( self ):
         self.delete_backbone()
+        
+        import gc
+        #gc.enable()
+        #gc.set_debug(gc.DEBUG_LEAK)
+        
         npdb=NumPdb( self.pdb_file )
         for i, numa in enumerate( npdb.iter_resno() ):
+            #print i
+            #if i>100:
+            #    break
             sele={'resno':i+1}
             resname1=numa.get('resname') [0]
             resno1=numa.get('resno') [0]
@@ -489,18 +527,24 @@ class LoopSidechainCorrelation (PyTool):
             print resname1, resno1, chain1
             if   numa.get('resname') [0] not in ('ALA', 'GLY'): 
                 SpiderSidechainCorrelation('deletebb.cpv', self.pdb_file, self.pixelsize,self.resolution, resno1, chain1,output_dir=self.subdir(dirg))
+                #print aaname
                 aaname="%s.%s" %(dirg,'pdb')
+                print aaname
                 aa=npdb.sele(resname=resname1,resno=resno1)
                 dire="%s/%s" %(dirg,aaname)
                 npdb.copy(sele=aa).write(dire)
                 OriSidechainCorrel('deletebb.cpv',dire,self.pixelsize,self.resolution,resno1,chain1,output_dir=self.subdir(dirg))
             else:
+                #print aaname
                 aaname="%s.%s" %(dirg,'pdb')
+                print aaname
                 aa=npdb.sele(resname=resname1,resno=resno1)
                 dire="%s/%s" %(dirg,aaname)
                 if not os.path.exists(self.subdir(dirg)): os.makedirs(self.subdir(dirg))
                 npdb.copy(sele=aa).write(dire)
                 
+            # show the dirt ;-)
+            #dump_garbage()
       
 
 class OriSidechainCorrel ( Spider ):

@@ -574,12 +574,15 @@ def make_all_rotameres(pdbfile, chain1, resno1,zfill, outpath):
     sele={"resno": resno1, "chain": chain1}
     resname1=npdb.get('resname', **sele)[0]
     if resname1 != 'GLY':
+        #backbone = ( ' N  ',' C  ', ' CA ',' O  ' )
+
         sele={ "resno": resno1, "chain": chain1, "resname": resname1 }
         no = get_rotno( sele["resname"] )
         test =npdb.sele(chain=chain1,resno=resno1)
+        #test =npdb.sele(chain=self.chain,resno=[ self.res1, self.res2], invert=True)
         for i in range(0, no):
-            npdb = numpdb.NumPdb( pdbfile)
-            rotamere = make_rotamere( npdb, sele, i )
+            npdb_rot = numpdb.NumPdb( pdbfile)
+            rotamere = make_rotamere( npdb_rot, sele, i )
             rotamere.copy(sele=test).write("%s%s_%s_%s.%s" % (outpath,resname1,resno1, str(i+1).zfill(zfill) ,'pdb'))
         return rotamere_dict, test
     

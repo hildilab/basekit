@@ -13,7 +13,7 @@ import utils.path
 from utils import copy_dict, iter_stride
 from utils.tool import _, _dir_init, CmdTool, PyTool, ProviMixin
 from utils.numpdb import NumPdb, numsele
-
+import numpy as np
 
 import provi_prep as provi
 from spider import LoopCrosscorrel
@@ -71,6 +71,8 @@ class LinkIt( CmdTool, ProviMixin ):
     tmpl_dir = TMPL_DIR
     provi_tmpl = "link_it.provi"
     def _init( self, *args, **kwargs ):
+        if self.res1['resno']>self.res2['resno']:
+            self.res1,self.res2=self.res2,self.res1
         self.cmd = [ "wine", LINKIT_CMD(), self.kos_file, self.bin_file, "t" ]
     def _pre_exec( self ):
         self._make_kos_file()
@@ -117,11 +119,17 @@ class LinkIt( CmdTool, ProviMixin ):
                                 continue
                             tag = "1000 " if line[24]==" " else "2000 "
                             line = line[0:17] + "GLY" + line[20:22] + tag + line[27:]
+                        else:
+                            resnew= int(line[22:26])+int(self.res1['resno'])
+        
+                            resnewp="%4s" % resnew
+                            line = line = line[0:22] + resnewp + line[26:]
                         atom_i += 1
                         fp_out.write( line )
                         continue
                     if not atoms_only:
                         fp_out.write( line )
+
     def _make_linker_json( self, compact=False ):
         linker_dict = {}
         with open( self.txt_file, "r" ) as fp:
@@ -129,7 +137,7 @@ class LinkIt( CmdTool, ProviMixin ):
             n = fp.next()
             for i, d in enumerate( iter_stride( fp, 4 ), start=1 ):
                 linker_dict[ i ] = [ float(d[0]), float(d[1]), str(d[2].strip()),str(d[3].strip()) ]
-                #print d
+
         with open( self.json_file, "w" ) as fp:
             if compact:
                 json.dump( linker_dict, fp, separators=(',',':') )
@@ -208,6 +216,8 @@ class LinkItDensity( PyTool, ProviMixin ):
     provi_tmpl = "link_it_density.provi"
 
     def _init( self, *args, **kwargs ):
+        if self.res1['resno']>self.res2['resno']:
+            self.res1,self.res2=self.res2,self.res1
         self.link_it = LinkIt( 
             self.edited_pdb_file, self.res1, self.res2, self.seq,
             **copy_dict( kwargs, run=False, output_dir=self.subdir("link_it") )
@@ -260,6 +270,8 @@ class LinkItDensity( PyTool, ProviMixin ):
             pdb_linker_file3=self.relpath( self.link_it.pdb_linker_file3 ),
             linker_correl_file=self.relpath( self.linker_correl_file )
         )
+        self._make_fixed_linker()
+        
     def _make_correl_json( self, compact=False ):
         li = self.link_it.json_file
         cc = self.loop_correl.spider_crosscorrelation.crosscorrel_json
@@ -279,7 +291,56 @@ class LinkItDensity( PyTool, ProviMixin ):
                 json.dump( linker_correl_dict, fp, separators=(',',':') )
             else:
                 json.dump( linker_correl_dict, fp, indent=4 )
+    def _make_fixed_linker ( self ) :
+        shiftpath=os.path.join(self.relpath(self.loop_correl.output_dir),"%s" % ('shift'))
+        shiftfile="%s/%s" % (shiftpath,'shift.cpv')
+        with open (shiftfile, "r") as rs:
+            file_lines=rs.readlines()
+            loc_file = file_lines[1].strip()
+            shx=float(loc_file[5:13])*-1
+            shy=float(loc_file[19:27])*-1
+            shz=float(loc_file[33:42])*-1
 
+        shift = np.array([shx,shy,shz])
+        
+        loop_dir=os.path.join(self.relpath(self.loop_correl.output_dir),"%s/%s" % ('crosscorrelation','loops'))
+        outputdir=os.path.join(self.relpath(self.loop_correl.output_dir),"%s/%s" % ('crosscorrelation','shiftloops'))
+        linker_dir=os.path.join(self.relpath(self.link_it.output_dir))
+        pdb_linker_file3=self.relpath( self.link_it.pdb_linker_file3 )
+        pdb_linkerout="%s/%s" %(linker_dir,'shift_pdb_linker_file3.pdb')
+        
+        with open (pdb_linker_file3, 'r') as lf:
+            with open (pdb_linkerout, 'w') as fp_out:
+                for line in lf:
+                    x="%4.3f" % (float(line[31:38])+shx)
+                    a="%7s" % x
+                    
+                    y="%4.3f" % (float(line[39:46])+shy)
+                    b="%7s" % y
+                    z="%4.3f" % (float(line[47:54])+shz)
+                    c="%7s" % z
+
+                    line = line = line[0:30] + a + line[38:]
+                    line = line = line[0:38] + b + line[46:]
+                    line = line = line[0:46] + c + line[53:]
+
+
+                    fp_out.write( line )
+
+        os.mkdir(outputdir)
+        for i in os.listdir(loop_dir):
+            if i.endswith(".pdb"):
+                loopfile="%s/%s" % (loop_dir,i)
+                
+                outfile="%s/%s" %(outputdir,i)
+                npdb=NumPdb(loopfile)
+                
+                npdb['xyz'] += shift
+                npdb['resno']+=self.loop_correl.res1['resno']
+                npdb.write(outfile)
+
+                
+        
  
 class LnkItVali(PyTool, ProviMixin):
     args = [
