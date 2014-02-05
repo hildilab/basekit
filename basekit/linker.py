@@ -169,9 +169,9 @@ class LinkItDensity( PyTool, ProviMixin ):
         _( "res1", type="sele" ),
         _( "res2", type="sele" ),
         _( "seq", type="str" ),
-        _( "resolution", type="float", range=[1, 10], step=0.1, fixed=True ),
-        _( "cutoff", type="float", default=5 ),
-        _( "max_loops", type="int", range=[0, 200], default=100 )
+        _( "resolution", type="float", fixed=True ),
+        _( "cutoff", type="float" ),
+        _( "max_loops", type="int", range=[0, 500], default=100 )
     ]
     out = [
         _( "linker_correl_file", file="linker_correl.json" ),
