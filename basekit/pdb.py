@@ -219,7 +219,9 @@ def pdb_split( pdb_file, output_dir, backbone_only=False,
                     break
                 file_name = "%s%s.pdb" % ( str(model_no).zfill( zfill ), bb_tag )
                 file_path = os.path.join( output_dir, file_name )
+                              
                 with open( file_path, 'w') as fp_out:
+
                     for line in fp:
                         if line[0:4]!='ATOM':
                             if line[0:6]=='ENDMDL':
@@ -232,7 +234,7 @@ def pdb_split( pdb_file, output_dir, backbone_only=False,
                             if try_int( line[22:26] ) in resno_ignore:
                                 continue
                         fp_out.write( line )
-                        
+                            
 class PdbSplit( PyTool ):
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
@@ -247,7 +249,7 @@ class PdbSplit( PyTool ):
                 self.resno_ignore = map( int, self.resno_ignore.split(",") )
     def func( self ):
         pdb_split( 
-            self.pdb_file, self.output_dir, 
+            self.pdb_file, self.output_dir,
             backbone_only=self.backbone_only,
             max_models=self.max_models,
             resno_ignore=self.resno_ignore,

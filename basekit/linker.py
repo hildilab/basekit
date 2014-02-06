@@ -188,7 +188,7 @@ class LinkItDensity( PyTool, ProviMixin ):
             **copy_dict( kwargs, run=False, output_dir=self.subdir("link_it") )
         )
         self.loop_correl = LoopCrosscorrel(
-            self.mrc_file, self.pdb_file, self.link_it.pdb_linker_file2, 
+            self.mrc_file, self.pdb_file, self.link_it.pdb_linker_file2, self.link_it.txt_file,
             self.res1, self.res2, len(self.seq),
             self.resolution,            
             **copy_dict( 

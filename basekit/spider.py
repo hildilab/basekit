@@ -255,6 +255,7 @@ class SpiderCrosscorrelation( Spider ):
         _( "box_map_file", type="file", ext="cpv" ),
         _( "box_file", type="file", ext="cpv" ),
         _( "loop_file", type="file", ext="pdb" ),
+        _( "linkerinfo", type="file", ext="txt" ),
         _( "max_loops", type="int", range=[0, 200], default=100 )
     ]
     out = [
@@ -281,7 +282,7 @@ class SpiderCrosscorrelation( Spider ):
        
     def _split_loop_file( self ):
         PdbSplit( 
-            self.loop_file, output_dir=self.loop_dir, backbone_only=True, 
+            self.loop_file,self.linkerinfo, output_dir=self.loop_dir, backbone_only=True, 
             max_models=self.max_loops, resno_ignore=[ 1000, 2000 ], zfill=3
         )
     def _make_crosscorrel_json( self, compact=False ):
@@ -650,6 +651,7 @@ class LoopCrosscorrel( PyTool ):
         _( "mrc_file", type="file", ext="mrc" ),
         _( "pdb_file", type="file", ext="pdb" ),
         _( "loop_file", type="file", ext="pdb" ),
+        _( "linkerinfo", type="file", ext="txt" ),
         _( "res1", type="sele" ),
         _( "res2", type="sele" ),
         _( "length", type="int", range=[1, 30] ),
@@ -709,6 +711,7 @@ class LoopCrosscorrel( PyTool ):
             self.spider_delete_filled_densities.empty_map_file, 
             self.spider_box.box_file, 
             self.loop_file,
+            self.linkerinfo,
             **copy_dict( 
                 kwargs, run=False, output_dir=self.subdir("crosscorrelation"),
                 max_loops=self.max_loops
@@ -757,7 +760,8 @@ class LoopCrosscorrel( PyTool ):
    
         loop_dir=self.relpath(self.spider_crosscorrelation.loop_dir)
         outputdir=self.subdir("oriloops")
-
+        with open ( self.linkerinfo , 'r') as li:
+            lilines=li.readlines()
         with open (self.loop_file, 'r') as lf:
             with open (self.ori_pdb_linker_file3, 'w') as fp_out:
                 for line in lf:
@@ -777,17 +781,34 @@ class LoopCrosscorrel( PyTool ):
                         fp_out.write( line )
                     else:
                         continue
-
+                fp_out.write( "END" )
         for i in os.listdir(loop_dir):
             if i.endswith(".pdb"):
                 loopfile="%s/%s" % (loop_dir,i)
                 
                 outfile="%s/%s" %(outputdir,i)
-                npdb=NumPdb(loopfile)
-                
-                npdb['xyz'] += backshift
-                npdb.write(outfile)
+                with open (loopfile, 'r') as lp:
+                    lonr=int(i[0:3])
+                    lino=(lonr*4)-2
 
+                    title= "%s     %s %s ,%s ,%s ,%s ,%s" % ("TITLE","linker",lonr,lilines[lino].strip(),lilines[lino+1].strip(),lilines[lino+2].strip(),lilines[lino+3])
 
-
-
+                    with open (outfile, 'w') as of:
+                        of.write(title)
+                        for line in lp:
+                            if line.startswith("ATOM"):
+                                x="%4.3f" % (float(line[31:38])+shxb)
+                                a="%7s" % x
+                                
+                                y="%4.3f" % (float(line[39:46])+shyb)
+                                b="%7s" % y
+                                z="%4.3f" % (float(line[47:54])+shzb)
+                                c="%7s" % z
+                        
+                                line = line = line[0:30] + a + line[38:]
+                                line = line = line[0:38] + b + line[46:]
+                                line = line = line[0:46] + c + line[53:]
+                        
+                                of.write( line )
+                        of.write("END")
+ 
