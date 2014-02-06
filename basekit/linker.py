@@ -122,44 +122,44 @@ class LinkIt( CmdTool, ProviMixin ):
                 json.dump( linker_dict, fp, indent=4 )
 
 
-#class MultiLinkIt( PyTool, ProviMixin ):
-#    args = [
-#        _( "pdb_file", type="file", ext="pdb" ),
-#        _( "input", type="list", nargs=3, action="append",
-#            help="sele,sele,str" ),
-#        _( "names", type="list", nargs="*", default=None )
-#    ]
-#    out = []
-#    tmpl_dir = TMPL_DIR
-#    provi_tmpl = "multi_link_it.provi"
-#    def _init( self, *args, **kwargs ):
-#        self.link_it_list = []
-#        for i, linker_args in enumerate( self.input ):
-#            res1, res2, seq = linker_args
-#            link_it = LinkIt(
-#                self.pdb_file, res1, res2, seq,
-#                **copy_dict( kwargs, run=False, 
-#                    output_dir=self.subdir("link_it_%i" % i) )
-#            )
-#            self.output_files += link_it.output_files
-#            self.link_it_list.append( link_it )
-#    def func( self ):
-#        for link_it in self.link_it_list:
-#            link_it()
-#    def _post_exec( self ):
-#        linker_list = []
-#        for i, link_it in enumerate( self.link_it_list ):
-#            linker_list.append({
-#                "i": i,
-#                "name": self.names[i] if self.names else "Linker",
-#                "json_file": self.relpath( link_it.json_file ),
-#                "pdb_linker_file3": self.relpath( link_it.pdb_linker_file3 )
-#            })
-#        self._make_provi_file(
-#            use_jinja2=True,
-#            pdb_file=self.relpath( self.pdb_file ),
-#            linker_list=linker_list
-#        )
+class MultiLinkIt( PyTool, ProviMixin ):
+   args = [
+       _( "pdb_file", type="file", ext="pdb" ),
+       _( "input", type="list", nargs=3, action="append",
+           help="sele,sele,str" ),
+       _( "names", type="list", nargs="*", default=None )
+   ]
+   out = []
+   tmpl_dir = TMPL_DIR
+   provi_tmpl = "multi_link_it.provi"
+   def _init( self, *args, **kwargs ):
+       self.link_it_list = []
+       for i, linker_args in enumerate( self.input ):
+           res1, res2, seq = linker_args
+           link_it = LinkIt(
+               self.pdb_file, res1, res2, seq,
+               **copy_dict( kwargs, run=False, 
+                   output_dir=self.subdir("link_it_%i" % i) )
+           )
+           self.output_files += link_it.output_files
+           self.link_it_list.append( link_it )
+   def func( self ):
+       for link_it in self.link_it_list:
+           link_it()
+   def _post_exec( self ):
+       linker_list = []
+       for i, link_it in enumerate( self.link_it_list ):
+           linker_list.append({
+               "i": i,
+               "name": self.names[i] if self.names else "Linker",
+               "json_file": self.relpath( link_it.json_file ),
+               "pdb_linker_file3": self.relpath( link_it.pdb_linker_file3 )
+           })
+       self._make_provi_file(
+           use_jinja2=True,
+           pdb_file=self.relpath( self.pdb_file ),
+           linker_list=linker_list
+       )
 
 
 class LinkItDensity( PyTool, ProviMixin ):
@@ -219,18 +219,19 @@ class LinkItDensity( PyTool, ProviMixin ):
     def _post_exec( self ):
         self._make_correl_json()
         self._make_provi_file(
-            # pdb_file=self.relpath( self.pdb_file ),
-            pdb_file=self.relpath( self.loop_correl.spider_shift.edited_pdb_file ),
-            #mrc_file=self.relpath( self.mrc_file ),
-            mrc_file=self.relpath( self.loop_correl.spider_shift.map_shift ),
+            pdb_file=self.relpath( self.pdb_file ),
+            # pdb_file=self.relpath( self.loop_correl.spider_shift.edited_pdb_file ),
+            mrc_file=self.relpath( self.mrc_file ),
+            # mrc_file=self.relpath( self.loop_correl.spider_shift.map_shift ),
             cutoff=self.cutoff,
-            box_mrc_file=self.relpath( 
-                self.loop_correl.spider_reconvert.mrc_file 
-            ),
-            box_ori_mrc_file=self.relpath( 
-                self.loop_correl.spider_reconvert.mrc_ori_file 
-            ),
-            pdb_linker_file3=self.relpath( self.link_it.pdb_linker_file3 ),
+            # box_mrc_file=self.relpath( 
+            #     self.loop_correl.spider_reconvert.mrc_file 
+            # ),
+            # box_ori_mrc_file=self.relpath( 
+            #     self.loop_correl.spider_reconvert.mrc_ori_file 
+            # ),
+            pdb_linker_file3=self.relpath( 
+                self.loop_correl.ori_pdb_linker_file3 ),
             linker_correl_file=self.relpath( self.linker_correl_file )
         )
         #self._make_fixed_linker()

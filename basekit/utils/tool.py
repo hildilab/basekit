@@ -118,7 +118,7 @@ def get_argument( params ):
         kwargs["type"] = float
     elif params["type"] in [ "int" ]:
         kwargs["type"] = int
-    elif params["type"] in [ "file", "dir", "sele", "str" ]:
+    elif params["type"] in [ "file", "dir", "sele", "str", "list" ]:
         kwargs["type"] = str
     elif params["type"] in [ "bool" ]:
         if kwargs["default"]==False:
@@ -295,7 +295,7 @@ class CsvBackend( RecordsBackend ):
     def read( self ):
         with open( self.file_name, "r" ) as fp:
             cr = csv.reader( fp, delimiter=',')
-            header = cr.next()
+            cr.next() # ignore header
             return map( self.cls._make, cr )
 
 class JsonBackend( RecordsBackend ):
@@ -553,7 +553,10 @@ class Tool( object ):
             if "default" in params:
                 value = kwargs.get( name, params["default"] )
             else:
-                value = args_iter.next()
+                try:
+                    value = args_iter.next()
+                except StopIteration:
+                    raise Exception( 'Missing positional argument' )
             # TODO check if the name already exists
             self.__dict__[ name ] = self.__prep_arg( value, params )
             if params["type"]=="file" and "nargs" not in params:

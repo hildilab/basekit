@@ -19,7 +19,7 @@ def tmp( *dir_name ):
 
 
 @unittest.skipUnless( 
-        utils.path.which( 'wine' ), 'wine cmd not found' )
+    utils.path.which( 'wine' ), 'wine cmd not found' )
 class LinkItTestCase( unittest.TestCase ):
     def setUp( self ):
         self.link_it = LinkIt(
@@ -37,7 +37,7 @@ class LinkItTestCase( unittest.TestCase ):
 
 
 @unittest.skipUnless( 
-        utils.path.which( 'wine' ), 'wine cmd not found' )
+    utils.path.which( 'wine' ), 'wine cmd not found' )
 class MultiLinkItTestCase( unittest.TestCase ):
     def setUp( self ):
         shutil.rmtree( tmp( "ssfe_p2y12_multi" ), True )
@@ -65,13 +65,13 @@ class MultiLinkItTestCase( unittest.TestCase ):
 
         
 @unittest.skipUnless( 
-        utils.path.which( 'wine' ), 'wine cmd not found' )
+    utils.path.which( 'wine' ), 'wine cmd not found' )
 class LinkitDensTestCase( unittest.TestCase ):
     def setUp( self ):
         self.linkitdens= LinkItDensity(
             data( "ribosomexample.pdb"),
             data(  "ribocut4a.mrc"),
-            "154:C", "164:C", "EDKVEGYKK", 4.2,
+            "154:C", "164:C", "EDKVEGYKK", 4.2, 9200,
             output_dir=tmp( "ribosomexample" ),
             run=False,
             verbose=False
