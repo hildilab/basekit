@@ -4,8 +4,8 @@
 
 from basekit.utils.tool import parse_subargs
 from basekit.linker import(
-    LinkIt, LinkItDensity, LinkerTest, LnkItVali, AnalyseLiniktRun, 
-    MultiLinkIt
+    LinkIt, LinkItDensity, LnkItVali, AnalyseLiniktRun
+    #MultiLinkItLinkerTest, 
 )
 
 
@@ -14,10 +14,10 @@ def main():
     tools = {
         "linkit": LinkIt, 
         "linkit+dens": LinkItDensity,
-        "test": LinkerTest,
+        #"test": LinkerTest,
         "linkvali": LnkItVali,
         "analyse" : AnalyseLiniktRun,
-        "multi-linkit": MultiLinkIt
+        #"multi-linkit": MultiLinkIt
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )

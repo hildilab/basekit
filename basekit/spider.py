@@ -52,7 +52,7 @@ class Spider( CmdTool, ScriptMixin ):
 
 
 class SpiderShift( Spider ):
-    """Shifts and converts mrc file and pdb"""
+    """Shifts and converts mrc file and pdb and shifts the """
     args = [
         _( "mrc_file", type="file", ext="map" ),
         _( "pdb_file", type="file", ext="pdb" ),
@@ -91,9 +91,8 @@ class SpiderShift( Spider ):
         print shz
         PdbEdit( 
             self.pdb_file, shift= [shx, shy, shz]
-        )    
-
-
+        )
+        
 class SpiderConvert( Spider ):
     """Simple tool that converts mrc files to the spider format"""
     args = [
@@ -146,6 +145,7 @@ class SpiderPdbBox( PyTool ):
             z =  (ol3 - (bbs/2)) * ps - 1
             print [x,y,z, bs,bbs]
         PdbEdit (self.pdb_file, box = [ x, y, z, obs, obs, obs ] )
+        
 
     
 class SpiderDeleteFilledDensities( Spider ):
@@ -278,6 +278,7 @@ class SpiderCrosscorrelation( Spider ):
         )
     def _post_exec( self ):
         self._make_crosscorrel_json( compact=True )
+       
     def _split_loop_file( self ):
         PdbSplit( 
             self.loop_file, output_dir=self.loop_dir, backbone_only=True, 
@@ -295,6 +296,7 @@ class SpiderCrosscorrelation( Spider ):
                 json.dump( crosscorrel_dict, fp, separators=(',',':') )
             else:
                 json.dump( crosscorrel_dict, fp, indent=4 )
+                
 
 
 class SpiderSidechainCorrelation ( Spider ) :
@@ -655,7 +657,8 @@ class LoopCrosscorrel( PyTool ):
         _( "max_loops", type="int", range=[0, 500], default=100 )
     ]
     out = [
-        _( "cropped_pdb", file="cropped.pdb" )
+        _( "cropped_pdb", file="cropped.pdb" ),
+        _( "ori_pdb_linker_file3", file="ori_pdb_linker_file3.pdb")
     ]
     tmpl_dir = TMPL_DIR
     def _init( self, *args, **kwargs ):
@@ -727,6 +730,10 @@ class LoopCrosscorrel( PyTool ):
         self.spider_delete_filled_densities()
         self.spider_reconvert()
         self.spider_crosscorrelation()
+    
+    def _post_exec( self ):
+        self.backshift_linker()
+        
     def _crop_pdb( self ):
         npdb = NumPdb( self.pdb_file )
         npdb.write( 
@@ -735,6 +742,52 @@ class LoopCrosscorrel( PyTool ):
             resno=[ self.res1["resno"]+1, self.res2["resno"]-1 ],
             invert=True
         )
+    
+    def backshift_linker ( self ) :
+        shiftpath=self.relpath(self.spider_shift.output_dir)
+        shiftfile="%s/%s" % (shiftpath,'shift.cpv')
+        with open (shiftfile, "r") as rs:
+            file_lines=rs.readlines()
+            loc_file = file_lines[1].strip()
+            shxb=float(loc_file[5:13])*-1
+            shyb=float(loc_file[19:27])*-1
+            shzb=float(loc_file[33:42])*-1
+
+            backshift= np.array([shxb,shyb,shzb])
+   
+        loop_dir=self.relpath(self.spider_crosscorrelation.loop_dir)
+        outputdir=self.subdir("oriloops")
+
+        with open (self.loop_file, 'r') as lf:
+            with open (self.ori_pdb_linker_file3, 'w') as fp_out:
+                for line in lf:
+                    if line.startswith("ATOM"):
+                        x="%4.3f" % (float(line[31:38])+shxb)
+                        a="%7s" % x
+                        
+                        y="%4.3f" % (float(line[39:46])+shyb)
+                        b="%7s" % y
+                        z="%4.3f" % (float(line[47:54])+shzb)
+                        c="%7s" % z
+        
+                        line = line = line[0:30] + a + line[38:]
+                        line = line = line[0:38] + b + line[46:]
+                        line = line = line[0:46] + c + line[53:]
+        
+                        fp_out.write( line )
+                    else:
+                        continue
+
+        for i in os.listdir(loop_dir):
+            if i.endswith(".pdb"):
+                loopfile="%s/%s" % (loop_dir,i)
+                
+                outfile="%s/%s" %(outputdir,i)
+                npdb=NumPdb(loopfile)
+                
+                npdb['xyz'] += backshift
+                npdb.write(outfile)
+
 
 
 

@@ -122,44 +122,44 @@ class LinkIt( CmdTool, ProviMixin ):
                 json.dump( linker_dict, fp, indent=4 )
 
 
-class MultiLinkIt( PyTool, ProviMixin ):
-    args = [
-        _( "pdb_file", type="file", ext="pdb" ),
-        _( "input", type="list", nargs=3, action="append",
-            help="sele,sele,str" ),
-        _( "names", type="list", nargs="*", default=None )
-    ]
-    out = []
-    tmpl_dir = TMPL_DIR
-    provi_tmpl = "multi_link_it.provi"
-    def _init( self, *args, **kwargs ):
-        self.link_it_list = []
-        for i, linker_args in enumerate( self.input ):
-            res1, res2, seq = linker_args
-            link_it = LinkIt(
-                self.pdb_file, res1, res2, seq,
-                **copy_dict( kwargs, run=False, 
-                    output_dir=self.subdir("link_it_%i" % i) )
-            )
-            self.output_files += link_it.output_files
-            self.link_it_list.append( link_it )
-    def func( self ):
-        for link_it in self.link_it_list:
-            link_it()
-    def _post_exec( self ):
-        linker_list = []
-        for i, link_it in enumerate( self.link_it_list ):
-            linker_list.append({
-                "i": i,
-                "name": self.names[i] if self.names else "Linker",
-                "json_file": self.relpath( link_it.json_file ),
-                "pdb_linker_file3": self.relpath( link_it.pdb_linker_file3 )
-            })
-        self._make_provi_file(
-            use_jinja2=True,
-            pdb_file=self.relpath( self.pdb_file ),
-            linker_list=linker_list
-        )
+#class MultiLinkIt( PyTool, ProviMixin ):
+#    args = [
+#        _( "pdb_file", type="file", ext="pdb" ),
+#        _( "input", type="list", nargs=3, action="append",
+#            help="sele,sele,str" ),
+#        _( "names", type="list", nargs="*", default=None )
+#    ]
+#    out = []
+#    tmpl_dir = TMPL_DIR
+#    provi_tmpl = "multi_link_it.provi"
+#    def _init( self, *args, **kwargs ):
+#        self.link_it_list = []
+#        for i, linker_args in enumerate( self.input ):
+#            res1, res2, seq = linker_args
+#            link_it = LinkIt(
+#                self.pdb_file, res1, res2, seq,
+#                **copy_dict( kwargs, run=False, 
+#                    output_dir=self.subdir("link_it_%i" % i) )
+#            )
+#            self.output_files += link_it.output_files
+#            self.link_it_list.append( link_it )
+#    def func( self ):
+#        for link_it in self.link_it_list:
+#            link_it()
+#    def _post_exec( self ):
+#        linker_list = []
+#        for i, link_it in enumerate( self.link_it_list ):
+#            linker_list.append({
+#                "i": i,
+#                "name": self.names[i] if self.names else "Linker",
+#                "json_file": self.relpath( link_it.json_file ),
+#                "pdb_linker_file3": self.relpath( link_it.pdb_linker_file3 )
+#            })
+#        self._make_provi_file(
+#            use_jinja2=True,
+#            pdb_file=self.relpath( self.pdb_file ),
+#            linker_list=linker_list
+#        )
 
 
 class LinkItDensity( PyTool, ProviMixin ):
@@ -233,7 +233,7 @@ class LinkItDensity( PyTool, ProviMixin ):
             pdb_linker_file3=self.relpath( self.link_it.pdb_linker_file3 ),
             linker_correl_file=self.relpath( self.linker_correl_file )
         )
-        self._make_fixed_linker()
+        #self._make_fixed_linker()
         
     def _make_correl_json( self, compact=False ):
         li = self.link_it.json_file
@@ -254,52 +254,6 @@ class LinkItDensity( PyTool, ProviMixin ):
                 json.dump( linker_correl_dict, fp, separators=(',',':') )
             else:
                 json.dump( linker_correl_dict, fp, indent=4 )
-    def _make_fixed_linker ( self ) :
-        shiftpath=os.path.join(self.relpath(self.loop_correl.output_dir),"%s" % ('shift'))
-        shiftfile="%s/%s" % (shiftpath,'shift.cpv')
-        with open (shiftfile, "r") as rs:
-            file_lines=rs.readlines()
-            loc_file = file_lines[1].strip()
-            shx=float(loc_file[5:13])*-1
-            shy=float(loc_file[19:27])*-1
-            shz=float(loc_file[33:42])*-1
-
-        shift = np.array([shx,shy,shz])
-        
-        loop_dir=os.path.join(self.relpath(self.loop_correl.output_dir),"%s/%s" % ('crosscorrelation','loops'))
-        outputdir=os.path.join(self.relpath(self.loop_correl.output_dir),"%s/%s" % ('crosscorrelation','shiftloops'))
-        linker_dir=os.path.join(self.relpath(self.link_it.output_dir))
-        pdb_linker_file3=self.relpath( self.link_it.pdb_linker_file3 )
-        pdb_linkerout="%s/%s" %(linker_dir,'shift_pdb_linker_file3.pdb')
-        
-        with open (pdb_linker_file3, 'r') as lf:
-            with open (pdb_linkerout, 'w') as fp_out:
-                for line in lf:
-                    x="%4.3f" % (float(line[31:38])+shx)
-                    a="%7s" % x
-                    
-                    y="%4.3f" % (float(line[39:46])+shy)
-                    b="%7s" % y
-                    z="%4.3f" % (float(line[47:54])+shz)
-                    c="%7s" % z
-
-                    line = line = line[0:30] + a + line[38:]
-                    line = line = line[0:38] + b + line[46:]
-                    line = line = line[0:46] + c + line[53:]
-
-                    fp_out.write( line )
-
-        os.mkdir(outputdir)
-        for i in os.listdir(loop_dir):
-            if i.endswith(".pdb"):
-                loopfile="%s/%s" % (loop_dir,i)
-                
-                outfile="%s/%s" %(outputdir,i)
-                npdb=NumPdb(loopfile)
-                
-                npdb['xyz'] += shift
-                npdb['resno']+=self.loop_correl.res1['resno']
-                npdb.write(outfile)
 
 
 
