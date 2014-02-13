@@ -18,7 +18,7 @@ def tmp( *dir_name ):
 
 
 class SimpleCmdTool( CmdTool ):
-    cmd = [ "echo", "-e", "Hello world!" ]
+    cmd = [ "echo", "Hello world!" ]
 
 class CmdToolTestCase( unittest.TestCase ):
     def setUp( self ):
