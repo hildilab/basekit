@@ -171,6 +171,12 @@ def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
     numa1 = npdb1.copy( **copy_dict( sele1, atomname=subset ) )
     numa2 = npdb2.copy( **copy_dict( sele2, atomname=subset ) )
 
+    msg = []
+    def p( m, echo=True ):
+        msg.append( m )
+        if echo:
+            print m
+
     if align:
         ali1, ali2 = aligner( 
             numa1.sequence(), numa2.sequence(),
@@ -189,11 +195,11 @@ def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
                 ali_sele1[i] = False
             else:
                 j += 1
-        coords1 = numa1['xyz'][ ali_sele1 ]
-        coords2 = numa2['xyz'][ ali_sele2 ]
-    else:
-        coords1 = numa1['xyz']
-        coords2 = numa2['xyz']
+        numa1 = numa1.copy( sele=ali_sele1 )
+        numa2 = numa2.copy( sele=ali_sele2 )
+
+    coords1 = numa1['xyz']
+    coords2 = numa2['xyz']
 
     if len( coords1 ) != len( coords2 ):
         raise Exception( "length differ, cannot superpose" )
@@ -202,7 +208,7 @@ def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
         for cycle in xrange( max_cycles ):
             sp = Superposition( coords1, coords2 )
             if verbose:
-                print "Cycle %i, #%i, RMSD %6.2f" % (cycle, sp.n, sp.rmsd)
+                p( "Cycle %i, #%i, RMSD %6.2f" % (cycle, sp.n, sp.rmsd) )
             if sp.rmsd <= rmsd_cutoff or sp.n <= 8:
                 break
             coords1_trans = sp.transform( coords1, inplace=False )
@@ -212,14 +218,16 @@ def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
             coords1 = coords1[ deviation_idx[:-5] ]
             coords2 = coords2[ deviation_idx[:-5] ]
         if cycle==max_cycles-1:
-            print "warning: still larger than rmsd_cutoff"
+            p( "warning: still larger than rmsd_cutoff" )
     else:
         sp = Superposition( coords1, coords2 )
     pos = sp.transform( npdb1['xyz'], inplace=inplace )
     npdb1['xyz'] = pos
+    numa1['xyz'] = sp.transform( numa1['xyz'], inplace=inplace )
     if verbose:
-        print "RMSD: %f" % sp.rmsd
-    return sp
+        p( "RMSD: %f" % sp.rmsd )
+
+    return sp, msg
 
 
 

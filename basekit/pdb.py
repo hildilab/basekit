@@ -20,7 +20,7 @@ from utils.tool import _, _dir_init, PyTool, ProviMixin, CmdTool
 from utils.timer import Timer
 from utils.db import get_pdb_files
 from utils.listing import ListRecord, ListIO, list_compare, list_join
-from utils.math import rmatrixu
+from utils.math import rmatrixu, mag
 
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "pdb" )
@@ -29,13 +29,6 @@ PDB_SEARCH_URL = 'http://www.rcsb.org/pdb/rest/search'
 PDB_DOWNLOAD_URL = 'http://www.rcsb.org/pdb/files/'
 PDBE_ASSEMBLY = 'http://www.ebi.ac.uk/pdbe-srv/view/files/{pdb_id:}_1.mmol'
 
-DIR = os.path.split( os.path.abspath(__file__) )[0]
-PARENT_DIR = os.path.split( DIR )[0]
-TMPL_DIR = os.path.join( PARENT_DIR, "data", "motif" )
-BASEKIT_DIR = os.path.split( PARENT_DIR )[0]
-DATA_DIR = os.path.join( BASEKIT_DIR, "data", "pdb" )
-
-
 TMPL_DIR_CIONIZE = _dir_init( PARENT_DIR, "cionize" )
 cionize_CMD = os.path.join( PARENT_DIR, "cionize" )
 
@@ -43,10 +36,11 @@ cionize_CMD = os.path.join( PARENT_DIR, "cionize" )
 
 # the rotamere lib needs the 'remaining_atoms' data
 ROTAMERE_LIB_PATH = os.path.join(
-    BASEKIT_DIR, "basekit","data", "bio", "bbind02.May.lib.json"
+    PARENT_DIR, "data", "bio", "bbind02.May.lib.json"
 )
 with open( ROTAMERE_LIB_PATH, "r" ) as fp:
     ROTAMERE_LIB = json.load( fp )
+
 
 class SplitPdbSSE (PyTool) :
     args = [
@@ -338,22 +332,43 @@ class PdbSuperpose( PyTool, ProviMixin ):
         _( "sele1", type="sele" ),
         _( "sele2", type="sele" ),
         _( "subset|ss", type="str", default="CA" ),
-        _( "rmsd_cutoff|co", type="float", default=1.0 )
+        _( "rmsd_cutoff|co", type="float", default=1.0 ),
+        _( "align|ali", type="bool", default=True ),
     ]
     out = [
-        _( "superposed_file", file="superposed.pdb" )
+        _( "superposed_file", file="superposed.pdb" ),
+        _( "superposed2_file", file="superposed2.pdb" ),
+        _( "info_file", file="info.txt" ),
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "superpose.provi"
     def func( self ):
         npdb1 = numpdb.NumPdb( self.pdb_file1 )
         npdb2 = numpdb.NumPdb( self.pdb_file2 )
-        numpdb.superpose( 
+        sp, msg = numpdb.superpose( 
             npdb1, npdb2, self.sele1, self.sele2, 
             subset=self.subset, inplace=True,
-            rmsd_cutoff=self.rmsd_cutoff, max_cycles=100
+            rmsd_cutoff=self.rmsd_cutoff, max_cycles=100,
+            align=self.align
         )
         npdb1.write( self.superposed_file )
+
+        s1 = npdb1.copy( **self.sele1 )
+        s2 = npdb2.copy( **self.sele2 )
+
+        i1 = s1.iter_resno()
+        i2 = s2.iter_resno()
+
+        for n1, n2 in itertools.izip( i1, i2 ):
+            for i in xrange( len(n1) ):
+                a1 = n1[i]
+                a2 = n2[ n2['atomname']==a1['atomname'] ][0]
+                d = mag( n1['xyz'][i] - n2['xyz'][ n2['atomname']==a1['atomname'] ][0] )
+                n1['bfac'][i] = d
+        s1.write( self.superposed2_file )
+
+        with open( self.info_file, "w" ) as fp:
+            fp.write( "\n".join( msg ) )
     def _post_exec( self ):
         self._make_provi_file(
             pdb_file1=self.relpath( self.pdb_file1 ),
@@ -643,7 +658,7 @@ class JoinSplitted( PyTool ):
             fp.write(self.joined)
 
 
-class Cionize( CmdTool):
+class Cionize( CmdTool ):
     #/home/student/Johanna/Software/vmd-1.9.1/plugins/LINUXAMD64/bin/cionize1.0/cionize -p 8 -i test.cfg -f pdb 2GC_Bdna.pdb.pdb 
 
     """
