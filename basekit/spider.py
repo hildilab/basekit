@@ -324,6 +324,7 @@ class SpiderSidechainCorrelation ( Spider ) :
         num_rota=get_rotno(resname1)
         coords=self._get_ca(self.pdb_file,self.chain, self.residue)
         print "huh" ,coords [0] [0]
+
         x_ca= coords[0] [0]
         y_ca=coords [0][1]
         z_ca=coords [0] [2]
@@ -414,8 +415,11 @@ class LoopSidechainCorrelation (PyTool):
             dirg="%s_%s_%i" %(chain1,resname1,resno1)
             
             print resname1, resno1, chain1
-            if   numa.get('resname') [0] not in ('ALA', 'GLY'): 
-                SpiderSidechainCorrelation('deletebb.cpv', self.pdb_file, self.pixelsize,self.resolution, resno1, chain1,output_dir=self.subdir(dirg))
+            if   numa.get('resname') [0] not in ('ALA', 'GLY'):
+                if resname1 in  ('SER','CYS','PRO','ASP','THR','ASN','VAL','GLU','GLN'):
+                    SpiderSidechainCorrelation(self.map_file, self.pdb_file, self.pixelsize,self.resolution, resno1, chain1,output_dir=self.subdir(dirg))
+                else:            
+                    SpiderSidechainCorrelation('deletebb.cpv', self.pdb_file, self.pixelsize,self.resolution, resno1, chain1,output_dir=self.subdir(dirg))
                 aaname="%s.%s" %(dirg,'pdb')
                 print aaname
                 aa=npdb.sele(resname=resname1,resno=resno1)
