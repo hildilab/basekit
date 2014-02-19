@@ -156,6 +156,8 @@ class SpiderDeleteFilledDensities( Spider ):
         _( "result_file", type="file" , ext="cpv", help="ergebnisse.cpv"),
         _( "resolution", type="float", range=[1, 10], 
             help="of the map_file" ),
+        _( "res1", type="sele", help="resno:chain, i.e. 10:A" ),
+        _( "res2", type="sele" )
     ]
     out = [
         _( "empty_map_file", file="usermap.cpv" )
@@ -167,9 +169,11 @@ class SpiderDeleteFilledDensities( Spider ):
         boxsize=getMrc(self.mrc_file,'nx' )
         size=getMrc(self.mrc_file,'xlen' )
         pixelsize=(size/boxsize)
+        print self.res1
+        LoopDelete(self.pdb_file,self.res1['chain'],self.res1['resno']+1,self.res2['resno']-1)
         self._make_script_file( 
             map_name=self.relpath( self.map_file, no_ext=True ), 
-            pdb_file=self.relpath( self.pdb_file ),
+            pdb_file=self.relpath( 'noloop.pdb' ),
             result_file=self.relpath( self.result_file, no_ext=True ),
             pixelsize=pixelsize,
             resolution=self.resolution,
@@ -695,7 +699,7 @@ class LoopCrosscorrel( PyTool ):
         )
         self.spider_delete_filled_densities = SpiderDeleteFilledDensities( 
             self.spider_shift.map_shift,self.spider_box.box_map_file, self.pdb_box.edited_pdb_file, self.spider_box.box_file,
-            self.resolution,
+            self.resolution,self.res1,self.res2,
             **copy_dict( 
                 kwargs, run=False, 
                 output_dir=self.subdir("delete_filled_densities") 
