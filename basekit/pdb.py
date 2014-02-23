@@ -356,16 +356,16 @@ class PdbSuperpose( PyTool, ProviMixin ):
         s1 = npdb1.copy( **self.sele1 )
         s2 = npdb2.copy( **self.sele2 )
 
-        i1 = s1.iter_resno()
-        i2 = s2.iter_resno()
+        i1 = s1._iter_resno()
+        i2 = s2._iter_resno()
 
-        for n1, n2 in itertools.izip( i1, i2 ):
-            for i in xrange( len(n1) ):
-                a1 = n1[i]
-                a2 = n2[ n2['atomname']==a1['atomname'] ][0]
-                d = mag( n1['xyz'][i] - n2['xyz'][ n2['atomname']==a1['atomname'] ][0] )
-                n1['bfac'][i] = d
-        s1.write( self.superposed2_file )
+        # for n1, n2 in itertools.izip( i1, i2 ):
+        #     for i in xrange( len(n1) ):
+        #         a1 = n1[i]
+        #         a2 = n2[ n2['atomname']==a1['atomname'] ][0]
+        #         d = mag( n1['xyz'][i] - n2['xyz'][ n2['atomname']==a1['atomname'] ][0] )
+        #         n1['bfac'][i] = d
+        # s1.write( self.superposed2_file )
 
         with open( self.info_file, "w" ) as fp:
             fp.write( "\n".join( msg ) )
