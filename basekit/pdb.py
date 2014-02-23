@@ -15,7 +15,7 @@ import numpy as np
 np.seterr( all="raise" )
 
 import utils.numpdb as numpdb
-from utils import try_int, copy_dict
+from utils import try_int, copy_dict, listify
 from utils.tool import _, _dir_init, PyTool, ProviMixin, CmdTool
 from utils.timer import Timer
 from utils.db import get_pdb_files
@@ -329,8 +329,8 @@ class PdbSuperpose( PyTool, ProviMixin ):
     args = [
         _( "pdb_file1", type="file", ext="pdb" ),
         _( "pdb_file2", type="file", ext="pdb" ),
-        _( "sele1", type="sele" ),
-        _( "sele2", type="sele" ),
+        _( "sele1", type="str" ),
+        _( "sele2", type="str" ),
         _( "subset|ss", type="str", default="CA" ),
         _( "rmsd_cutoff|co", type="float", default=1.0 ),
         _( "align|ali", type="bool", default=True ),
@@ -345,19 +345,32 @@ class PdbSuperpose( PyTool, ProviMixin ):
     def func( self ):
         npdb1 = numpdb.NumPdb( self.pdb_file1 )
         npdb2 = numpdb.NumPdb( self.pdb_file2 )
+
+        sele1 = map( numpdb.numsele, self.sele1.split() )
+        sele2 = map( numpdb.numsele, self.sele2.split() )
+
         sp, msg = numpdb.superpose( 
-            npdb1, npdb2, self.sele1, self.sele2, 
+            npdb1, npdb2, sele1, sele2, 
             subset=self.subset, inplace=True,
             rmsd_cutoff=self.rmsd_cutoff, max_cycles=100,
             align=self.align
         )
         npdb1.write( self.superposed_file )
 
-        s1 = npdb1.copy( **self.sele1 )
-        s2 = npdb2.copy( **self.sele2 )
+        _sele1 = np.zeros( npdb1.length, bool )
+        _sele2 = np.zeros( npdb2.length, bool )
 
-        i1 = s1._iter_resno()
-        i2 = s2._iter_resno()
+        for s in sele1: _sele1 |= npdb1.sele( **s )
+        for s in sele2: _sele2 |= npdb2.sele( **s )
+
+        s1 = npdb1.copy( **{ "sele": _sele1 } )
+        s2 = npdb2.copy( **{ "sele": _sele2 } )
+
+        # s1 = npdb1.copy( **self.sele1 )
+        # s2 = npdb2.copy( **self.sele2 )
+
+        # i1 = s1.iter_resno()
+        # i2 = s2.iter_resno()
 
         # for n1, n2 in itertools.izip( i1, i2 ):
         #     for i in xrange( len(n1) ):
