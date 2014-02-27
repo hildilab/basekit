@@ -5,13 +5,15 @@
     { 
         "filename": "${pdb_file1}",
         "params": {
-            "load_as": "append"
+            "load_as": "append",
+            "style": "color {*} tomato;"
         }
     },
     { 
         "filename": "${superposed_file}",
         "params": {
-            "load_as": "append"
+            "load_as": "append",
+            "style": "color {*} skyblue;"
         }
     }
 ]

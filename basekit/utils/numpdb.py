@@ -15,7 +15,7 @@ import basekit.utils.path
 from basekit.utils.align import aligner
 from basekit.utils import (
     try_int, try_float, get_index, copy_dict, iter_window, iter_stride,
-    memoize_m
+    memoize_m, listify
 )
 from math import mag, axis, Superposition, rmatrixu
 from bio import AA1
@@ -168,8 +168,18 @@ def numdist( numa1, numa2 ):
 
 def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
                rmsd_cutoff=None, max_cycles=None, align=True, verbose=True ):
-    numa1 = npdb1.copy( **copy_dict( sele1, atomname=subset ) )
-    numa2 = npdb2.copy( **copy_dict( sele2, atomname=subset ) )
+
+    sele1 = listify( sele1 )
+    sele2 = listify( sele2 )
+
+    _sele1 = np.zeros( npdb1.length, bool )
+    _sele2 = np.zeros( npdb2.length, bool )
+
+    for s in sele1: _sele1 |= npdb1.sele( **s )
+    for s in sele2: _sele2 |= npdb2.sele( **s )
+
+    numa1 = npdb1.copy( **{ "sele": _sele1, "atomname": subset } )
+    numa2 = npdb2.copy( **{ "sele": _sele2, "atomname": subset } )
 
     msg = []
     def p( m, echo=True ):
@@ -187,14 +197,18 @@ def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
         i = 0
         j = 0
         for x, y in zip( ali1, ali2 ):
+            _i = 0
+            _j = 0
             if x=="-":
                 ali_sele2[j] = False
             else:
-                i += 1
+                _i = 1
             if y=="-":
                 ali_sele1[i] = False
             else:
-                j += 1
+                _j = 1
+            i += _i
+            j += _j
         numa1 = numa1.copy( sele=ali_sele1 )
         numa2 = numa2.copy( sele=ali_sele2 )
 
