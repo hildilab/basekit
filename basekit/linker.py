@@ -18,7 +18,7 @@ import numpy as np
 
 import provi_prep as provi
 from spider import LoopCrosscorrel
-from pdb import PdbEdit, SplitPdbSSE, LoopDelete 
+from pdb import PdbEdit, SplitPdbSSE, LoopDelete ,find_backbone_clashes,PdbSplit,get_tree
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "linker" ) 
 
@@ -44,7 +44,8 @@ class LinkIt( CmdTool, ProviMixin ):
         _( "pdb_linker_file2", file="{pdb_file.stem}_linker2.pdb" ),
         _( "pdb_linker_file3", file="{pdb_file.stem}_linker3.pdb" ),
         _( "kos_file", file="{pdb_file.stem}_kos.txt" ),
-        _( "json_file", file="{pdb_file.stem}_linker.json" )
+        _( "json_file", file="{pdb_file.stem}_linker.json" ),
+        _( "loop_dir", dir="loops" )
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "link_it.provi"
@@ -57,6 +58,7 @@ class LinkIt( CmdTool, ProviMixin ):
     def _post_exec( self ):
         self._fix_linker_pdb( self.pdb_linker_file2 )
         self._fix_linker_pdb( self.pdb_linker_file3, atoms_only=True )
+        self._split_loop_file()
         self._make_linker_json( compact=True )
         self._make_provi_file(
             pdb_file=self.relpath( self.pdb_file ),
@@ -83,6 +85,7 @@ class LinkIt( CmdTool, ProviMixin ):
                 )
     def _fix_linker_pdb( self, output_file, atoms_only=False, stems=True ):
         backbone = ( ' N  ',' C  ', ' CA ',' O  ' )
+        
         with open( self.pdb_linker_file, "r" ) as fp:
             with open( output_file, "w" ) as fp_out:
                 for i, line in enumerate( fp ):
@@ -107,13 +110,54 @@ class LinkIt( CmdTool, ProviMixin ):
                         continue
                     if not atoms_only:
                         fp_out.write( line )
+    def _split_loop_file( self ):
+        PdbSplit( 
+            self.pdb_linker_file2, output_dir=self.loop_dir, backbone_only=True, 
+             resno_ignore=[ 1000, 2000 ], zfill=3
+        )                    
+    def _find_clashes ( self ):
+        backbone = ( ' N  ',' C  ', ' CA ',' O  ' )
+        npdb=NumPdb( self.pdb_file ,{"backbone_only": True})
+        protein=get_tree(npdb['xyz'])
+       
+        clashing_models=[]
+        
+        for  fn in os.listdir(self.loop_dir):
+
+            if fn.endswith(".pdb"):
+                lf=os.path.join(self.loop_dir,fn)
+                npdb2=NumPdb( lf,
+            {"backbone_only": True} )
+                loops=get_tree(npdb2['xyz'])
+                k=loops.query_ball_tree(protein, 3)
+                g = [x for x in k if x != []]
+
+                f=itertools.chain(*g)
+                clashatoms=sorted(set(list(f)))
+                clashes=[]
+           
+                for i in clashatoms:
+                    e=npdb.get('resno')[i]
+                    if e not in (self.res1['resno'],self.res2['resno']):
+                        clashes.append(e)
+                if len(clashes)!=0:
+                    model=fn.split('_')[0]
+                    clashing_models.append(float(model))
+
+        return clashing_models
     def _make_linker_json( self, compact=False ):
         linker_dict = {}
+        clashing_models =self._find_clashes()
+        
         with open( self.txt_file, "r" ) as fp:
             fp.next()
             fp.next()
             for i, d in enumerate( iter_stride( fp, 4 ), start=1 ):
-                linker_dict[ i ] = [ float(d[0]), float(d[1]), str(d[2].strip()),str(d[3].strip()) ]
+                if i in clashing_models :
+                    flag=1
+                else:
+                    flag=0
+                linker_dict[ i ] = [ float(d[0]), float(d[1]), str(d[2].strip()),str(d[3].strip()),flag ]
 
         with open( self.json_file, "w" ) as fp:
             if compact:
@@ -317,7 +361,6 @@ class LnkItVali(PyTool, ProviMixin):
                         continue
 #   Analyse 
 #found the original fragment?
-
 
 class AnalyseLiniktRun( PyTool , ProviMixin):
     args = [

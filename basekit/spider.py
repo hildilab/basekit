@@ -9,7 +9,7 @@ from utils import copy_dict
 from utils.tool import _, _dir_init, PyTool, CmdTool, ScriptMixin
 from utils.numpdb import NumPdb
 from utils.mrc import get_mrc_header, getMrc
-
+from utils.math import rmsd
 from pdb import *#PdbSplit
 #from pdb import PdbEdit, NumpdbTest
 
@@ -653,6 +653,125 @@ class BuildBest ( PyTool ):
         
         b.writelines(gesamt)
 
+
+class SideChainStatistics ( PyTool ):
+        args = [
+    _( "dataset_dir", type="dir" )
+    ]
+        out = [
+     _( "stat_file", file="statistics.csv" )
+    ]
+        #def rmsd( coords1, coords2 ):
+        #    return np.sqrt( 
+        #        np.sum( np.power( coords1-coords2, 2 ) ) / coords1.shape[0]
+        #    )  
+        def func (self):
+            
+            with open (self.stat_file, 'w') as rf:
+                title="%s,%s,%s,%s,%s,%s,%s%s" %  ("residue","rotanumber","hmm","corr", "oricorr","rmsd","bigger","\n")
+                rf.write(title)
+                fi=sorted((os.listdir(self.dataset_dir)), key= lambda x: int(x.split('_')[-1]))
+                g=0
+                b=0
+                m=0
+                a=0#fi.sort(key=float)
+                #print fi
+                for pn in fi:#os.listdir("chainA"):
+                   # print pn
+                    #if os.path.isdir(pn):
+                    z=0
+                    #print pn
+                    if pn[2:5]  not in ("GLY", "ALA"):
+                        a+=1
+                        ccsort=  os.path.join(self.dataset_dir,pn,"ccsort.cpv")
+                        ori=os.path.join(self.dataset_dir,pn,"oricrosscorrelation.cpv")
+                        
+                        #print ori
+                        
+                        with open (ccsort, 'r') as hu:
+                            lines=hu.readlines()
+                            hurz=','.join(lines[1].split())
+                            #hurz2=hurz+"\n"
+                            ncor=lines[1].split()[-1]
+                            
+                        with open (ori,'r') as bu:
+                            line2=bu.readlines()
+                            #hurz.append(line2)
+        
+                            corr=line2[1].split()[-1]
+                            #print ncor
+                            if float(ncor)>float(corr):
+                                z=1
+                            
+                        oripdb=os.path.join(self.dataset_dir,pn,pn+".pdb")
+                        
+                        best=(lines[1].split()[0]).zfill(2)
+                        #print best
+                        bestrota="%s_%s.%s" % (pn[2:],best,'pdb')
+                        #print bestrota
+                        rotadir=os.path.join(self.dataset_dir,pn,"rotamere")
+                        bestpdb=os.path.join(self.dataset_dir,pn,"rotamere",bestrota)
+
+                        npdb = numpdb.NumPdb( bestpdb, {
+                            "phi_psi": False,
+                            "sstruc": False,
+                            "backbone_only": False,
+                            "protein_only": False,
+                            "detect_incomplete": False,
+                            "configuration": False,
+                            "info": False
+                            })
+                        sele = npdb.sele()
+                        #npdb2=get_npdb( oripdb )
+                        npdb2 = numpdb.NumPdb( oripdb, {
+                            "phi_psi": False,
+                            "sstruc": False,
+                            "backbone_only": False,
+                            "protein_only": False,
+                            "detect_incomplete": False,
+                            "configuration": False,
+                            "info": False
+                            })
+                        sele2 = npdb2.sele()
+                        a1=np.array(npdb['xyz'])
+                        a2=np.array(npdb2['xyz'])
+                        #print npdb['xyz']
+                        rootm=rmsd(npdb['xyz'],npdb2['xyz'])
+                        bestrmsd=[]
+                        for file in os.listdir(rotadir):
+                            
+                            if file.endswith(".pdb"):
+                                #print file, "hallo"
+                                npdb3 = numpdb.NumPdb(os.path.join(rotadir,file), {
+                            "phi_psi": False,
+                            "sstruc": False,
+                            "backbone_only": False,
+                            "protein_only": False,
+                            "detect_incomplete": False,
+                            "configuration": False,
+                            "info": False
+                            })
+                                #print npdb3['xyz']
+                                rootm2=rmsd(npdb3['xyz'],npdb2['xyz'])
+                                bestrmsd.append(float(rootm2))
+                        test100=sorted(bestrmsd)
+                        #print test100
+                        if test100[0]==rootm:
+                            print "yeahaa!"
+                            y=1
+                            g+=1
+                        if rootm <1.2 and not test100[0]==rootm:
+                            m+=1
+                            y=2
+                            
+                        if rootm >=1.2 and not test100[0]==rootm:
+                            y=0
+                            b+=1
+                            
+                        hurz2="%s,%s,%s,%s,%s,%s%s" %  (pn,hurz,corr,rootm,z,y,"\n")
+                        rf.write(hurz2)
+                print a,g,m,b
+     
 
 class LoopCrosscorrel( PyTool ):
     args = [
