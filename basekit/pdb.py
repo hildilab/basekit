@@ -785,9 +785,8 @@ def get_tree( coords ):
     return scipy.spatial.KDTree( coords )
 
 
-
 def find_all_clashes (npdb):
-
+    
     clashes=[]
     lastatom=[]
     lastatom=npdb['xyz'] 
