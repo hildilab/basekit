@@ -18,7 +18,7 @@ import numpy as np
 
 import provi_prep as provi
 from spider import LoopCrosscorrel
-from pdb import PdbEdit, SplitPdbSSE, LoopDelete ,find_backbone_clashes,PdbSplit,get_tree
+from pdb import PdbEdit, SplitPdbSSE, LoopDelete ,PdbSplit,get_tree
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "linker" ) 
 
