@@ -116,11 +116,11 @@ def get_argument( params ):
 
     if params["type"] in [ "float" ]:
         kwargs["type"] = float
-    elif params["type"] in [ "int" ]:
+    elif params["type"] in [ "int", "integer" ]:
         kwargs["type"] = int
-    elif params["type"] in [ "file", "dir", "sele", "str", "list" ]:
+    elif params["type"] in [ "file", "dir", "sele", "str", "string", "list" ]:
         kwargs["type"] = str
-    elif params["type"] in [ "bool" ]:
+    elif params["type"] in [ "bool", "boolean" ]:
         if kwargs["default"]==False:
             kwargs["action"] = "store_true"
         else:
@@ -203,14 +203,23 @@ class ToolMetaclass( type ):
             p = make_arg( p )
             args[ p["name"] ] = p
 
+        def make_out( params ):
+            return params
+        out = collections.OrderedDict()
+        for p in dct.get( "out", [] ):
+            out[ p["name"] ] = make_out( p )
+
         for mixin_name, mixin_cls in MIXIN_REGISTER.iteritems():
             if mixin_cls in bases:
                 for p in mixin_cls.__dict__.get( "args", [] ):
                     p["group"] = mixin_cls.__name__[:-5].lower()
                     p = make_arg( p )
                     args[ p["name"] ] = p
+                for p in mixin_cls.__dict__.get( "out", [] ):
+                    out[ p["name"] ] = make_out( p )
 
         cls.args = args
+        cls.out = out
 
         if MIXIN_REGISTER['ParallelMixin'] in bases:
             if not "ParallelClass" in dct:
@@ -223,30 +232,20 @@ class ToolMetaclass( type ):
         if not "no_output" in dct:
             cls.no_output = False
 
-        def make_out( params ):
-            return params
-
-        out = collections.OrderedDict()
-        for p in dct.get( "out", [] ):
-            out[ p["name"] ] = make_out( p )
-
-        cls.out = out
-
-
 
 class Mixin( object ):
     __metaclass__ = ToolMetaclass
 
 
 class TmplMixin( Mixin ):
-    def _make_file_from_tmpl( self, tmpl_name, output_dir=None, 
+    def _make_file_from_tmpl( self, tmpl_name, output_dir=None, out_name=None,
                               prefix=None, use_jinja2=False, **values_dict ):
         output_dir = output_dir or self.output_dir
         tmpl_file = os.path.join( self.tmpl_dir, tmpl_name )
         with open( tmpl_file, "r" ) as fp:
             tmpl_str = fp.read()
         out_file = os.path.join( output_dir, tmpl_name )
-        out_file = utils.path.mod( out_file, prefix=prefix )
+        out_file = utils.path.mod( out_file, prefix=prefix, name=out_name )
         if use_jinja2:
             out = jinja2.Template( tmpl_str ).render( **values_dict )
         else:
