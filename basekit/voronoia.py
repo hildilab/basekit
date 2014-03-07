@@ -10,6 +10,8 @@ import logging
 import collections
 import utils.numpdb as numpdb
 import math
+
+import numpy as np
 from numpy import *
 from array import array
 
@@ -165,7 +167,6 @@ def parse_vol( vol_file, pdb_file ):
         hole_list.append( 
             VolHole( no, hole_types[ no-1 ], neighbours2 )
         )
-
     for i, l in enumerate(vol_lines):
         if l:
             ls = l.split()
@@ -239,6 +240,74 @@ def make_ref( tool_results ):
         dic_in_dic( elem, ref_dic_dens[elem], out_dens )
     return out_dens, out_dev, log_list
 
+
+def make_nrhole_pdb( pdb_input, holes, nh_file, std_file, pymol_file):
+    npdb = numpdb.NumPdb( pdb_input )
+    sele2={'record':'HETATM'}
+    last_hetatm=int(npdb.get('atomno', **sele2)[-1])
+    fi=open(nh_file, 'w')
+    preline=""
+    std_dct={}
+    neighbours={}
+    with open(pdb_input, 'r') as fp:
+        for line in fp:
+            if preline!=line[0:6] and preline=="HETATM":
+                for hno, hole in enumerate(holes):
+                    chain=''
+                    xyz_list=[]
+                    atom_list=[]
+                    for hn in hole[2]:
+                        atomno, atomname, resno, resname, chain=hn
+                        sele={'atomno':atomno, 'chain':chain}
+                        xyz=npdb.get('xyz', **sele)[0]
+                        xyz_list.append(xyz)
+                        atom_list.append([atomno, resno, chain])
+                    neighbours[hno]=atom_list
+                    xyz2=xyz_list
+                    coords = np.mean(xyz_list, axis=0)
+                    xyz_list_dist=[]
+                    for co in xyz2:
+                        xyz_list_dist.append(np.sqrt(np.sum((coords-co)**2)))
+                    mean=np.mean(xyz_list_dist, axis=0)
+                    std=np.std(xyz_list_dist)
+                    natom={
+                        "record":"HETATM","atomno": last_hetatm+hno, "atomname": " CA ",
+                        "resname": "NEH", "chain": chain, "resno": hno,
+                        "x": coords[0], "y": coords[1], "z": coords[2], "bfac": std, "element": " C"
+                    }
+                    std_dct[last_hetatm+hno]=mean
+                    fi.write(numpdb.pdb_line( natom ))
+                fi.write(line)
+            else:
+                fi.write(line)
+            preline=line[0:6]
+    with open( std_file, "w" ) as fp:
+        json.dump( std_dct, fp )
+    with open(pymol_file, 'w') as fp:
+        code='import pymol; \n'+\
+            'pymol.finish_launching() \n'+\
+            'neighbours='+json.dumps(neighbours)+' \n'+\
+            'mean_dic='+json.dumps(std_dct)+' \n'+\
+            'pymol.cmd.load("'+nh_file+'") \n'+\
+            'pymol.cmd.hide( representation="line") \n'+\
+            'pymol.cmd.show( representation="cartoon") \n'+\
+            'pymol.cmd.select( "neh", "resname NEH") \n'+\
+            'pymol.cmd.show(representation="spheres", selection="neh") \n'+\
+            'pymol.cmd.spectrum( "b", "blue_white_red", "neh") \n'+\
+            'for index, elem in enumerate(mean_dic): \n'+\
+            '    pymol.cmd.select( "temp", "(resi "+str(index)+" and resname NEH)" ) \n'+\
+            '    pymol.cmd.alter("temp", "vdw="+str(mean_dic[elem]/2)) \n'+\
+            '    pymol.cmd.rebuild() \n'+\
+            'for index, elem in enumerate(neighbours): \n'+\
+            '    liste="" \n'+\
+            '    for neighbour in neighbours[elem]: \n'+\
+            '        if liste!="": \n'+\
+            '            liste=liste+"+" \n'+\
+            '        liste=liste+"(id "+str(neighbour[0])+" and resi "+str(neighbour[1])+" and chain "+neighbour[2]+")" \n'+\
+            '    pymol.cmd.select( "neighbour_"+str(elem), liste ) \n'
+        fp.write(code)
+
+
 # get_volume.exe ex:0.1 rad:protor i:file.pdb o:out.vol
 class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
     """A wrapper around the 'voronoia' aka 'get_volume' programm."""
@@ -252,14 +321,18 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
             help="slightly changes the input coordinates to"
                 "circumvent numerical problems" ),
         _( "make_reference|mr", type="bool", default=False ),
-        _( "analyze_only|ao", type="bool", default=False )
+        _( "analyze_only|ao", type="bool", default=False ),
+        _( "get_nrholes|gh", type="bool", default=False )
     ]
     out = [
         _( "vol_file", file="{pdb_input.stem}.vol" ),
         _( "log_file", file="{pdb_input.stem}.log" ),
         _( "dens_file", file="ref_protor_packing.json", optional=True ),
         _( "dev_file", file="ref_protor_deviation.json", optional=True ),
-        _( "protor_log_file", file="protor.log", optional=True )
+        _( "protor_log_file", file="protor.log", optional=True ),
+        _( "nh_file", file="{pdb_input.stem}_nh.pdb", optional=True ),
+        _( "pymol_file", file="pymol_settings.py", optional=True ),
+        _( "std_file", file="{pdb_input.stem}_std.json", optional=True ),
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "voronoia.provi"
@@ -306,6 +379,7 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
             self.burried = dicts['buried']
             self.packdens = dicts['packdens']
             self.log_list = dicts['log_list']
+            self.holes = dicts['holes']
             zscore_allb = []; zscore_all = 0
             for elem in self.zscores:
                 if self.burried[elem]:
@@ -321,6 +395,8 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                 )
             ]
             self.write()
+            if self.get_nrholes:
+                make_nrhole_pdb(self.pdb_input,self.holes, self.nh_file, self.std_file, self.pymol_file)
         if self.parallel and self.make_reference:
             dict_dens, dict_dev, log_list = make_ref( self.tool_results )
             d = ( self.dens_file, dict_dens ), ( self.dev_file, dict_dev )
@@ -332,3 +408,9 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
     @memoize_m
     def get_vol( self ):
         return parse_vol( self.vol_file, self.pdb_input )
+
+
+
+
+
+
