@@ -304,7 +304,12 @@ def make_nrhole_pdb( pdb_input, holes, nh_file, std_file, pymol_file):
             '        if liste!="": \n'+\
             '            liste=liste+"+" \n'+\
             '        liste=liste+"(id "+str(neighbour[0])+" and resi "+str(neighbour[1])+" and chain "+neighbour[2]+")" \n'+\
-            '    pymol.cmd.select( "neighbour_"+str(elem), liste ) \n'
+            '    pymol.cmd.select( "neighbour_"+str(elem), liste ) \n'+\
+            'pymol.cmd.delete("temp") \n'+\
+            'pymol.cmd.group("neighbours", "neighbour_*") \n'+\
+            'pymol.cmd.select("resname NEH") \n'+\
+            'pymol.cmd.order("*", "yes") \n'+\
+            'pymol.cmd.order("order '+nh_file+' sele neh neighbours")'
         fp.write(code)
 
 
