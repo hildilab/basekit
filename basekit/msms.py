@@ -4,7 +4,7 @@ from __future__ import with_statement
 from __future__ import division
 
 import numpy as np
-
+import utils.numpdb as numpdb
 import os
 import string
 import shutil
@@ -14,6 +14,7 @@ import utils
 from utils import copy_dict, dir_walker, iter_stride
 from utils.tool import _, _dir_init, CmdTool, ProviMixin
 from utils.math import hclust
+import json
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "msms" )
 
@@ -146,6 +147,85 @@ def parse_msms_vert( vert_file ):
     return np.array( vert_list, dtype=types )
 
 
+def make_nrhole_pdb( pdb_input, holes, nh_file, std_file, pymol_file):
+    npdb = numpdb.NumPdb( pdb_input )
+    sele2={'record':'HETATM'}
+    last_hetatm=int(npdb.get('atomno', **sele2)[-1])
+    fi=open(nh_file, 'w')
+    preline=""
+    std_dct={}
+    neighbours={}
+    with open(pdb_input, 'r') as fp:
+        for line in fp:
+            if preline!=line[0:6] and preline=="HETATM":
+                for hno, holeneighbours in enumerate(holes["ses"]):
+                    if holeneighbours!=[]:
+                        chain=''
+                        xyz_list=[]
+                        atom_list=[]
+                        for hn in holeneighbours:
+                            try:
+                                atomno=hn
+                                sele={'atomno':atomno}
+                                resno=npdb.get('resno', **sele)[0]
+                                sele={'atomno':atomno}
+                                chain=npdb.get('chain', **sele)[0]
+                                sele={'atomno':atomno, 'chain':chain }
+                                xyz=npdb.get('xyz', **sele)[0]
+                                xyz_list.append(xyz)
+                                atom_list.append([atomno, int(resno), chain])
+                            except:
+                                break
+                        neighbours[hno]=atom_list
+                        xyz2=xyz_list
+                        coords = np.mean(xyz_list, axis=0)
+                        xyz_list_dist=[]
+                        for co in xyz2:
+                            xyz_list_dist.append(np.sqrt(np.sum((coords-co)**2)))
+                        mean=np.mean(xyz_list_dist, axis=0)
+                        std=np.std(xyz_list_dist)
+                        natom={
+                            "record":"HETATM","atomno": last_hetatm+hno, "atomname": " CA ",
+                            "resname": "NEH", "chain": chain, "resno": hno,
+                            "x": coords[0], "y": coords[1], "z": coords[2], "bfac": std, "element": " C"
+                        }
+                        std_dct[last_hetatm+hno]=mean
+                        fi.write(numpdb.pdb_line( natom ))
+                fi.write(line)
+            else:
+                fi.write(line)
+            preline=line[0:6]
+    with open( std_file, "w" ) as fp:
+        json.dump( std_dct, fp )
+    with open(pymol_file, 'w') as fp:
+        code='import pymol; \n'+\
+            'pymol.finish_launching() \n'+\
+            'neighbours='+json.dumps(neighbours)+' \n'+\
+            'mean_dic='+json.dumps(std_dct)+' \n'+\
+            'pymol.cmd.load("'+nh_file+'") \n'+\
+            'pymol.cmd.hide( representation="line") \n'+\
+            'pymol.cmd.show( representation="cartoon") \n'+\
+            'pymol.cmd.select( "neh", "resname NEH") \n'+\
+            'pymol.cmd.show(representation="spheres", selection="neh") \n'+\
+            'pymol.cmd.spectrum( "b", "blue_white_red", "neh") \n'+\
+            'for index, elem in enumerate(mean_dic): \n'+\
+            '    pymol.cmd.select( "temp", "(resi "+str(index)+" and resname NEH)" ) \n'+\
+            '    pymol.cmd.alter("temp", "vdw="+str(mean_dic[elem]/2)) \n'+\
+            '    pymol.cmd.rebuild() \n'+\
+            'for index, elem in enumerate(neighbours): \n'+\
+            '    liste="" \n'+\
+            '    for neighbour in neighbours[elem]: \n'+\
+            '        if liste!="": \n'+\
+            '            liste=liste+"+" \n'+\
+            '        liste=liste+"(id "+str(neighbour[0])+" and resi "+str(neighbour[1])+" and chain "+neighbour[2]+")" \n'+\
+            '    pymol.cmd.select( "neighbour_"+str(elem), liste ) \n'+\
+            'pymol.cmd.delete("temp") \n'+\
+            'pymol.cmd.group("neighbours", "neighbour_*") \n'+\
+            'pymol.cmd.select("resname NEH") \n'+\
+            'pymol.cmd.order("*", "yes") \n'+\
+            'pymol.cmd.order("order '+nh_file+' sele neh neighbours")'
+        fp.write(code)
+
 
 class Msms( CmdTool, ProviMixin ):
     """A wrapper around the MSMS program."""
@@ -162,6 +242,8 @@ class Msms( CmdTool, ProviMixin ):
         _( "envelope_hclust", type="str", default="", 
             options=[ "", "ward", "average" ], help="'', average, ward" ),
         _( "atom_radius_add", type="float", default=0 ),
+        _( "getinfo", type="bool", default=False ),
+        _( "get_nrholes|gh", type="bool", default=False ),
     ]
     out = [
         _( "area_file", file="area.area" ),
@@ -171,7 +253,11 @@ class Msms( CmdTool, ProviMixin ):
         _( "surf_file2", file="surf2.xyz" ),
         _( "surf_file3", file="surf3.xyz" ),
         _( "surf_file4", file="surf4.xyz", optional=True ),
-        _( "provi_file", file="msms.provi" )
+        _( "provi_file", file="msms.provi" ),
+        _( "info_file", file="info_file.txt", optional=True ),
+        _( "nh_file", file="{pdb_file.stem}_nh.pdb", optional=True ),
+        _( "pymol_file", file="pymol_settings.py", optional=True ),
+        _( "std_file", file="{pdb_file.stem}_std.json", optional=True ),
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "msms.provi"
@@ -289,6 +375,41 @@ class Msms( CmdTool, ProviMixin ):
                         d3[0], d3[1], d3[2]
                     )
                     fp.write( l )
+        if self.getinfo:
+            self.get_infos()
+        if self.get_nrholes:
+            area = parse_msms_area( self.area_file)
+            make_nrhole_pdb( self.pdb_file, area, self.nh_file, self.std_file, self.pymol_file )
+    def get_infos( self ):
+        def make_list(area):
+            sas_cav={}
+            for cav_no, cav in enumerate(area):
+                for atom in cav:
+                    if sas_cav.has_key(cav_no):
+                        try:
+                            sas_cav[cav_no].append(res_list[atom])
+                        except:
+                            pass
+                    else:
+                        try:
+                            sas_cav[cav_no] = [res_list[atom]]
+                        except:
+                            pass
+            return sas_cav
+        comps = self.get_components()
+        area = parse_msms_area( self.area_file)
+        res_list={}
+        with open(self.pdb_file, 'r') as fp:
+            for line in fp:
+                if line.startswith("ATOM"):
+                    res_list[int(line[6:11])] = (line[21:22], int(line[22:26]))
+        ses_cav=make_list(area["ses"])
+        result_list=[["Cav", "ses_area", "ses_vol", "ses_neighbour_residue_list"]]
+        for cav in range(len(comps)):
+            r=sorted(list(set(ses_cav[cav])))
+            result_list.append([comps[cav][0], comps[cav][1], comps[cav][2], r])
+        with open( self.info_file, "w" ) as fp:
+            json.dump( result_list, fp, indent=4 )
     def components_provi( self, color="", translucent=0.0, relpath=None,
                             max_atomno=None ):
         if self.all_components:
