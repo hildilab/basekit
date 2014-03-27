@@ -226,6 +226,21 @@ def make_nrhole_pdb( pdb_input, holes, nh_file, std_file, pymol_file):
             'pymol.cmd.order("order '+nh_file+' sele neh neighbours")'
         fp.write(code)
 
+def f_v_to_mesh(face_file, vert_file, mesh_file):
+    def writer(f, fp, pre):
+        tmp=True
+        with open(f, 'r') as fp2:
+            for line in fp2:
+                if line.startswith('#'):
+                    fp.write(line)
+                elif tmp:
+                    tmp=False
+                else:
+                    splitted=line.split()
+                    fp.write(pre+' '+splitted[0]+' '+splitted[1]+' '+splitted[2]+'\n')    
+    with open(mesh_file, 'w') as fp:
+        writer(vert_file, fp, 'v')
+        writer(face_file, fp, 'f')
 
 class Msms( CmdTool, ProviMixin ):
     """A wrapper around the MSMS program."""
@@ -380,6 +395,11 @@ class Msms( CmdTool, ProviMixin ):
         if self.get_nrholes:
             area = parse_msms_area( self.area_file)
             make_nrhole_pdb( self.pdb_file, area, self.nh_file, self.std_file, self.pymol_file )
+        v = "tri_surface(_?[0-9]*)\.(vert)"
+        for m, vertfile in dir_walker( self.output_dir, v ):
+            facefile = vertfile[:-4]+'face'
+            meshfile = vertfile[:-4]+'obj'
+            f_v_to_mesh(facefile, vertfile, meshfile)
     def get_infos( self ):
         def make_list(area):
             sas_cav={}
