@@ -240,6 +240,38 @@ def make_ref( tool_results ):
         dic_in_dic( elem, ref_dic_dens[elem], out_dens )
     return out_dens, out_dev, log_list
 
+def make_nrholes_pymol(std_file, std_dct, pymol_file, neighbours, nh_file):
+    with open( std_file, "w" ) as fp:
+        json.dump( std_dct, fp )
+    with open(pymol_file, 'w') as fp:
+        code='import pymol; \n'+\
+            'pymol.finish_launching() \n'+\
+            'neighbours='+json.dumps(neighbours)+' \n'+\
+            'mean_dic='+json.dumps(std_dct)+' \n'+\
+            'pymol.cmd.load("'+nh_file+'") \n'+\
+            'pymol.cmd.hide( representation="line") \n'+\
+            'pymol.cmd.show( representation="cartoon") \n'+\
+            'pymol.cmd.select( "neh", "resname NEH") \n'+\
+            'pymol.cmd.show(representation="spheres", selection="neh") \n'+\
+            'pymol.cmd.spectrum( "b", "blue_white_red", "neh") \n'+\
+            'for index, elem in enumerate(mean_dic): \n'+\
+            '    pymol.cmd.select( "temp", "(resi "+str(index)+" and resname NEH)" ) \n'+\
+            '    pymol.cmd.alter("temp", "vdw="+str(mean_dic[elem]/2)) \n'+\
+            '    pymol.cmd.rebuild() \n'+\
+            'for index, elem in enumerate(neighbours): \n'+\
+            '    liste="" \n'+\
+            '    for neighbour in neighbours[elem]: \n'+\
+            '        if liste!="": \n'+\
+            '            liste=liste+"+" \n'+\
+            '        liste=liste+"(id "+str(neighbour[0])+" and resi "+str(neighbour[1])+" and chain "+neighbour[2]+")" \n'+\
+            '    pymol.cmd.select( "neighbour_"+str(elem), liste ) \n'+\
+            'pymol.cmd.delete("temp") \n'+\
+            'pymol.cmd.group("neighbours", "neighbour_*") \n'+\
+            'pymol.cmd.select("resname NEH") \n'+\
+            'pymol.cmd.order("*", "yes") \n'+\
+            'pymol.cmd.order("order '+nh_file+' sele neh neighbours")'
+        fp.write(code)
+
 
 def make_nrhole_pdb( pdb_input, holes, nh_file, std_file, pymol_file):
     npdb = numpdb.NumPdb( pdb_input )
@@ -281,36 +313,7 @@ def make_nrhole_pdb( pdb_input, holes, nh_file, std_file, pymol_file):
             else:
                 fi.write(line)
             preline=line[0:6]
-    with open( std_file, "w" ) as fp:
-        json.dump( std_dct, fp )
-    with open(pymol_file, 'w') as fp:
-        code='import pymol; \n'+\
-            'pymol.finish_launching() \n'+\
-            'neighbours='+json.dumps(neighbours)+' \n'+\
-            'mean_dic='+json.dumps(std_dct)+' \n'+\
-            'pymol.cmd.load("'+nh_file+'") \n'+\
-            'pymol.cmd.hide( representation="line") \n'+\
-            'pymol.cmd.show( representation="cartoon") \n'+\
-            'pymol.cmd.select( "neh", "resname NEH") \n'+\
-            'pymol.cmd.show(representation="spheres", selection="neh") \n'+\
-            'pymol.cmd.spectrum( "b", "blue_white_red", "neh") \n'+\
-            'for index, elem in enumerate(mean_dic): \n'+\
-            '    pymol.cmd.select( "temp", "(resi "+str(index)+" and resname NEH)" ) \n'+\
-            '    pymol.cmd.alter("temp", "vdw="+str(mean_dic[elem]/2)) \n'+\
-            '    pymol.cmd.rebuild() \n'+\
-            'for index, elem in enumerate(neighbours): \n'+\
-            '    liste="" \n'+\
-            '    for neighbour in neighbours[elem]: \n'+\
-            '        if liste!="": \n'+\
-            '            liste=liste+"+" \n'+\
-            '        liste=liste+"(id "+str(neighbour[0])+" and resi "+str(neighbour[1])+" and chain "+neighbour[2]+")" \n'+\
-            '    pymol.cmd.select( "neighbour_"+str(elem), liste ) \n'+\
-            'pymol.cmd.delete("temp") \n'+\
-            'pymol.cmd.group("neighbours", "neighbour_*") \n'+\
-            'pymol.cmd.select("resname NEH") \n'+\
-            'pymol.cmd.order("*", "yes") \n'+\
-            'pymol.cmd.order("order '+nh_file+' sele neh neighbours")'
-        fp.write(code)
+    make_nrholes_pymol(std_file, std_dct, pymol_file, neighbours, nh_file)
 
 
 # get_volume.exe ex:0.1 rad:protor i:file.pdb o:out.vol

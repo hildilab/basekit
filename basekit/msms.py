@@ -15,6 +15,7 @@ from utils import copy_dict, dir_walker, iter_stride
 from utils.tool import _, _dir_init, CmdTool, ProviMixin
 from utils.math import hclust
 import json
+from basekit.voronoia import make_nrholes_pymol
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "msms" )
 
@@ -195,36 +196,7 @@ def make_nrhole_pdb( pdb_input, holes, nh_file, std_file, pymol_file):
             else:
                 fi.write(line)
             preline=line[0:6]
-    with open( std_file, "w" ) as fp:
-        json.dump( std_dct, fp )
-    with open(pymol_file, 'w') as fp:
-        code='import pymol; \n'+\
-            'pymol.finish_launching() \n'+\
-            'neighbours='+json.dumps(neighbours)+' \n'+\
-            'mean_dic='+json.dumps(std_dct)+' \n'+\
-            'pymol.cmd.load("'+nh_file+'") \n'+\
-            'pymol.cmd.hide( representation="line") \n'+\
-            'pymol.cmd.show( representation="cartoon") \n'+\
-            'pymol.cmd.select( "neh", "resname NEH") \n'+\
-            'pymol.cmd.show(representation="spheres", selection="neh") \n'+\
-            'pymol.cmd.spectrum( "b", "blue_white_red", "neh") \n'+\
-            'for index, elem in enumerate(mean_dic): \n'+\
-            '    pymol.cmd.select( "temp", "(resi "+str(index)+" and resname NEH)" ) \n'+\
-            '    pymol.cmd.alter("temp", "vdw="+str(mean_dic[elem]/2)) \n'+\
-            '    pymol.cmd.rebuild() \n'+\
-            'for index, elem in enumerate(neighbours): \n'+\
-            '    liste="" \n'+\
-            '    for neighbour in neighbours[elem]: \n'+\
-            '        if liste!="": \n'+\
-            '            liste=liste+"+" \n'+\
-            '        liste=liste+"(id "+str(neighbour[0])+" and resi "+str(neighbour[1])+" and chain "+neighbour[2]+")" \n'+\
-            '    pymol.cmd.select( "neighbour_"+str(elem), liste ) \n'+\
-            'pymol.cmd.delete("temp") \n'+\
-            'pymol.cmd.group("neighbours", "neighbour_*") \n'+\
-            'pymol.cmd.select("resname NEH") \n'+\
-            'pymol.cmd.order("*", "yes") \n'+\
-            'pymol.cmd.order("order '+nh_file+' sele neh neighbours")'
-        fp.write(code)
+    make_nrholes_pymol(std_file, std_dct, pymol_file, neighbours, nh_file)
 
 def f_v_to_mesh(face_file, vert_file, mesh_file):
     def writer(f, fp, pre):
