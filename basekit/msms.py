@@ -15,10 +15,9 @@ from utils import copy_dict, dir_walker, iter_stride
 from utils.tool import _, _dir_init, CmdTool, ProviMixin
 from utils.math import hclust
 import json
-from basekit.voronoia import make_nrholes_pymol
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "msms" )
-
+wfmesh_FILE = os.path.join( TMPL_DIR, "wfmesh.py" )
 MSMS_CMD = "msms"
 BABEL_CMD = "babel"
 
@@ -148,19 +147,23 @@ def parse_msms_vert( vert_file ):
     return np.array( vert_list, dtype=types )
 
 
-def make_nrhole_pdb( pdb_input, holes, nh_file, std_file, pymol_file):
+def make_nrhole_pdb( pdb_input, holes, nh_file, mean_file, pymol_file, obj_list):
     npdb = numpdb.NumPdb( pdb_input )
-    sele2={'record':'HETATM'}
-    last_hetatm=int(npdb.get('atomno', **sele2)[-1])
+    try:
+        sele2={'record':'HETATM'}
+        last_hetatm=int(npdb.get('atomno', **sele2)[-1])
+    except:
+        sele2={'record':'ATOM  '}
+        last_hetatm=int(npdb.get('atomno', **sele2)[-1])
     fi=open(nh_file, 'w')
     preline=""
-    std_dct={}
+    mean_dct={}
     neighbours={}
     with open(pdb_input, 'r') as fp:
         for line in fp:
-            if preline!=line[0:6] and preline=="HETATM":
+            if (preline!=line[0:6] and preline=="HETATM")  or line[0:3]=="TER" or line[0:3]=="END":
                 for hno, holeneighbours in enumerate(holes["ses"]):
-                    if holeneighbours!=[]:
+                    if holeneighbours!=[] and hno!=0:
                         chain=''
                         xyz_list=[]
                         atom_list=[]
@@ -190,15 +193,18 @@ def make_nrhole_pdb( pdb_input, holes, nh_file, std_file, pymol_file):
                             "resname": "NEH", "chain": chain, "resno": hno,
                             "x": coords[0], "y": coords[1], "z": coords[2], "bfac": std, "element": " C"
                         }
-                        std_dct[last_hetatm+hno]=mean
+                        mean_dct[last_hetatm+hno]=mean
                         fi.write(numpdb.pdb_line( natom ))
                 fi.write(line)
             else:
                 fi.write(line)
             preline=line[0:6]
-    make_nrholes_pymol(std_file, std_dct, pymol_file, neighbours, nh_file)
+    with open( mean_file, "w" ) as fp:
+        json.dump( mean_dct, fp )
+    return json.dumps(mean_dct), json.dumps(neighbours), obj_list
+    #make_nrholes_pymol(std_file, mean_dct, pymol_file, neighbours, nh_file, obj_list)
 
-def f_v_to_mesh(face_file, vert_file, mesh_file):
+def f_v_to_obj(face_file, vert_file, mesh_file, flip=False):
     def writer(f, fp, pre):
         tmp=True
         with open(f, 'r') as fp2:
@@ -209,7 +215,10 @@ def f_v_to_mesh(face_file, vert_file, mesh_file):
                     tmp=False
                 else:
                     splitted=line.split()
-                    fp.write(pre+' '+splitted[0]+' '+splitted[1]+' '+splitted[2]+'\n')    
+                    if pre=='f':
+                        fp.write(pre+' '+splitted[0]+' '+splitted[2]+' '+splitted[1]+'\n') 
+                    else:
+                        fp.write(pre+' '+splitted[0]+' '+splitted[1]+' '+splitted[2]+'\n')    
     with open(mesh_file, 'w') as fp:
         writer(vert_file, fp, 'v')
         writer(face_file, fp, 'f')
@@ -244,10 +253,11 @@ class Msms( CmdTool, ProviMixin ):
         _( "info_file", file="info_file.txt", optional=True ),
         _( "nh_file", file="{pdb_file.stem}_nh.pdb", optional=True ),
         _( "pymol_file", file="pymol_settings.py", optional=True ),
-        _( "std_file", file="{pdb_file.stem}_std.json", optional=True ),
+        _( "mean_file", file="{pdb_file.stem}_mean.json", optional=True ),
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "msms.provi"
+    pymol_tmpl = "pymol_settings.py"
     def _init( self, *args, **kwargs ):
         self.pdb2xyzr = Pdb2xyzr( 
             self.pdb_file, **copy_dict( kwargs, run=False, verbose=False ) 
@@ -364,14 +374,23 @@ class Msms( CmdTool, ProviMixin ):
                     fp.write( l )
         if self.getinfo:
             self.get_infos()
-        if self.get_nrholes:
-            area = parse_msms_area( self.area_file)
-            make_nrhole_pdb( self.pdb_file, area, self.nh_file, self.std_file, self.pymol_file )
         v = "tri_surface(_?[0-9]*)\.(vert)"
+        obj_list=[]
         for m, vertfile in dir_walker( self.output_dir, v ):
             facefile = vertfile[:-4]+'face'
             meshfile = vertfile[:-4]+'obj'
-            f_v_to_mesh(facefile, vertfile, meshfile)
+            num=meshfile.split('_')[-1].split('.')[0]
+            try:
+                obj_list.append([int(num), meshfile])
+                f_v_to_obj(facefile, vertfile, meshfile, flip=True)
+            except ValueError:
+                f_v_to_obj(facefile, vertfile, meshfile, flip=False)
+# get the nrholes and the pymol script
+        if self.get_nrholes:
+            area = parse_msms_area( self.area_file)
+            mean_dct, neighbours, obj_list = make_nrhole_pdb( self.pdb_file, area, self.nh_file, self.mean_file, self.pymol_file, obj_list )
+            values_dict={'neighbours':neighbours, 'obj_list':obj_list, 'mean_dct':mean_dct, 'nh_file':self.nh_file, 'TMPL_DIR':self.tmpl_dir}
+            self._make_file_from_tmpl(self.pymol_tmpl, **values_dict)
     def get_infos( self ):
         def make_list(area):
             sas_cav={}
