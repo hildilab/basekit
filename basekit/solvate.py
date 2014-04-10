@@ -112,8 +112,8 @@ class Solvate( CmdTool):
             "-t", self.thick,
             "-r", self.radius,
             "-n", self.ngauss, 
-            self.pdb_input,
-            self.solvate_file
+            self.pdb_input[:-4],
+            self.solvate_file[:-4]
 
         ]
         self.cmd=self.cmd + extra
