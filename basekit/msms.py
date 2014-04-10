@@ -146,22 +146,42 @@ def parse_msms_vert( vert_file ):
     ]
     return np.array( vert_list, dtype=types )
 
+def holes_mean_std_helper(hno, last_hetatm, chain, xyz_list, resno):
+    
+    xyz2=xyz_list
+    coords = np.mean(xyz_list, axis=0)
+    xyz_list_dist=[]
+    for co in xyz2:
+        xyz_list_dist.append(np.sqrt(np.sum((coords-co)**2)))
+    mean_num=np.mean(xyz_list_dist, axis=0)
+    std_num=np.std(xyz_list_dist)
+    natom={
+        "record":"HETATM","atomno": last_hetatm+hno, "atomname": " CA ",
+        "resname": "NEH", "chain": chain, "resno": resno,
+        "x": coords[0], "y": coords[1], "z": coords[2], "bfac": std_num, "element": " C"
+    }
+    return numpdb.pdb_line( natom ), mean_num
 
 def make_nrhole_pdb( pdb_input, holes, nh_file, mean_file, pymol_file, obj_list):
     npdb = numpdb.NumPdb( pdb_input )
     try:
         sele2={'record':'HETATM'}
         last_hetatm=int(npdb.get('atomno', **sele2)[-1])
+        last_hetresno=int(npdb.get('resno', **sele2)[-1])
     except:
         sele2={'record':'ATOM  '}
         last_hetatm=int(npdb.get('atomno', **sele2)[-1])
+        last_hetresno=int(npdb.get('resno', **sele2)[-1])
     fi=open(nh_file, 'w')
     preline=""
-    mean_dct={}
-    neighbours={}
+    mean_dct={}; neighbours={}; mean_lst=[]
+    exiting=False; writing=False
     with open(pdb_input, 'r') as fp:
         for line in fp:
-            if (preline!=line[0:6] and preline=="HETATM")  or line[0:3]=="TER" or line[0:3]=="END":
+            if str(last_hetatm) in line[0:13]:
+                writing=True
+                fi.write(line)
+            elif writing==True and exiting==False:
                 for hno, holeneighbours in enumerate(holes["ses"]):
                     if holeneighbours!=[] and hno!=0:
                         chain=''
@@ -171,38 +191,29 @@ def make_nrhole_pdb( pdb_input, holes, nh_file, mean_file, pymol_file, obj_list)
                             try:
                                 atomno=hn
                                 sele={'atomno':atomno}
-                                resno=npdb.get('resno', **sele)[0]
+                                resno=int(npdb.get('resno', **sele)[0])
                                 sele={'atomno':atomno}
                                 chain=npdb.get('chain', **sele)[0]
                                 sele={'atomno':atomno, 'chain':chain }
                                 xyz=npdb.get('xyz', **sele)[0]
                                 xyz_list.append(xyz)
-                                atom_list.append([atomno, int(resno), chain])
+                                atom_list.append([atomno, resno, chain])
                             except:
                                 break
+                            
                         neighbours[hno]=atom_list
-                        xyz2=xyz_list
-                        coords = np.mean(xyz_list, axis=0)
-                        xyz_list_dist=[]
-                        for co in xyz2:
-                            xyz_list_dist.append(np.sqrt(np.sum((coords-co)**2)))
-                        mean=np.mean(xyz_list_dist, axis=0)
-                        std=np.std(xyz_list_dist)
-                        natom={
-                            "record":"HETATM","atomno": last_hetatm+hno, "atomname": " CA ",
-                            "resname": "NEH", "chain": chain, "resno": hno,
-                            "x": coords[0], "y": coords[1], "z": coords[2], "bfac": std, "element": " C"
-                        }
-                        mean_dct[last_hetatm+hno]=mean
-                        fi.write(numpdb.pdb_line( natom ))
+                        new_line, mean_num = holes_mean_std_helper(hno, last_hetatm, chain, xyz_list, resno)
+                        fi.write(new_line)
+                        mean_dct[last_hetatm+hno]=mean_num
+                        mean_lst.append(str(atomno)+'_'+str(resno)+'_'+chain)
                 fi.write(line)
+                exiting=True
             else:
                 fi.write(line)
             preline=line[0:6]
     with open( mean_file, "w" ) as fp:
         json.dump( mean_dct, fp )
-    return json.dumps(mean_dct), json.dumps(neighbours), obj_list
-    #make_nrholes_pymol(std_file, mean_dct, pymol_file, neighbours, nh_file, obj_list)
+    return mean_dct, neighbours, obj_list, last_hetresno, mean_lst
 
 def f_v_to_obj(face_file, vert_file, mesh_file, flip=False):
     def writer(f, fp, pre):
@@ -239,7 +250,8 @@ class Msms( CmdTool, ProviMixin ):
             options=[ "", "ward", "average" ], help="'', average, ward" ),
         _( "atom_radius_add", type="float", default=0 ),
         _( "getinfo", type="bool", default=False ),
-        _( "get_nrholes|gh", type="bool", default=False ),
+        _( "prefix|pre", type="str", default="" ), 
+        _( "get_nrholes|gh", type="bool", default=False )
     ]
     out = [
         _( "area_file", file="area.area" ),
@@ -270,6 +282,9 @@ class Msms( CmdTool, ProviMixin ):
             "-density", self.density,
             "-hdensity", self.hdensity
         ]
+        if self.get_nrholes:
+            self.all_components=True
+            self.get_info=True
         if self.all_components:
             self.cmd.append( "-all_components" )
         if self.no_area:
@@ -385,11 +400,16 @@ class Msms( CmdTool, ProviMixin ):
                 f_v_to_obj(facefile, vertfile, meshfile, flip=True)
             except ValueError:
                 f_v_to_obj(facefile, vertfile, meshfile, flip=False)
-# get the nrholes and the pymol script
+        # get the nrholes and the pymol script
         if self.get_nrholes:
             area = parse_msms_area( self.area_file)
-            mean_dct, neighbours, obj_list = make_nrhole_pdb( self.pdb_file, area, self.nh_file, self.mean_file, self.pymol_file, obj_list )
-            values_dict={'neighbours':neighbours, 'obj_list':obj_list, 'mean_dct':mean_dct, 'nh_file':self.nh_file, 'TMPL_DIR':self.tmpl_dir}
+            mean_dct, neighbours, obj_list, last_hetresno, mean_lst = make_nrhole_pdb( self.pdb_file, area, self.nh_file, self.mean_file, self.pymol_file, obj_list )
+            values_dict={
+                'neighbours':neighbours, 'obj_list':obj_list,
+                'mean_dct':mean_dct, 'nh_file':self.nh_file,
+                'TMPL_DIR':self.tmpl_dir, 'pref':self.prefix,
+                'last_hetresno':last_hetresno, 'mean_list':mean_lst
+            }
             self._make_file_from_tmpl(self.pymol_tmpl, **values_dict)
     def get_infos( self ):
         def make_list(area):

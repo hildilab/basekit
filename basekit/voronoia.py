@@ -266,53 +266,68 @@ def make_ref( tool_results ):
         dic_in_dic( elem, ref_dic_dens[elem], out_dens )
     return out_dens, out_dev, log_list, out_pd_at_dict
 
+def holes_mean_std_helper(hno, last_hetatm, chain, xyz_list, resno):
+    
+    xyz2=xyz_list
+    coords = np.mean(xyz_list, axis=0)
+    xyz_list_dist=[]
+    for co in xyz2:
+        xyz_list_dist.append(np.sqrt(np.sum((coords-co)**2)))
+    mean_num=np.mean(xyz_list_dist, axis=0)
+    std_num=np.std(xyz_list_dist)
+    natom={
+        "record":"HETATM","atomno": last_hetatm+hno, "atomname": " CA ",
+        "resname": "NEH", "chain": chain, "resno": resno,
+        "x": coords[0], "y": coords[1], "z": coords[2], "bfac": std_num, "element": " C"
+    }
+    return numpdb.pdb_line( natom ), mean_num
+
 def make_nrhole_pdb( pdb_input, holes, nh_file, mean_file):
     npdb = numpdb.NumPdb( pdb_input )
     try:
         sele2={'record':'HETATM'}
         last_hetatm=int(npdb.get('atomno', **sele2)[-1])
+        last_hetresno=int(npdb.get('resno', **sele2)[-1])
     except:
         sele2={'record':'ATOM  '}
         last_hetatm=int(npdb.get('atomno', **sele2)[-1])
+        last_hetresno=int(npdb.get('resno', **sele2)[-1])
     fi=open(nh_file, 'w')
     preline=""
-    mean_dct={}
-    neighbours={}
+    mean_dct={}; neighbours={}; mean_lst=[]
+    exiting=False; writing=False
     with open(pdb_input, 'r') as fp:
         for line in fp:
-            if (preline!=line[0:6] and preline=="HETATM") or line[0:3]=="TER" or line[0:3]=="END":
+            if str(last_hetatm) in line[0:13]:
+                writing=True
+                fi.write(line)
+            elif writing==True and exiting==False:
                 for hno, hole in enumerate(holes):
                     chain=''
                     xyz_list=[]
                     atom_list=[]
                     for hn in hole[2]:
-                        atomno, atomname, resno, resname, chain=hn
-                        sele={'atomno':atomno, 'chain':chain}
-                        xyz=npdb.get('xyz', **sele)[0]
-                        xyz_list.append(xyz)
-                        atom_list.append([atomno, resno, chain])
+                        try:
+                            atomno, atomname, resno, resname, chain=hn
+                            sele={'atomno':atomno, 'chain':chain}
+                            xyz=npdb.get('xyz', **sele)[0]
+                            xyz_list.append(xyz)
+                            atom_list.append([atomno, resno, chain])
+                        except:
+                            break
                     neighbours[hno]=atom_list
-                    xyz2=xyz_list
-                    cavity_coords = np.mean(xyz_list, axis=0)
-                    xyz_list_dist=[]
-                    for co in xyz2:
-                        xyz_list_dist.append(np.sqrt(np.sum((cavity_coords-co)**2)))
-                    mean=np.mean(xyz_list_dist, axis=0)
-                    std=np.std(xyz_list_dist)
-                    natom={
-                        "record":"HETATM","atomno": last_hetatm+hno, "atomname": " CA ",
-                        "resname": "NEH", "chain": chain, "resno": hno,
-                        "x": cavity_coords[0], "y": cavity_coords[1], "z": cavity_coords[2], "bfac": std, "element": " C"
-                    }
-                    mean_dct[last_hetatm+hno]=mean
-                    fi.write(numpdb.pdb_line( natom ))
+                    new_line, mean_num = holes_mean_std_helper(hno, last_hetatm, chain, xyz_list, resno)
+                    fi.write(new_line)
+                    mean_dct[last_hetatm+hno]=mean_num
+                    mean_lst.append(str(atomno)+'_'+str(resno)+'_'+chain)
                 fi.write(line)
+                exiting=True
             else:
                 fi.write(line)
             preline=line[0:6]
     with open( mean_file, "w" ) as fp:
         json.dump( mean_dct, fp )
-    return json.dumps(neighbours), json.dumps(mean_dct)
+    return neighbours, mean_dct, last_hetresno, mean_lst
 
 
 # get_volume.exe ex:0.1 rad:protor i:file.pdb o:out.vol
@@ -329,7 +344,8 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                 "circumvent numerical problems" ),
         _( "make_reference|mr", type="bool", default=False ),
         _( "analyze_only|ao", type="bool", default=False ),
-        _( "get_nrholes|gh", type="bool", default=False )
+        _( "get_nrholes|gh", type="bool", default=False ),
+        _( "prefix|pre", type="str", default="" )
     ]
     out = [
         _( "vol_file", file="{pdb_input.stem}.vol" ),
@@ -420,8 +436,12 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
             self.write()
             # get the nrholes and the pymol script
             if self.get_nrholes:
-                neighbours, mean_dct = make_nrhole_pdb(self.pdb_input,self.holes, self.nh_file, self.mean_file)
-                values_dict={'neighbours':neighbours, 'mean_dct':mean_dct, 'nh_file':self.nh_file}
+                neighbours, mean_dct, last_hetresno, mean_lst = make_nrhole_pdb(self.pdb_input,self.holes, self.nh_file, self.mean_file)
+                values_dict={
+                    'neighbours':neighbours, 'mean_dct':mean_dct,
+                    'nh_file':self.nh_file, 'pref':self.prefix,
+                    'last_hetresno': last_hetresno, 'mean_list':mean_lst
+                }
                 self._make_file_from_tmpl(self.pymol_tmpl, **values_dict)
         if self.parallel and self.make_reference:
             dict_dens, dict_dev, log_list, out_pd_at_dict = make_ref( self.tool_results )
