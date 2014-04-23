@@ -19,7 +19,7 @@ from basekit import utils
 from utils import memoize_m
 from utils.tool import _, _dir_init, CmdTool, ProviMixin, ParallelMixin
 from utils.tool import RecordsMixin, PyTool
-
+from utils.listing import merge_dic_list
 import provi_prep as provi
 
 
@@ -234,21 +234,7 @@ def make_ref( tool_results ):
         short = {}
         short[elem.split('|')[1]] = ref_dic
         out[elem.split('|')[0]].update(short)
-    def merge(obj_1, obj_2):
-        if type(obj_1) == dict and type(obj_2) == dict:
-            result = {}
-            for key, value in obj_1.iteritems():
-                if key not in obj_2:
-                    result[key] = value
-                else:
-                    result[key] = merge(value, obj_2[key])
-            for key, value in obj_2.iteritems():
-                if key not in obj_1:
-                    result[key] = value
-            return result
-        if type(obj_1) == list and type(obj_2) == list:
-            return obj_1 + obj_2
-        return obj_2
+    
     ref_dic_dens = collections.defaultdict( list )
     out_dev = collections.defaultdict( dict )
     out_dens = collections.defaultdict( dict )
@@ -259,7 +245,7 @@ def make_ref( tool_results ):
         for elem in t.protor:
             if t.burried[elem] and not (t.protor[elem].split('|')[0] in ['G', 'C', 'A', 'U']):
                 ref_dic_dens[ t.protor[elem] ].append( t.packdens[elem] )
-        out_pd_at_dict = merge(out_pd_at_dict, t.pd_at_dict)
+        out_pd_at_dict = merge_dic_list(out_pd_at_dict, t.pd_at_dict)
     for elem in ref_dic_dens:
         dic_in_dic( elem, std(ref_dic_dens[elem]), out_dev )
         ref_dic_dens[elem]=sum(ref_dic_dens[elem])/len(ref_dic_dens[elem])
