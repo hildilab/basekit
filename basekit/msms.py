@@ -99,7 +99,6 @@ def parse_msms_log( msms_log ):
     return components
 
 
-
 def parse_msms_area( area_file, max_atomno=None ):
     with open( area_file, "r" ) as fp:
         header = fp.next().split()[1:]
@@ -125,7 +124,6 @@ def parse_msms_area( area_file, max_atomno=None ):
     }
 
 
-
 def parse_msms_vert( vert_file ):
     vert_list = []
     with open( vert_file, "r" ) as fp:
@@ -146,93 +144,102 @@ def parse_msms_vert( vert_file ):
     ]
     return np.array( vert_list, dtype=types )
 
-def holes_mean_std_helper(hno, last_hetatm, chain, xyz_list, resno):
-    
-    xyz2=xyz_list
-    coords = np.mean(xyz_list, axis=0)
-    xyz_list_dist=[]
-    for co in xyz2:
-        xyz_list_dist.append(np.sqrt(np.sum((coords-co)**2)))
-    mean_num=np.mean(xyz_list_dist, axis=0)
-    std_num=np.std(xyz_list_dist)
-    natom={
-        "record":"HETATM","atomno": last_hetatm+hno, "atomname": " CA ",
-        "resname": "NEH", "chain": chain, "resno": resno,
-        "x": coords[0], "y": coords[1], "z": coords[2], "bfac": std_num, "element": " C"
-    }
-    return numpdb.pdb_line( natom ), mean_num
+
+def parse_msms_face( face_file ):
+    face_list = []
+    with open( face_file, "r" ) as fp:
+        header = fp.next() + fp.next() + fp.next()
+        for line in fp:
+            ls = line.split()
+            face_list.append((
+                int( ls[0] ), int( ls[1] ), int( ls[2] ),
+                int( ls[3] ), int( ls[4] )
+            ))
+    types = [
+        ('nx', np.int), ('ny', np.int), ('nz', np.int),
+        ('face_type', np.int),
+        ('face_no', np.int)
+    ]
+    return np.array( face_list, dtype=types )
+
+def face_vertex_to_obj(face_list, vert_list, mesh_file, flip=False):
+    """
+    Converts face and vertex files into one obj file
+    """
+    with open(mesh_file, "w") as f:
+        for index, elem in enumerate([vert_list, face_list]):
+            for line in elem:
+                if index==0:
+                    newline = "%s %s %s %s\n"%("v", line[0], line[1], line[2])
+                else:
+                    if flip:
+                        newline = "%s %s %s %s\n"%("f", line[0], line[2], line[1])
+                    else:
+                        newline = "%s %s %s %s\n"%("f", line[0], line[1], line[2])
+                f.write(newline)
+
 
 def make_nrhole_pdb( pdb_input, holes, nh_file, mean_file, pymol_file, obj_list):
     npdb = numpdb.NumPdb( pdb_input )
-    try:
+    if len( npdb.get('atomno', record="HETATM" ) )>0:
         sele2={'record':'HETATM'}
-        last_hetatm=int(npdb.get('atomno', **sele2)[-1])
-        last_hetresno=int(npdb.get('resno', **sele2)[-1])
-    except:
+    else:
         sele2={'record':'ATOM  '}
-        last_hetatm=int(npdb.get('atomno', **sele2)[-1])
-        last_hetresno=int(npdb.get('resno', **sele2)[-1])
-    fi=open(nh_file, 'w')
+    last_hetatm=int(npdb.get('atomno', **sele2)[-1])
+    last_hetresno=int(npdb.get('resno', **sele2)[-1])
+    
     preline=""
     mean_dct={}; neighbours={}; mean_lst=[]
-    exiting=False; writing=False
+    writing=False
+    middle=[]; pre=[]; post=[]
+    for hno, holeneighbours in enumerate(holes["ses"]):
+        if holeneighbours!=[] and hno!=0:
+            chain=''
+            xyz_list=[]
+            atom_list=[]
+            for atomno in holeneighbours:
+                try:
+                    resno=int(npdb.get('resno', atomno=atomno)[0])
+                    chain=npdb.get('chain', atomno=atomno)[0]
+                    xyz=npdb.get('xyz', atomno=atomno, chain=chain)[0]
+                    xyz_list.append(xyz)
+                    atom_list.append([atomno, resno, chain])
+                except:
+                    break
+            neighbours[hno]=atom_list
+            xyz2=xyz_list
+            coords = np.mean(xyz_list, axis=0)
+            xyz_list_dist=[]
+            for co in xyz2:
+                xyz_list_dist.append(np.sqrt(np.sum((coords-co)**2)))
+            mean_num=np.mean(xyz_list_dist, axis=0)
+            std_num=np.std(xyz_list_dist)
+            natom={
+                "record":"HETATM","atomno": last_hetatm+hno, "atomname": " CA ",
+                "resname": "NEH", "chain": chain, "resno": resno,
+                "x": coords[0], "y": coords[1], "z": coords[2], "bfac": std_num, "element": " C"
+            }
+            new_line=numpdb.pdb_line( natom ),
+            middle.append(numpdb.pdb_line( natom ))
+            mean_dct[last_hetatm+hno]=mean_num
+            mean_lst.append(str(atomno)+'_'+str(resno)+'_'+chain)
     with open(pdb_input, 'r') as fp:
         for line in fp:
-            if str(last_hetatm) in line[0:13]:
-                writing=True
-                fi.write(line)
-            elif writing==True and exiting==False:
-                for hno, holeneighbours in enumerate(holes["ses"]):
-                    if holeneighbours!=[] and hno!=0:
-                        chain=''
-                        xyz_list=[]
-                        atom_list=[]
-                        for hn in holeneighbours:
-                            try:
-                                atomno=hn
-                                sele={'atomno':atomno}
-                                resno=int(npdb.get('resno', **sele)[0])
-                                sele={'atomno':atomno}
-                                chain=npdb.get('chain', **sele)[0]
-                                sele={'atomno':atomno, 'chain':chain }
-                                xyz=npdb.get('xyz', **sele)[0]
-                                xyz_list.append(xyz)
-                                atom_list.append([atomno, resno, chain])
-                            except:
-                                break
-                            
-                        neighbours[hno]=atom_list
-                        new_line, mean_num = holes_mean_std_helper(hno, last_hetatm, chain, xyz_list, resno)
-                        fi.write(new_line)
-                        mean_dct[last_hetatm+hno]=mean_num
-                        mean_lst.append(str(atomno)+'_'+str(resno)+'_'+chain)
-                fi.write(line)
-                exiting=True
+            if writing==True:
+                post.append(line)
             else:
-                fi.write(line)
+                if str(last_hetatm) in line[0:13]:
+                    writing=True
+                pre.append(line)
             preline=line[0:6]
+    newline="".join(pre+middle+post)
+    with open(nh_file, 'w') as fi:
+        fi.write(newline)
+    
     with open( mean_file, "w" ) as fp:
         json.dump( mean_dct, fp )
     return mean_dct, neighbours, obj_list, last_hetresno, mean_lst
 
-def f_v_to_obj(face_file, vert_file, mesh_file, flip=False):
-    def writer(f, fp, pre):
-        tmp=True
-        with open(f, 'r') as fp2:
-            for line in fp2:
-                if line.startswith('#'):
-                    fp.write(line)
-                elif tmp:
-                    tmp=False
-                else:
-                    splitted=line.split()
-                    if pre=='f':
-                        fp.write(pre+' '+splitted[0]+' '+splitted[2]+' '+splitted[1]+'\n') 
-                    else:
-                        fp.write(pre+' '+splitted[0]+' '+splitted[1]+' '+splitted[2]+'\n')    
-    with open(mesh_file, 'w') as fp:
-        writer(vert_file, fp, 'v')
-        writer(face_file, fp, 'f')
 
 class Msms( CmdTool, ProviMixin ):
     """A wrapper around the MSMS program."""
@@ -242,16 +249,16 @@ class Msms( CmdTool, ProviMixin ):
             default=1.5 ),
         _( "density", type="float", range=[0.5, 10], step=0.5, default=1.0 ),
         _( "hdensity", type="float", range=[1.0, 20], step=1.0, default=3.0 ),
-        _( "all_components", type="bool", default=False ),
+        _( "all_components|ac", type="bool", default=False,
+            help="calculates all components and a pymol session with the neigbour holes" ),
         _( "no_area", type="bool", default=False ),
         _( "envelope", type="float", range=[0.0, 10], step=0.1, 
             default=0 ),
         _( "envelope_hclust", type="str", default="", 
             options=[ "", "ward", "average" ], help="'', average, ward" ),
         _( "atom_radius_add", type="float", default=0 ),
-        _( "getinfo", type="bool", default=False ),
-        _( "prefix|pre", type="str", default="" ), 
-        _( "get_nrholes|gh", type="bool", default=False )
+        _( "prefix|pre", type="str", default="",
+            help="a prefix before the names for the pymol session of all_components, default=''" ),
     ]
     out = [
         _( "area_file", file="area.area" ),
@@ -282,11 +289,9 @@ class Msms( CmdTool, ProviMixin ):
             "-density", self.density,
             "-hdensity", self.hdensity
         ]
-        if self.get_nrholes:
-            self.all_components=True
-            self.get_info=True
         if self.all_components:
             self.cmd.append( "-all_components" )
+            self.get_nrholes=True
         if self.no_area:
             self.cmd.append( "-no_area" )
         if self.envelope:
@@ -387,25 +392,30 @@ class Msms( CmdTool, ProviMixin ):
                         d3[0], d3[1], d3[2]
                     )
                     fp.write( l )
-        if self.getinfo:
-            self.get_infos()
+        self.get_infos()
         v = "tri_surface(_?[0-9]*)\.(vert)"
-        obj_list=[]
+        self.obj_list=[]
+        
+        
         for m, vertfile in dir_walker( self.output_dir, v ):
             facefile = vertfile[:-4]+'face'
             meshfile = vertfile[:-4]+'obj'
             num=meshfile.split('_')[-1].split('.')[0]
+            a=self.get_vert(vertfile=vertfile)
+            b=self.get_face(facefile=facefile)
+           
             try:
-                obj_list.append([int(num), meshfile])
-                f_v_to_obj(facefile, vertfile, meshfile, flip=True)
+                self.obj_list.append([int(num), meshfile])
+                face_vertex_to_obj(b, a, meshfile, flip=True)
             except ValueError:
-                f_v_to_obj(facefile, vertfile, meshfile, flip=False)
+                face_vertex_to_obj(b, a, meshfile, flip=False)
+                pass
         # get the nrholes and the pymol script
         if self.get_nrholes:
             area = parse_msms_area( self.area_file)
-            mean_dct, neighbours, obj_list, last_hetresno, mean_lst = make_nrhole_pdb( self.pdb_file, area, self.nh_file, self.mean_file, self.pymol_file, obj_list )
+            mean_dct, neighbours, self.obj_list, last_hetresno, mean_lst = make_nrhole_pdb( self.pdb_file, area, self.nh_file, self.mean_file, self.pymol_file, self.obj_list )
             values_dict={
-                'neighbours':neighbours, 'obj_list':obj_list,
+                'neighbours':neighbours, 'obj_list':self.obj_list,
                 'mean_dct':mean_dct, 'nh_file':self.nh_file,
                 'TMPL_DIR':self.tmpl_dir, 'pref':self.prefix,
                 'last_hetresno':last_hetresno, 'mean_list':mean_lst
@@ -479,13 +489,19 @@ class Msms( CmdTool, ProviMixin ):
         return parse_msms_log( self.stdout_file )
     def get_area( self, max_atomno=None ):
         return parse_msms_area( self.area_file, max_atomno=max_atomno )
-    def get_vert( self, filt=False ):
-        vert = parse_msms_vert( self.vert_file )
+    def get_vert( self, filt=False, vertfile=""):
+        if vertfile=="":
+            vertfile=self.vert_file
+        vert = parse_msms_vert( vertfile )
         if filt:
             return filter( lambda x: x[-3]<0, vert )
         else:
             return vert
-
+    def get_face( self, facefile="" ):
+        if facefile=="":
+            facefile=self.face_file
+        face = parse_msms_face( facefile )
+        return face
 
 
 
