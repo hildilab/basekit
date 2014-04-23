@@ -58,6 +58,9 @@ class CionizeTestCase( unittest.TestCase ):
             verbose=False
         )
         ionized()
+    def test_check( self ):
+        self.ionized()
+        self.assertEquals( self.ionized.check( full=True ), "Ok" )
 
 
 # class ClashTestCase ( unittest.TestCase ):
