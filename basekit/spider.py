@@ -4,13 +4,14 @@ from __future__ import division
 import os
 import json
 import itertools
-
+import numpy as np
 from utils import copy_dict
 from utils.tool import _, _dir_init, PyTool, CmdTool, ScriptMixin
 from utils.numpdb import NumPdb
 from utils.mrc import get_mrc_header, getMrc
 from utils.math import rmsd
 from pdb import *#PdbSplit
+
 #from pdb import PdbEdit, NumpdbTest
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "spider" )
@@ -229,6 +230,42 @@ class SpiderBox( Spider ):
         with open( self.var_file, "w" ) as fp:
             fp.write( variables )
 
+
+class SpiderCropMap ( Spider ):
+    args = [
+   
+    _( "map_file", type="file", ext="cpv" ),
+    _( "pdb_file", type="file", ext="pdb" ),
+    _( "pixelsize", type="float", range=[1, 10], fixed=True )
+    
+    ]
+    out = [
+        
+    
+    _( "box_file", file="ergebnisse.cpv" ),
+    _( "box_map_file", file="boxil.cpv" )
+    ]
+    script_tmpl = "crop2.spi"
+    def _init( self, *args, **kwargs ):
+        super(SpiderCropMap, self)._init( "__tmpl__" )    
+    def _pre_exec (self):
+        npdb = NumPdb( self.pdb_file )
+        psf=1/self.pixelsize
+        schrumpf=npdb['xyz']*psf
+        #te=
+        ma=np.amax(schrumpf, axis=0)
+        mi=np.amin(schrumpf,axis=0)
+        middle=[(mi[0]+ma[0])/2,(mi[1]+ma[1])/2,(mi[2]+ma[2])/2]
+        abstand=round(((mi[0]-ma[0])**2+(mi[1]-ma[1])**2+(mi[2]-ma[2])**2)**0.5,0)
+        print ma,mi,middle,abstand
+        self._make_script_file(
+        x1=middle[0],
+        y1=middle[1],
+        z1=middle[2],
+        map_name=self.relpath(self.map_file,no_ext=True),
+        abstand=abstand,
+        ps=self.pixelsize,
+        )
 
 class SpiderReConvert( Spider ):
     args = [
@@ -533,7 +570,39 @@ class OptimizeRotamer ( PyTool ):
                     
             break
 
+#class SpiderMinMap ( Spider ):
+#    args = [
+#    _("pdb_file", type="file"),  
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 class  LoopRotamerOptimize ( PyTool ):
     args = [
     _("pdb_file", type="file"),  
@@ -659,7 +728,8 @@ class SideChainStatistics ( PyTool ):
     _( "dataset_dir", type="dir" )
     ]
         out = [
-     _( "stat_file", file="statistics.csv" )
+     _( "stat_file", file="statistics.csv" ),
+     _( "res_file", file="overall.txt" )
     ]
         #def rmsd( coords1, coords2 ):
         #    return np.sqrt( 
@@ -755,7 +825,7 @@ class SideChainStatistics ( PyTool ):
                                 rootm2=rmsd(npdb3['xyz'],npdb2['xyz'])
                                 bestrmsd.append(float(rootm2))
                         test100=sorted(bestrmsd)
-                        #print test100
+                        print file, test100 [0], test100 [-1]
                         if test100[0]==rootm:
                             print "yeahaa!"
                             y=1
@@ -770,9 +840,50 @@ class SideChainStatistics ( PyTool ):
                             
                         hurz2="%s,%s,%s,%s,%s,%s%s" %  (pn,hurz,corr,rootm,z,y,"\n")
                         rf.write(hurz2)
+                with open (self.res_file, 'w') as gh:
+                    juhu="%s %s %s %s" % (a,g,m,b)
+                    gh.write(juhu)
                 print a,g,m,b
      
-
+class SpiderCropMrc ( PyTool ):
+    args = [
+   
+    _( "map_file", type="file", ext="mrc" ),
+    _( "pdb_file", type="file", ext="pdb" ),
+    _( "pixelsize", type="float", range=[1, 10], fixed=True )
+    
+    ]
+    out = [
+        _( "cropped_mrc", file="cropped.mrc" )
+    ]
+    tmpl_dir = TMPL_DIR
+    def _init( self, *args, **kwargs ):
+        self.spider_convert= SpiderConvert(
+                                self.map_file,
+                                **copy_dict(
+                                    kwargs, run=False, output_dir=self.subdir("convert")
+                                )
+        )
+        self.spider_crop= SpiderCropMap(
+                            self.spider_convert.map_file,self.pdb_file,self.pixelsize,
+                            **copy_dict(
+                                    kwargs, run=False, output_dir=self.subdir("crop")
+                                )
+        )
+        self.spider_reconvert=SpiderReConvert(
+                                    self.spider_crop.box_file,
+                                    self.spider_convert.map_file,
+                                    self.spider_crop.box_map_file,
+                                    self.spider_convert.map_file,
+                                    **copy_dict(
+                                    kwargs, run=False, output_dir=self.subdir("mrc")
+                                )
+                                    
+        )
+    def func( self ):
+        self.spider_convert()
+        self.spider_crop()
+        self.spider_reconvert()
 class LoopCrosscorrel( PyTool ):
     args = [
         _( "mrc_file", type="file", ext="mrc" ),
