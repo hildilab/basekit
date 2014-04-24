@@ -4,7 +4,7 @@ from __future__ import with_statement
 from __future__ import division
 
 import numpy as np
-
+import utils.numpdb as numpdb
 import os
 import string
 import shutil
@@ -14,9 +14,10 @@ import utils
 from utils import copy_dict, dir_walker, iter_stride
 from utils.tool import _, _dir_init, CmdTool, ProviMixin
 from utils.math import hclust
+import json
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "msms" )
-
+wfmesh_FILE = os.path.join( TMPL_DIR, "wfmesh.py" )
 MSMS_CMD = "msms"
 BABEL_CMD = "babel"
 
@@ -98,7 +99,6 @@ def parse_msms_log( msms_log ):
     return components
 
 
-
 def parse_msms_area( area_file, max_atomno=None ):
     with open( area_file, "r" ) as fp:
         header = fp.next().split()[1:]
@@ -124,7 +124,6 @@ def parse_msms_area( area_file, max_atomno=None ):
     }
 
 
-
 def parse_msms_vert( vert_file ):
     vert_list = []
     with open( vert_file, "r" ) as fp:
@@ -146,6 +145,101 @@ def parse_msms_vert( vert_file ):
     return np.array( vert_list, dtype=types )
 
 
+def parse_msms_face( face_file ):
+    face_list = []
+    with open( face_file, "r" ) as fp:
+        header = fp.next() + fp.next() + fp.next()
+        for line in fp:
+            ls = line.split()
+            face_list.append((
+                int( ls[0] ), int( ls[1] ), int( ls[2] ),
+                int( ls[3] ), int( ls[4] )
+            ))
+    types = [
+        ('nx', np.int), ('ny', np.int), ('nz', np.int),
+        ('face_type', np.int),
+        ('face_no', np.int)
+    ]
+    return np.array( face_list, dtype=types )
+
+def face_vertex_to_obj(face_list, vert_list, mesh_file, flip=False):
+    """
+    Converts face and vertex files into one obj file
+    """
+    with open(mesh_file, "w") as f:
+        for index, elem in enumerate([vert_list, face_list]):
+            for line in elem:
+                if index==0:
+                    newline = "%s %s %s %s\n"%("v", line[0], line[1], line[2])
+                else:
+                    if flip:
+                        newline = "%s %s %s %s\n"%("f", line[0], line[2], line[1])
+                    else:
+                        newline = "%s %s %s %s\n"%("f", line[0], line[1], line[2])
+                f.write(newline)
+
+
+def make_nrhole_pdb( pdb_input, holes, nh_file, mean_file, pymol_file, obj_list):
+    npdb = numpdb.NumPdb( pdb_input )
+    if len( npdb.get('atomno', record="HETATM" ) )>0:
+        sele2={'record':'HETATM'}
+    else:
+        sele2={'record':'ATOM  '}
+    last_hetatm=int(npdb.get('atomno', **sele2)[-1])
+    last_hetresno=int(npdb.get('resno', **sele2)[-1])
+    
+    preline=""
+    mean_dct={}; neighbours={}; mean_lst=[]
+    writing=False
+    middle=[]; pre=[]; post=[]
+    for hno, holeneighbours in enumerate(holes["ses"]):
+        if holeneighbours!=[] and hno!=0:
+            chain=''
+            xyz_list=[]
+            atom_list=[]
+            for atomno in holeneighbours:
+                try:
+                    resno=int(npdb.get('resno', atomno=atomno)[0])
+                    chain=npdb.get('chain', atomno=atomno)[0]
+                    xyz=npdb.get('xyz', atomno=atomno, chain=chain)[0]
+                    xyz_list.append(xyz)
+                    atom_list.append([atomno, resno, chain])
+                except:
+                    break
+            neighbours[hno]=atom_list
+            xyz2=xyz_list
+            coords = np.mean(xyz_list, axis=0)
+            xyz_list_dist=[]
+            for co in xyz2:
+                xyz_list_dist.append(np.sqrt(np.sum((coords-co)**2)))
+            mean_num=np.mean(xyz_list_dist, axis=0)
+            std_num=np.std(xyz_list_dist)
+            natom={
+                "record":"HETATM","atomno": last_hetatm+hno, "atomname": " CA ",
+                "resname": "NEH", "chain": chain, "resno": resno,
+                "x": coords[0], "y": coords[1], "z": coords[2], "bfac": std_num, "element": " C"
+            }
+            new_line=numpdb.pdb_line( natom ),
+            middle.append(numpdb.pdb_line( natom ))
+            mean_dct[last_hetatm+hno]=mean_num
+            mean_lst.append(str(atomno)+'_'+str(resno)+'_'+chain)
+    with open(pdb_input, 'r') as fp:
+        for line in fp:
+            if writing==True:
+                post.append(line)
+            else:
+                if str(last_hetatm) in line[0:13]:
+                    writing=True
+                pre.append(line)
+            preline=line[0:6]
+    newline="".join(pre+middle+post)
+    with open(nh_file, 'w') as fi:
+        fi.write(newline)
+    
+    with open( mean_file, "w" ) as fp:
+        json.dump( mean_dct, fp )
+    return mean_dct, neighbours, obj_list, last_hetresno, mean_lst
+
 
 class Msms( CmdTool, ProviMixin ):
     """A wrapper around the MSMS program."""
@@ -155,13 +249,16 @@ class Msms( CmdTool, ProviMixin ):
             default=1.5 ),
         _( "density", type="float", range=[0.5, 10], step=0.5, default=1.0 ),
         _( "hdensity", type="float", range=[1.0, 20], step=1.0, default=3.0 ),
-        _( "all_components", type="bool", default=False ),
+        _( "all_components|ac", type="bool", default=False,
+            help="calculates all components and a pymol session with the neigbour holes" ),
         _( "no_area", type="bool", default=False ),
         _( "envelope", type="float", range=[0.0, 10], step=0.1, 
             default=0 ),
         _( "envelope_hclust", type="str", default="", 
             options=[ "", "ward", "average" ], help="'', average, ward" ),
         _( "atom_radius_add", type="float", default=0 ),
+        _( "prefix|pre", type="str", default="",
+            help="a prefix before the names for the pymol session of all_components, default=''" ),
     ]
     out = [
         _( "area_file", file="area.area" ),
@@ -171,10 +268,15 @@ class Msms( CmdTool, ProviMixin ):
         _( "surf_file2", file="surf2.xyz" ),
         _( "surf_file3", file="surf3.xyz" ),
         _( "surf_file4", file="surf4.xyz", optional=True ),
-        _( "provi_file", file="msms.provi" )
+        _( "provi_file", file="msms.provi" ),
+        _( "info_file", file="info_file.txt", optional=True ),
+        _( "nh_file", file="{pdb_file.stem}_nh.pdb", optional=True ),
+        _( "pymol_file", file="pymol_settings.py", optional=True ),
+        _( "mean_file", file="{pdb_file.stem}_mean.json", optional=True ),
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "msms.provi"
+    pymol_tmpl = "pymol_settings.py"
     def _init( self, *args, **kwargs ):
         self.pdb2xyzr = Pdb2xyzr( 
             self.pdb_file, **copy_dict( kwargs, run=False, verbose=False ) 
@@ -189,6 +291,7 @@ class Msms( CmdTool, ProviMixin ):
         ]
         if self.all_components:
             self.cmd.append( "-all_components" )
+            self.get_nrholes=True
         if self.no_area:
             self.cmd.append( "-no_area" )
         if self.envelope:
@@ -289,6 +392,65 @@ class Msms( CmdTool, ProviMixin ):
                         d3[0], d3[1], d3[2]
                     )
                     fp.write( l )
+        self.get_infos()
+        v = "tri_surface(_?[0-9]*)\.(vert)"
+        self.obj_list=[]
+        
+        
+        for m, vertfile in dir_walker( self.output_dir, v ):
+            facefile = vertfile[:-4]+'face'
+            meshfile = vertfile[:-4]+'obj'
+            num=meshfile.split('_')[-1].split('.')[0]
+            a=self.get_vert(vertfile=vertfile)
+            b=self.get_face(facefile=facefile)
+           
+            try:
+                self.obj_list.append([int(num), meshfile])
+                face_vertex_to_obj(b, a, meshfile, flip=True)
+            except ValueError:
+                face_vertex_to_obj(b, a, meshfile, flip=False)
+                pass
+        # get the nrholes and the pymol script
+        if self.get_nrholes:
+            area = parse_msms_area( self.area_file)
+            mean_dct, neighbours, self.obj_list, last_hetresno, mean_lst = make_nrhole_pdb( self.pdb_file, area, self.nh_file, self.mean_file, self.pymol_file, self.obj_list )
+            values_dict={
+                'neighbours':neighbours, 'obj_list':self.obj_list,
+                'mean_dct':mean_dct, 'nh_file':self.nh_file,
+                'TMPL_DIR':self.tmpl_dir, 'pref':self.prefix,
+                'last_hetresno':last_hetresno, 'mean_list':mean_lst
+            }
+            self._make_file_from_tmpl(self.pymol_tmpl, **values_dict)
+    def get_infos( self ):
+        def make_list(area):
+            sas_cav={}
+            for cav_no, cav in enumerate(area):
+                for atom in cav:
+                    if sas_cav.has_key(cav_no):
+                        try:
+                            sas_cav[cav_no].append(res_list[atom])
+                        except:
+                            pass
+                    else:
+                        try:
+                            sas_cav[cav_no] = [res_list[atom]]
+                        except:
+                            pass
+            return sas_cav
+        comps = self.get_components()
+        area = parse_msms_area( self.area_file)
+        res_list={}
+        with open(self.pdb_file, 'r') as fp:
+            for line in fp:
+                if line.startswith("ATOM"):
+                    res_list[int(line[6:11])] = (line[21:22], int(line[22:26]))
+        ses_cav=make_list(area["ses"])
+        result_list=[["Cav", "ses_area", "ses_vol", "ses_neighbour_residue_list"]]
+        for cav in range(len(comps)):
+            r=sorted(list(set(ses_cav[cav])))
+            result_list.append([comps[cav][0], comps[cav][1], comps[cav][2], r])
+        with open( self.info_file, "w" ) as fp:
+            json.dump( result_list, fp, indent=4 )
     def components_provi( self, color="", translucent=0.0, relpath=None,
                             max_atomno=None ):
         if self.all_components:
@@ -327,13 +489,19 @@ class Msms( CmdTool, ProviMixin ):
         return parse_msms_log( self.stdout_file )
     def get_area( self, max_atomno=None ):
         return parse_msms_area( self.area_file, max_atomno=max_atomno )
-    def get_vert( self, filt=False ):
-        vert = parse_msms_vert( self.vert_file )
+    def get_vert( self, filt=False, vertfile=""):
+        if vertfile=="":
+            vertfile=self.vert_file
+        vert = parse_msms_vert( vertfile )
         if filt:
             return filter( lambda x: x[-3]<0, vert )
         else:
             return vert
-
+    def get_face( self, facefile="" ):
+        if facefile=="":
+            facefile=self.face_file
+        face = parse_msms_face( facefile )
+        return face
 
 
 

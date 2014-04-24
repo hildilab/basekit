@@ -78,3 +78,22 @@ def list_join( *rec, **kwargs ):
     return joined_record
 
 
+def merge_dic_list(obj_1, obj_2):
+    """
+    merges deep dicts with lists in their leafs
+    leafs ned the same deep, otherwise value of obj2 is choosen
+    """
+    if type(obj_1) == dict and type(obj_2) == dict:
+        result = {}
+        for key, value in obj_1.iteritems():
+            if key not in obj_2:
+                result[key] = value
+            else:
+                result[key] = merge_dic_list(value, obj_2[key])
+        for key, value in obj_2.iteritems():
+            if key not in obj_1:
+                result[key] = value
+        return result
+    if type(obj_1) == list and type(obj_2) == list:
+        return obj_1 + obj_2
+    return obj_2

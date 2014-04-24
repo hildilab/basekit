@@ -10,6 +10,8 @@ import logging
 import collections
 import utils.numpdb as numpdb
 import math
+
+import numpy as np
 from numpy import *
 from array import array
 
@@ -17,7 +19,7 @@ from basekit import utils
 from utils import memoize_m
 from utils.tool import _, _dir_init, CmdTool, ProviMixin, ParallelMixin
 from utils.tool import RecordsMixin, PyTool
-
+from utils.listing import merge_dic_list
 import provi_prep as provi
 
 
@@ -96,6 +98,7 @@ def parse_vol( vol_file, pdb_file ):
     nrholes = {}
     zs_dict = {}
     p_dict = {}
+    pd_at_dict = {} #(res, atom):[pd, pd,...]
     log_list = ''
     
     i = 1
@@ -165,10 +168,12 @@ def parse_vol( vol_file, pdb_file ):
         hole_list.append( 
             VolHole( no, hole_types[ no-1 ], neighbours2 )
         )
-
     for i, l in enumerate(vol_lines):
         if l:
             ls = l.split()
+            residue = pdb_index_dict[ i+1 ][17:20].split()[0]
+            atom = pdb_index_dict[ i+1 ][12:16].split()[0]
+            atom = atom.replace( "\'", "*" )
             buried = int(ls[-1])    # BURIED
             vdwvol = float(ls[-3])  # VOLUME INSIDE VAN-DER-WAALS SPHERE
             sevol = float(ls[-2])   # VOLUME IN 1.4 ANGSTROM LAYER OUTSIDE VDW-SPHERE
@@ -182,13 +187,18 @@ def parse_vol( vol_file, pdb_file ):
                 )
             else:
                 packdens = (vdwvol/(vdwvol+sevol))
+                if residue in pd_at_dict:
+                    if atom in pd_at_dict[residue]:
+                        pd_at_dict[residue][atom]=pd_at_dict[residue][atom]+[packdens]
+                    else:
+                        pd_at_dict[residue][atom]=[packdens]
+                else:
+                    pd_at_dict[residue]={}
+                    pd_at_dict[residue][atom]=[packdens]
             atomno = int( pdb_index_dict[ i+1 ][6:11] )
             pd_dict[ atomno ] = packdens
             buried_dict[ atomno ] = buried
             #calculate z-score
-            residue = pdb_index_dict[ i+1 ][17:20].split()[0]
-            atom = pdb_index_dict[ i+1 ][12:16].split()[0]
-            atom = atom.replace( "\'", "*" )
             zscore_per_atom_rna = 10; zscore_per_atom_prot = 10
             tmp_list=''
             if residue in ['G', 'C', 'A', 'U']:
@@ -201,7 +211,6 @@ def parse_vol( vol_file, pdb_file ):
             else: zscore = zscore_per_atom_prot
             zs_dict[ atomno ] = zscore
             log_list += tmp_list
-            
             
         else:
             LOG.debug( 
@@ -216,7 +225,8 @@ def parse_vol( vol_file, pdb_file ):
         "buried": buried_dict,
         "zscore": zs_dict,
         "protors": p_dict,
-        "log_list": log_list
+        "log_list": log_list,
+        "pd_at_dict": pd_at_dict
     }
 
 def make_ref( tool_results ):
@@ -224,20 +234,87 @@ def make_ref( tool_results ):
         short = {}
         short[elem.split('|')[1]] = ref_dic
         out[elem.split('|')[0]].update(short)
+    
     ref_dic_dens = collections.defaultdict( list )
     out_dev = collections.defaultdict( dict )
     out_dens = collections.defaultdict( dict )
+    out_pd_at_dict = {}
     log_list = ''
     for t in tool_results:
         log_list += t.log_list
         for elem in t.protor:
             if t.burried[elem] and not (t.protor[elem].split('|')[0] in ['G', 'C', 'A', 'U']):
                 ref_dic_dens[ t.protor[elem] ].append( t.packdens[elem] )
+        out_pd_at_dict = merge_dic_list(out_pd_at_dict, t.pd_at_dict)
     for elem in ref_dic_dens:
         dic_in_dic( elem, std(ref_dic_dens[elem]), out_dev )
         ref_dic_dens[elem]=sum(ref_dic_dens[elem])/len(ref_dic_dens[elem])
         dic_in_dic( elem, ref_dic_dens[elem], out_dens )
-    return out_dens, out_dev, log_list
+    return out_dens, out_dev, log_list, out_pd_at_dict
+
+def holes_mean_std_helper(hno, last_hetatm, chain, xyz_list, resno):
+    
+    xyz2=xyz_list
+    coords = np.mean(xyz_list, axis=0)
+    xyz_list_dist=[]
+    for co in xyz2:
+        xyz_list_dist.append(np.sqrt(np.sum((coords-co)**2)))
+    mean_num=np.mean(xyz_list_dist, axis=0)
+    std_num=np.std(xyz_list_dist)
+    natom={
+        "record":"HETATM","atomno": last_hetatm+hno, "atomname": " CA ",
+        "resname": "NEH", "chain": chain, "resno": resno,
+        "x": coords[0], "y": coords[1], "z": coords[2], "bfac": std_num, "element": " C"
+    }
+    return numpdb.pdb_line( natom ), mean_num
+
+def make_nrhole_pdb( pdb_input, holes, nh_file, mean_file):
+    npdb = numpdb.NumPdb( pdb_input )
+    try:
+        sele2={'record':'HETATM'}
+        last_hetatm=int(npdb.get('atomno', **sele2)[-1])
+        last_hetresno=int(npdb.get('resno', **sele2)[-1])
+    except:
+        sele2={'record':'ATOM  '}
+        last_hetatm=int(npdb.get('atomno', **sele2)[-1])
+        last_hetresno=int(npdb.get('resno', **sele2)[-1])
+    fi=open(nh_file, 'w')
+    preline=""
+    mean_dct={}; neighbours={}; mean_lst=[]
+    exiting=False; writing=False
+    with open(pdb_input, 'r') as fp:
+        for line in fp:
+            if str(last_hetatm) in line[0:13]:
+                writing=True
+                fi.write(line)
+            elif writing==True and exiting==False:
+                for hno, hole in enumerate(holes):
+                    chain=''
+                    xyz_list=[]
+                    atom_list=[]
+                    for hn in hole[2]:
+                        try:
+                            atomno, atomname, resno, resname, chain=hn
+                            sele={'atomno':atomno, 'chain':chain}
+                            xyz=npdb.get('xyz', **sele)[0]
+                            xyz_list.append(xyz)
+                            atom_list.append([atomno, resno, chain])
+                        except:
+                            break
+                    neighbours[hno]=atom_list
+                    new_line, mean_num = holes_mean_std_helper(hno, last_hetatm, chain, xyz_list, resno)
+                    fi.write(new_line)
+                    mean_dct[last_hetatm+hno]=mean_num
+                    mean_lst.append(str(atomno)+'_'+str(resno)+'_'+chain)
+                fi.write(line)
+                exiting=True
+            else:
+                fi.write(line)
+            preline=line[0:6]
+    with open( mean_file, "w" ) as fp:
+        json.dump( mean_dct, fp )
+    return neighbours, mean_dct, last_hetresno, mean_lst
+
 
 # get_volume.exe ex:0.1 rad:protor i:file.pdb o:out.vol
 class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
@@ -252,17 +329,24 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
             help="slightly changes the input coordinates to"
                 "circumvent numerical problems" ),
         _( "make_reference|mr", type="bool", default=False ),
-        _( "analyze_only|ao", type="bool", default=False )
+        _( "analyze_only|ao", type="bool", default=False ),
+        _( "get_nrholes|gh", type="bool", default=False ),
+        _( "prefix|pre", type="str", default="" )
     ]
     out = [
         _( "vol_file", file="{pdb_input.stem}.vol" ),
         _( "log_file", file="{pdb_input.stem}.log" ),
         _( "dens_file", file="ref_protor_packing.json", optional=True ),
         _( "dev_file", file="ref_protor_deviation.json", optional=True ),
-        _( "protor_log_file", file="protor.log", optional=True )
+        _( "pd_at_file", file="pd_at_res.json", optional=True ),
+        _( "protor_log_file", file="protor.log", optional=True ),
+        _( "nh_file", file="{pdb_input.stem}_nh.pdb", optional=True ),
+        _( "pymol_file", file="pymol_settings.py", optional=True ),
+        _( "mean_file", file="{pdb_input.stem}_mean.json", optional=True ),
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "voronoia.provi"
+    pymol_tmpl = "pymol_settings.py"
     RecordsClass = InfoRecord
     def _init( self, *args, **kwargs ):
         self._init_records( None, **kwargs )
@@ -288,17 +372,14 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
         utils.path.remove( self.vol_file )
         utils.path.remove( self.log_file )
     def _post_exec( self ):
+        
         if not self.parallel:
             provi.prep_volume( self.vol_file, self.pdb_input )
             self._make_provi_file(
                 pdb_file=self.relpath( self.pdb_input ),
                 vol_file=self.relpath( self.vol_file )
             )
-            self.info = numpdb.NumPdb( self.pdb_input, features={
-                "phi_psi": False, 
-                "info": True,
-                "backbone_only": True
-            })._info
+            
             #get info for InfoRecord
             dicts = self.get_vol()
             self.zscores = dicts['zscore']
@@ -306,6 +387,10 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
             self.burried = dicts['buried']
             self.packdens = dicts['packdens']
             self.log_list = dicts['log_list']
+            self.holes = dicts['holes']
+            self.pd_at_dict = dicts['pd_at_dict']
+            with open( self.pd_at_file, "w" ) as fp:
+                json.dump(self.pd_at_dict , fp, indent=4 )
             zscore_allb = []; zscore_all = 0
             for elem in self.zscores:
                 if self.burried[elem]:
@@ -313,22 +398,51 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
             zscore_all = sum(zscore_allb)
             pdbid, ext = os.path.splitext(os.path.basename(self.pdb_input))
             self.zscorerms = zscore_all/len(zscore_allb)
-            self.records = [
-                InfoRecord(
-                    pdbid, self.info["resolution"],
-                    self.info["title"], self.info["experiment"],
-                    self.zscorerms
-                )
-            ]
+            try:
+                self.info = numpdb.NumPdb( self.pdb_input, features={
+                    "phi_psi": False, 
+                    "info": True,
+                    "backbone_only": True
+                })._info
+                self.records = [
+                    InfoRecord(
+                        pdbid, self.info["resolution"],
+                        self.info["title"], self.info["experiment"],
+                        self.zscorerms
+                    )
+                ]
+            except:
+                self.records = [
+                    InfoRecord(
+                        pdbid, 0.0,
+                        "", "",
+                        self.zscorerms
+                    )
+                ]
             self.write()
+            # get the nrholes and the pymol script
+            if self.get_nrholes:
+                neighbours, mean_dct, last_hetresno, mean_lst = make_nrhole_pdb(self.pdb_input,self.holes, self.nh_file, self.mean_file)
+                values_dict={
+                    'neighbours':neighbours, 'mean_dct':mean_dct,
+                    'nh_file':self.nh_file, 'pref':self.prefix,
+                    'last_hetresno': last_hetresno, 'mean_list':mean_lst
+                }
+                self._make_file_from_tmpl(self.pymol_tmpl, **values_dict)
         if self.parallel and self.make_reference:
-            dict_dens, dict_dev, log_list = make_ref( self.tool_results )
-            d = ( self.dens_file, dict_dens ), ( self.dev_file, dict_dev )
+            dict_dens, dict_dev, log_list, out_pd_at_dict = make_ref( self.tool_results )
+            d = ( self.dens_file, dict_dens ), ( self.dev_file, dict_dev ), (self.pd_at_file, out_pd_at_dict)
             for fname, dct in d:
                 with open( fname, "w" ) as fp:
-                    json.dump( dct, fp )
+                    json.dump( dct, fp, indent=4 )
             with open(self.protor_log_file, 'w') as fp:
                 fp.write( log_list )
     @memoize_m
     def get_vol( self ):
         return parse_vol( self.vol_file, self.pdb_input )
+
+
+
+
+
+
