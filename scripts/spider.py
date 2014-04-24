@@ -8,7 +8,7 @@ from basekit.spider import (
     Spider, SpiderShift, SpiderConvert, SpiderDeleteFilledDensities, 
     SpiderBox, SpiderReConvert, SpiderCrosscorrelation, LoopCrosscorrel, 
     SpiderPdbBox,SpiderSidechainCorrelation,  LoopSidechainCorrelation,SpiderDeleteBackbone,BuildBest,OptimizeRotamer,
-    LoopRotamerOptimize,SideChainStatistics
+    LoopRotamerOptimize,SideChainStatistics, SpiderCropMap,SpiderCropMrc
 )
 
 
@@ -31,7 +31,9 @@ def main():
         "buildbest":BuildBest,
         "optimize":OptimizeRotamer,
         "loopoptimize":LoopRotamerOptimize,
-        "sidestat":SideChainStatistics
+        "sidestat":SideChainStatistics,
+        "crop":SpiderCropMap,
+        "cropmrc":SpiderCropMrc
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )
