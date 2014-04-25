@@ -1,8 +1,8 @@
+
 import os
-from string import Template
 
 from utils.tool import _, _dir_init, CmdTool, ScriptMixin
-from utils.job import run_command
+
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "jmol" )
 

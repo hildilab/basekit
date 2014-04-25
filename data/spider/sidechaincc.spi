@@ -57,14 +57,30 @@ boxil
 FS [X4], [X5]
 boxil
 ;mitte des spektrums bestimmen
-[x6]=(X4+X5)/2
 
+[x6]=(X4+X5)/2
+[x99]=[X5]/10
+[x7]=[x6]+[x99]*2
+;[x6]=2000
 ;Maske erstellen noch zu testen
 TH M
 boxil
 mask
 B
-[x6]
+[x7]
+
+VM
+echo {%F7.4%[x6]}
+;alternative maske
+
+;MA
+;boxil
+;mask
+;10 0
+;G
+;A
+;*
+;3.5
 
 ;anzahl rotamere
 [ar]=${num_rota}

@@ -19,6 +19,7 @@ import numpy as np
 import provi_prep as provi
 from spider import LoopCrosscorrel
 from pdb import PdbEdit, SplitPdbSSE, LoopDelete ,PdbSplit,get_tree
+import utils.numpdb as numpdb
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "linker" ) 
 
@@ -85,7 +86,8 @@ class LinkIt( CmdTool, ProviMixin ):
                 )
     def _fix_linker_pdb( self, output_file, atoms_only=False, stems=True ):
         backbone = ( ' N  ',' C  ', ' CA ',' O  ' )
-        
+        chain = self.res1['chain']
+        print chain
         with open( self.pdb_linker_file, "r" ) as fp:
             with open( output_file, "w" ) as fp_out:
                 for i, line in enumerate( fp ):
@@ -104,7 +106,7 @@ class LinkIt( CmdTool, ProviMixin ):
                             resnew= int(line[22:26])+int(self.res1['resno'])
         
                             resnewp="%4s" % resnew
-                            line = line = line[0:22] + resnewp + line[26:]
+                            line = line = line[0:21]+chain + resnewp + line[26:]
                         atom_i += 1
                         fp_out.write( line )
                         continue
@@ -361,6 +363,56 @@ class LnkItVali(PyTool, ProviMixin):
                         continue
 #   Analyse 
 #found the original fragment?
+class CutPDB (PyTool):
+    args = [
+    _( "pdb_file", type="file"),
+    _( "mrc_file", type="file"),
+    _( "resolution", type="float", range=[1, 10], step=0.1 ),
+    _( "cutoff", type="float" )
+        ]
+    def func( self, *args, **kwargs ):
+        
+        npdb=numpdb.NumPdb( self.pdb_file)
+
+        for z, numa in enumerate (npdb.iter_chain()):
+            cha=numa.get('chain')[0]
+            rel=numa.get('resno')[-1]
+            print rel
+            print cha
+            os.mkdir(cha)
+            for x in range (2,35,1):
+                #ch=numa.get('chain')[0]
+                gum= "%s/%s" % (cha,x)
+                os.mkdir(gum)
+                for i,numa in enumerate (npdb.iter_resno(chain=cha)):
+                   
+                    
+                   
+                    res1=numa.get('resno')[0]
+                    res2=res1+x-1
+                    print res1
+                    test=npdb.copy(resno=[res1,res2],chain=cha)
+                    oripdb=npdb.sele(resno=[res1,res2],chain=cha, invert=True)
+                    if rel-x+1>=res1:
+                        di="%s/%s_%s" % (gum,res1,res2)
+                        os.mkdir(di)
+                        name= "%s/%s_%s.%s" % (di,res1,res2,'pdb')
+                        name2= "%s/%s_%s_%s.%s" % (di,'ganz',res1,res2,'pdb')
+                        print name2
+                        test.write(name)
+                        npdb.write(name2,sele=oripdb)
+                        seq=test.sequence()
+                        ires1="%s:%s" % (res1-1,cha)
+                        ires2="%s:%s" % (res2+1,cha)
+                        print ires1, ires2
+                        print 'sequence',seq
+                        #print 'richtige?',numa.sequence()
+                        try:
+                            LinkItDensity (name2,self.mrc_file,ires1,ires2,seq,self.resolution, self.cutoff,output_dir=di)
+                        except:
+                            print 'linikt error'
+                        #    neuen loop suchen
+                        
 
 class AnalyseLiniktRun( PyTool , ProviMixin):
     args = [
