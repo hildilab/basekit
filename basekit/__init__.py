@@ -1,3 +1,7 @@
+
+import matplotlib
+matplotlib.use( "Cairo" )
+
 import utils
 
 import apbs
