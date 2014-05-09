@@ -1,5 +1,4 @@
 import os
-import sys
 import unittest
 
 DIR = os.path.split( os.path.abspath( __file__ ) )[0]
@@ -7,7 +6,15 @@ PARENT_DIR = os.path.split( DIR )[0]
 DATA_DIR = os.path.join( PARENT_DIR, "data", "test" )
 TMP_DIR = os.path.join( DIR, "tmp" )
 
-sys.path.append( os.path.join( PARENT_DIR, "data", "ball" ) )
+
+# Install from source
+# https://bitbucket.org/ball/ball
+
+# set envs
+# export PYTHONPATH=/usr/local/lib/:/usr/lib/lp_solve/:$PYTHONPATH
+# export LD_LIBRARY_PATH=/usr/local/lib/:/usr/include/qt4/:/usr/lib/lp_solve/:$LD_LIBRARY_PATH
+# export PATH="/home/arose/dev/repos/ball/build/bin/:${PATH}"
+
 
 # Examples: http://ball-trac.bioinf.uni-sb.de/wiki/CodeLibrary
 from BALL import *
