@@ -1,6 +1,7 @@
 
 import matplotlib
-matplotlib.use( "Cairo" )
+# matplotlib.use( "Cairo" )
+matplotlib.use( "Agg" )
 
 import utils
 
