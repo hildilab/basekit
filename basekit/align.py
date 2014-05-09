@@ -19,14 +19,19 @@ logging.basicConfig()
 LOG = logging.getLogger('align')
 LOG.setLevel( logging.ERROR )
 
-def pdblist2fasta(inputfiles, fasta_file, mapfile=""):
+def pdblist2fasta(inputfiles, fasta_file, outdir, mapfile=""):
     if mapfile!="":
         fp2=open(mapfile, "w")
     with open(fasta_file, "w") as fp:
         for index, fi in enumerate(inputfiles):
-            stem=fi.split("/")[-1][:-4]
+            stem=utils.path.stem(fi)
             fp2.write(fi.split("/")[-1]+" "+stem+"\n")
-            sequence = numpdb.NumPdb( fi ).sequence()
+            npdb = numpdb.NumPdb( fi )
+            sequence=npdb.sequence()
+            name=stem+utils.path.ext(fi)
+            new_pdb=os.path.join(outdir, name)
+            new=npdb.copy(**{"record":"ATOM  "}).write(new_pdb)
+            sequence=sequence.replace("?","")
             identifier=">%s\n"%stem
             fp.write(identifier)
             fp.write(sequence)
@@ -40,12 +45,12 @@ class Muscle( CmdTool):
     """A wrapper around the 'Muscle' programm."""
     args = [
         _( "fasta_file", type="file", ext="fasta", help="FASTA-file with all sequences of the to be aligned pdb-files OR if using pdb_files: name of the file" ),
-        _( "pdb_files|pf", type="str", default="", help="directory containing the pdb-files to be aligned" ),
+        _( "pdb_files|pf", type="str", nargs="+", default="", help="at least 2 pdb-files or a directory containing at least 2 pdb-files to be aligned" ),
         _( "diags", type="bool", default=False, help="Find diagonals (faster for similar sequences), (bool, default=False)" ),
         _( "maxiters", type="int", default=16, help="Maximum number of iterations (integer, default=16)" ),
         _( "maxhours", type="int", default=0, help="Maximum time to iterate in hours (default no limit)" ),
         _( "format", type="str", options=["fasta", "html", "msf", "clw"], default="fasta", help="[fasta, html, msf(GCG MSF), clw(CLUSTALW)] (default fasta)" ),
-        _( "map", type="bool", default=True, help="generates a 'map' file for mapping inside Theseus(default=True)" ),
+        _( "mapfile", type="bool", default=False, help="generates a 'map' file for mapping inside Theseus(default=False)" ),
     ]
     out = [
         _( "alignment_file", file="{fasta_file.stem}_muscle.aln" ),
@@ -58,14 +63,17 @@ class Muscle( CmdTool):
     tmpl_dir = TMPL_DIR
     def _init( self, *args, **kwargs ):
         if self.pdb_files!="":
-            v = ".*[pdb]$"
             files=[]
-            for m, pdbfile in dir_walker( self.pdb_files, v ):
-                files.append(pdbfile)
-            if self.map:
-                pdblist2fasta(files, self.fasta_file_out, self.map_file)
+            if len(self.pdb_files)==1:
+                v = ".*[pdb]$"
+                for m, pdbfile in dir_walker( self.pdb_files, v ):
+                    files.append(pdbfile)
             else:
-                pdblist2fasta(files, self.fasta_file_out)
+                files=self.pdb_files
+            if self.mapfile:
+                pdblist2fasta(files, self.fasta_file_out, self.output_dir, self.map_file)
+            else:
+                pdblist2fasta(files, self.fasta_file_out, self.output_dir)
             self.fasta_file=self.fasta_file_out
         if self.diags:
             if self.maxhours!=0:
