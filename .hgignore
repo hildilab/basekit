@@ -13,9 +13,7 @@ Icon*
 
 *.pyc
 
-basekit/utils/align/calign.so
-basekit/utils/cgeom.so
-cgeom.so
+*.so
 
 data/voronoia/get_volume.lg
 data/voronoia/get_volume_32.lg
