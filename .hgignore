@@ -12,7 +12,10 @@ Icon*
 *.sublime-workspace
 
 *.pyc
-*.so
+
+basekit/utils/align/calign.so
+basekit/utils/cgeom.so
+cgeom.so
 
 data/voronoia/get_volume.lg
 data/voronoia/get_volume_32.lg
