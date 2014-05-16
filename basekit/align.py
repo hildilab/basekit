@@ -10,6 +10,8 @@ import utils.numpdb as numpdb
 from utils import dir_walker
 from utils.tool import _, _dir_init, CmdTool
 
+DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "superpose" )
+THESEUS_CMD = os.path.join( TMPL_DIR, "theseus" )
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "align" )
 MUSCLE_CMD = os.path.join( TMPL_DIR, "muscle3.8.31" )
@@ -19,26 +21,56 @@ logging.basicConfig()
 LOG = logging.getLogger('align')
 LOG.setLevel( logging.ERROR )
 
+
+
+class TheseusMakeFasta( CmdTool ):
+    """A wrapper around the 'theseus-align' programm."""
+    args = [
+        _( "pdb_input", type="str", nargs="+", help="list of pdb-files" ),
+    ]
+    out = [
+        _( "theseus_cmd", file="theseus_cmd.log"),
+    ]
+    tmpl_dir = TMPL_DIR
+    def _init( self, *args, **kwargs ):
+        self.cmd = [ 
+            THESEUS_CMD, 
+            "-f", "-F",
+            ]
+        self.cmd=self.cmd+self.pdb_input
+
+
 def pdblist2fasta(inputfiles, fasta_file, outdir, mapfile=""):
     if mapfile!="":
         fp2=open(mapfile, "w")
-    with open(fasta_file, "w") as fp:
-        for index, fi in enumerate(inputfiles):
-            stem=utils.path.stem(fi)
-            fp2.write(fi.split("/")[-1]+" "+stem+"\n")
-            npdb = numpdb.NumPdb( fi )
-            sequence=npdb.sequence()
-            name=stem+utils.path.ext(fi)
-            new_pdb=os.path.join(outdir, name)
-            new=npdb.copy(**{"record":"ATOM  "}).write(new_pdb)
-            sequence=sequence.replace("?","")
-            identifier=">%s\n"%stem
-            fp.write(identifier)
-            fp.write(sequence)
-            if index!=len(inputfiles)-1:
-                fp.write("\n")
+    stem_list=[]
+    for index, fi in enumerate(inputfiles):
+        stem=utils.path.stem(fi)
+        name=stem+utils.path.ext(fi)
+        if mapfile!="":
+            fp2.write(fi.split("/")[-1]+" "+name+"\n")#stem+"\n")
+        npdb = numpdb.NumPdb( fi )
+        new_pdb=os.path.join(outdir, name)
+        new=npdb.copy(**{"record":"ATOM  "})
+        new.write(new_pdb)
+        sequence=new.sequence()
+        sequence=sequence.replace("?","")
+        identifier=">%s\n"%name#stem
+        stem_list.append(name)
     if mapfile!="":
         fp2.close()
+    fasta = TheseusMakeFasta(
+        stem_list,
+        output_dir=outdir
+    )
+    fasta()
+    with open(fasta_file, "w") as fp:
+        v = ".*[fst]$"
+        for m, pdbfile in dir_walker( outdir, v ):
+            with open(pdbfile, "r") as fp3:
+                content=fp3.read()
+                fp.write(content)
+                fp.write("\n")
 
 
 class Muscle( CmdTool):
@@ -117,4 +149,6 @@ class Muscle( CmdTool):
                     "-%s"%self.format,
                     "-log", self.log_file2
                 ]
+
+
 
