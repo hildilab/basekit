@@ -8,25 +8,23 @@ import numpy as np
 from utils import copy_dict
 from utils.tool import _, _dir_init, PyTool, CmdTool, ScriptMixin
 from utils.numpdb import NumPdb
-from utils.mrc import get_mrc_header, getMrc
+from utils.mrc import getMrc
 from utils.math import rmsd
 from pdb import *#PdbSplit
 
 #from pdb import PdbEdit, NumpdbTest
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "spider" )
-SPIDER_CMD = "spider" 
+SPIDER_CMD = "spider"
 
 
-
-            
 # 2010 Cryo-EM Modeling Challenge: http://ncmi.bcm.edu/challenge
-
 
 class MrcHeaderPrinter( PyTool ):
     args = [
         _( "mrc_file", type="file", ext="mrc" )
     ]
+
     def func( self, *args, **kwargs ):
         header = mrc_header( self.mrc_file )
         for name, value in zip(header._fields, header):
@@ -39,15 +37,16 @@ class Spider( CmdTool, ScriptMixin ):
     ]
     script_tmpl = None
     tmpl_dir = TMPL_DIR
+
     def _init( self, script_file, *args, **kwargs ):
-        if script_file=="__tmpl__":
+        if script_file == "__tmpl__":
             self.script_file = self.outpath( self.script_tmpl )
         script_ext = "spi"
         data_ext = "cpv"
         # spider spi/cpv @box
         self.cmd = [
-            SPIDER_CMD, 
-            "%s/%s" % ( script_ext, data_ext ), 
+            SPIDER_CMD,
+            "%s/%s" % ( script_ext, data_ext ),
             "@%s" % self.relpath( self.script_file, no_ext=True )
         ]
 
@@ -61,10 +60,12 @@ class SpiderShift( Spider ):
     out = [
         _( "map_shift", file="shift.mrc" ),
         _( "edited_pdb_file", file="edited.pdb" )
-    ]  
+    ]
     script_tmpl = "shift.spi"
+
     def _init( self, *args, **kwargs ):
         super(SpiderShift, self)._init( "__tmpl__" )
+
     def _pre_exec( self ):
         boxsize=getMrc(self.mrc_file,'nx' )
         originx=abs(getMrc(self.mrc_file,'nxstart'))
@@ -93,7 +94,8 @@ class SpiderShift( Spider ):
         PdbEdit( 
             self.pdb_file, shift= [shx, shy, shz]
         )
-        
+
+
 class SpiderConvert( Spider ):
     """Simple tool that converts mrc files to the spider format"""
     args = [
@@ -103,8 +105,10 @@ class SpiderConvert( Spider ):
         _( "map_file", file="mapupload.cpv" )
     ]
     script_tmpl = "convert.spi"
+
     def _init( self, *args, **kwargs ):
         super(SpiderConvert, self)._init( "__tmpl__" )
+
     def _pre_exec( self ):
         #
         order=getMrc(self.mrc_file,'mapc' )
@@ -122,7 +126,8 @@ class SpiderPdbBox( PyTool ):
     ]
     out = [
         _( "edited_pdb_file", file="edited.pdb" )
-    ]  
+    ]
+
     def func( self ):
         #mrc_dic={}
         #mrc_list=mrc_header( self.mrc_file)
@@ -146,16 +151,15 @@ class SpiderPdbBox( PyTool ):
             z =  (ol3 - (bbs/2)) * ps - 1
             print [x,y,z, bs,bbs]
         PdbEdit (self.pdb_file, box = [ x, y, z, obs, obs, obs ] )
-        
 
-    
+
 class SpiderDeleteFilledDensities( Spider ):
     args = [
         _( "mrc_file", type="file", ext="mrc" ),
-        _( "map_file", type="file", ext="cpv" , help= "boxil.cpv" ),
+        _( "map_file", type="file", ext="cpv", help="boxil.cpv" ),
         _( "pdb_file", type="file", ext="pdb" ),
-        _( "result_file", type="file" , ext="cpv", help="ergebnisse.cpv"),
-        _( "resolution", type="float", range=[1, 10], 
+        _( "result_file", type="file", ext="cpv", help="ergebnisse.cpv"),
+        _( "resolution", type="float", range=[1, 10],
             help="of the map_file" ),
         _( "res1", type="sele", help="resno:chain, i.e. 10:A" ),
         _( "res2", type="sele" )
@@ -192,7 +196,7 @@ class SpiderBox( Spider ):
         _( "res2", type="sele" ),
         _( "length", type="int", range=[1, 30] ),
         #_( "pixelsize", type="slider", range=[1, 10], fixed=True ),
-        _( "resolution", type="float", range=[1, 10], 
+        _( "resolution", type="float", range=[1, 10],
             help="of the map_file" )
     ]
     out = [
@@ -233,17 +237,13 @@ class SpiderBox( Spider ):
 
 class SpiderCropMap ( Spider ):
     args = [
-   
-    _( "map_file", type="file", ext="cpv" ),
-    _( "pdb_file", type="file", ext="pdb" ),
-    _( "pixelsize", type="float", range=[1, 10], fixed=True )
-    
+        _( "map_file", type="file", ext="cpv" ),
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "pixelsize", type="float", range=[1, 10], fixed=True )
     ]
     out = [
-        
-    
-    _( "box_file", file="ergebnisse.cpv" ),
-    _( "box_map_file", file="boxil.cpv" )
+        _( "box_file", file="ergebnisse.cpv" ),
+        _( "box_map_file", file="boxil.cpv" )
     ]
     script_tmpl = "crop2.spi"
     def _init( self, *args, **kwargs ):
@@ -259,13 +259,14 @@ class SpiderCropMap ( Spider ):
         abstand=round(((mi[0]-ma[0])**2+(mi[1]-ma[1])**2+(mi[2]-ma[2])**2)**0.5,0)
         print ma,mi,middle,abstand
         self._make_script_file(
-        x1=middle[0],
-        y1=middle[1],
-        z1=middle[2],
-        map_name=self.relpath(self.map_file,no_ext=True),
-        abstand=abstand,
-        ps=self.pixelsize,
+            x1=middle[0],
+            y1=middle[1],
+            z1=middle[2],
+            map_name=self.relpath(self.map_file, no_ext=True),
+            abstand=abstand,
+            ps=self.pixelsize,
         )
+
 
 class SpiderReConvert( Spider ):
     args = [
@@ -279,10 +280,12 @@ class SpiderReConvert( Spider ):
         _( "mrc_ori_file", file="reconvertori.mrc" )
     ]
     script_tmpl = "recon.spi"
+
     def _init( self, *args, **kwargs ):
         super(SpiderReConvert, self)._init( "__tmpl__" )
+
     def _pre_exec( self ):
-        self._make_script_file( 
+        self._make_script_file(
             box_name=self.relpath( self.box_file, no_ext=True ),
             map_name=self.relpath( self.map_file, no_ext=True ),
             box_map_name=self.relpath( self.box_map_file, no_ext=True ),
@@ -305,43 +308,47 @@ class SpiderCrosscorrelation( Spider ):
         _( "crosscorrel_json", file="crosscorrelation.json" )
     ]
     script_tmpl = "crosscorrelation.spi"
+
     def _init( self, *args, **kwargs ):
         if not self.max_loops:
             self.max_loops = False
         super(SpiderCrosscorrelation, self)._init( "__tmpl__" )
+
     def _pre_exec( self ):
         self._split_loop_file()
-        self._make_script_file( 
-            map_name=self.relpath( self.map_file, no_ext=True ), 
-            box_map_name=self.relpath( self.box_map_file, no_ext=True ), 
-            box_name=self.relpath( self.box_file, no_ext=True ), 
+        self._make_script_file(
+            map_name=self.relpath( self.map_file, no_ext=True ),
+            box_map_name=self.relpath( self.box_map_file, no_ext=True ),
+            box_name=self.relpath( self.box_file, no_ext=True ),
             loop_dir=self.relpath( self.loop_dir ) + os.sep,
             max_loops=self.max_loops or 999
         )
+
     def _post_exec( self ):
         self._make_crosscorrel_json( compact=True )
-       
+
     def _split_loop_file( self ):
-        PdbSplit( 
-            self.loop_file,self.linkerinfo, output_dir=self.loop_dir, backbone_only=True, 
+        PdbSplit(
+            self.loop_file, self.linkerinfo,
+            output_dir=self.loop_dir, backbone_only=True,
             max_models=self.max_loops, resno_ignore=[ 1000, 2000 ], zfill=3
         )
+
     def _make_crosscorrel_json( self, compact=False ):
         crosscorrel_dict = {}
         with open( self.crosscorrel_file, "r" ) as fp:
             for line in fp:
                 d = line.split()
-                if len(d)==3:
+                if len(d) == 3:
                     crosscorrel_dict[ int(d[0]) ] = float( d[2] )
         with open( self.crosscorrel_json, "w" ) as fp:
             if compact:
-                json.dump( crosscorrel_dict, fp, separators=(',',':') )
+                json.dump( crosscorrel_dict, fp, separators=(',', ':') )
             else:
                 json.dump( crosscorrel_dict, fp, indent=4 )
-                
 
 
-class SpiderSidechainCorrelation ( Spider ) :
+class SpiderSidechainCorrelation ( Spider ):
     args = [
         _( "map_file", type="file", ext="cpv" ),
         _( "pdb_file", type="file", ext="pdb" ),
@@ -356,8 +363,10 @@ class SpiderSidechainCorrelation ( Spider ) :
         _( "crosscorrel_json", file="crosscorrelation.json" )
     ]
     script_tmpl = "sidechaincc.spi"
+
     def _init( self, *args, **kwargs ):
-        super(SpiderSidechainCorrelation, self)._init( "__tmpl__" )    
+        super(SpiderSidechainCorrelation, self)._init( "__tmpl__" )
+
     def _pre_exec( self ):
         npdb=NumPdb( self.pdb_file )
         sele={"resno": self.residue, "chain": self.chain}
@@ -382,6 +391,7 @@ class SpiderSidechainCorrelation ( Spider ) :
             residue=self.residue
             )
         MakeAllRotameres(self.pdb_file, self.chain,self.residue,zfill=2,output_dir=self.sidechain_dir)
+
     def _get_ca (self,pdb_file,chain, residue):
         npdb=NumPdb( pdb_file )
         sele1={"resno": self.residue, "chain": self.chain}
@@ -394,8 +404,8 @@ class SpiderSidechainCorrelation ( Spider ) :
     #    MakeAllRotameres(self.pdb_file, self.chain,self.residue,self.residue,zfill=2)
     #    
         #pass  
-            
-            
+
+
 class SpiderDeleteBackbone (Spider):
     args = [
      _( "map_file", type="file", ext="cpv" ),
@@ -424,7 +434,7 @@ class SpiderDeleteBackbone (Spider):
         )
 
 
-class LoopSidechainCorrelation (PyTool):            
+class LoopSidechainCorrelation (PyTool):
     args = [
      _( "map_file", type="file", ext="cpv" ),
      _( "pdb_file", type="file", ext="pdb" ),
@@ -475,7 +485,7 @@ class LoopSidechainCorrelation (PyTool):
                 if not os.path.exists(self.subdir(dirg)): os.makedirs(self.subdir(dirg))
                 npdb.copy(sele=aa).write(dire)
 
-      
+
 class OriSidechainCorrel ( Spider ):
     args = [
     _( "map_file", type="file", ext="cpv" ),  
@@ -525,11 +535,10 @@ class OriSidechainCorrel ( Spider ):
 
 class OptimizeRotamer ( PyTool ):
     args = [
-    _("result_direc",type="str")
+        _("result_direc",type="str")
     ]
-    out=[
-    _( "verybestrotamers", file="verybestrotamers.pdb" )
-    
+    out = [
+        _( "verybestrotamers", file="verybestrotamers.pdb" )
     ]
         
     def  _init( self , *args, **kwargs ):
@@ -572,38 +581,10 @@ class OptimizeRotamer ( PyTool ):
 
 #class SpiderMinMap ( Spider ):
 #    args = [
-#    _("pdb_file", type="file"),  
+#    _("pdb_file", type="file"),
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-class  LoopRotamerOptimize ( PyTool ):
+class LoopRotamerOptimize ( PyTool ):
     args = [
     _("pdb_file", type="file"),  
     _("result_direc",type="str"),
@@ -678,7 +659,7 @@ class  LoopRotamerOptimize ( PyTool ):
             #npdb.write(roundd)
             #clashes,a=find_all_clashes(npdb)
 
-        
+
 class BuildBest ( PyTool ):
     args = [
         _("result_direc",type="str")
@@ -724,127 +705,128 @@ class BuildBest ( PyTool ):
 
 
 class SideChainStatistics ( PyTool ):
-        args = [
-    _( "dataset_dir", type="dir" )
+    args = [
+        _( "dataset_dir", type="dir" )
     ]
-        out = [
-     _( "stat_file", file="statistics.csv" ),
-     _( "res_file", file="overall.txt" )
+    out = [
+        _( "stat_file", file="statistics.csv" ),
+        _( "res_file", file="overall.txt" )
     ]
-        #def rmsd( coords1, coords2 ):
-        #    return np.sqrt( 
-        #        np.sum( np.power( coords1-coords2, 2 ) ) / coords1.shape[0]
-        #    )  
-        def func (self):
-            
-            with open (self.stat_file, 'w') as rf:
-                title="%s,%s,%s,%s,%s,%s,%s%s" %  ("residue","rotanumber","hmm","corr", "oricorr","rmsd","bigger","\n")
-                rf.write(title)
-                fi=sorted((os.listdir(self.dataset_dir)), key= lambda x: int(x.split('_')[-1]))
-                g=0
-                b=0
-                m=0
-                a=0#fi.sort(key=float)
-                #print fi
-                for pn in fi:#os.listdir("chainA"):
-                   # print pn
-                    #if os.path.isdir(pn):
-                    z=0
-                    #print pn
-                    if pn[2:5]  not in ("GLY", "ALA"):
-                        a+=1
-                        ccsort=  os.path.join(self.dataset_dir,pn,"ccsort.cpv")
-                        ori=os.path.join(self.dataset_dir,pn,"oricrosscorrelation.cpv")
-                        
-                        #print ori
-                        
-                        with open (ccsort, 'r') as hu:
-                            lines=hu.readlines()
-                            hurz=','.join(lines[1].split())
-                            #hurz2=hurz+"\n"
-                            ncor=lines[1].split()[-1]
-                            
-                        with open (ori,'r') as bu:
-                            line2=bu.readlines()
-                            #hurz.append(line2)
-        
-                            corr=line2[1].split()[-1]
-                            #print ncor
-                            if float(ncor)>float(corr):
-                                z=1
-                            
-                        oripdb=os.path.join(self.dataset_dir,pn,pn+".pdb")
-                        
-                        best=(lines[1].split()[0]).zfill(2)
-                        #print best
-                        bestrota="%s_%s.%s" % (pn[2:],best,'pdb')
-                        #print bestrota
-                        rotadir=os.path.join(self.dataset_dir,pn,"rotamere")
-                        bestpdb=os.path.join(self.dataset_dir,pn,"rotamere",bestrota)
+    #def rmsd( coords1, coords2 ):
+    #    return np.sqrt(
+    #        np.sum( np.power( coords1-coords2, 2 ) ) / coords1.shape[0]
+    #    )
 
-                        npdb = numpdb.NumPdb( bestpdb, {
-                            "phi_psi": False,
-                            "sstruc": False,
-                            "backbone_only": False,
-                            "protein_only": False,
-                            "detect_incomplete": False,
-                            "configuration": False,
-                            "info": False
-                            })
-                        sele = npdb.sele()
-                        #npdb2=get_npdb( oripdb )
-                        npdb2 = numpdb.NumPdb( oripdb, {
-                            "phi_psi": False,
-                            "sstruc": False,
-                            "backbone_only": False,
-                            "protein_only": False,
-                            "detect_incomplete": False,
-                            "configuration": False,
-                            "info": False
-                            })
-                        sele2 = npdb2.sele()
-                        a1=np.array(npdb['xyz'])
-                        a2=np.array(npdb2['xyz'])
-                        #print npdb['xyz']
-                        rootm=rmsd(npdb['xyz'],npdb2['xyz'])
-                        bestrmsd=[]
-                        for file in os.listdir(rotadir):
-                            
-                            if file.endswith(".pdb"):
-                                #print file, "hallo"
-                                npdb3 = numpdb.NumPdb(os.path.join(rotadir,file), {
-                            "phi_psi": False,
-                            "sstruc": False,
-                            "backbone_only": False,
-                            "protein_only": False,
-                            "detect_incomplete": False,
-                            "configuration": False,
-                            "info": False
-                            })
-                                #print npdb3['xyz']
-                                rootm2=rmsd(npdb3['xyz'],npdb2['xyz'])
-                                bestrmsd.append(float(rootm2))
-                        test100=sorted(bestrmsd)
-                        print file, test100 [0], test100 [-1]
-                        if test100[0]==rootm:
-                            print "yeahaa!"
-                            y=1
-                            g+=1
-                        if rootm <1.2 and not test100[0]==rootm:
-                            m+=1
-                            y=2
-                            
-                        if rootm >=1.2 and not test100[0]==rootm:
-                            y=0
-                            b+=1
-                            
-                        hurz2="%s,%s,%s,%s,%s,%s%s" %  (pn,hurz,corr,rootm,z,y,"\n")
-                        rf.write(hurz2)
-                with open (self.res_file, 'w') as gh:
-                    juhu="%s %s %s %s" % (a,g,m,b)
-                    gh.write(juhu)
-                print a,g,m,b
-     
+    def func(self):
+        with open( self.stat_file, 'w' ) as rf:
+            title="%s,%s,%s,%s,%s,%s,%s%s" %  ("residue","rotanumber","hmm","corr", "oricorr","rmsd","bigger","\n")
+            rf.write(title)
+            fi=sorted((os.listdir(self.dataset_dir)), key= lambda x: int(x.split('_')[-1]))
+            g=0
+            b=0
+            m=0
+            a=0#fi.sort(key=float)
+            #print fi
+            for pn in fi:#os.listdir("chainA"):
+               # print pn
+                #if os.path.isdir(pn):
+                z=0
+                #print pn
+                if pn[2:5]  not in ("GLY", "ALA"):
+                    a+=1
+                    ccsort=  os.path.join(self.dataset_dir,pn,"ccsort.cpv")
+                    ori=os.path.join(self.dataset_dir,pn,"oricrosscorrelation.cpv")
+                    
+                    #print ori
+                    
+                    with open (ccsort, 'r') as hu:
+                        lines=hu.readlines()
+                        hurz=','.join(lines[1].split())
+                        #hurz2=hurz+"\n"
+                        ncor=lines[1].split()[-1]
+                        
+                    with open (ori,'r') as bu:
+                        line2=bu.readlines()
+                        #hurz.append(line2)
+    
+                        corr=line2[1].split()[-1]
+                        #print ncor
+                        if float(ncor)>float(corr):
+                            z=1
+                        
+                    oripdb=os.path.join(self.dataset_dir,pn,pn+".pdb")
+                    
+                    best=(lines[1].split()[0]).zfill(2)
+                    #print best
+                    bestrota="%s_%s.%s" % (pn[2:],best,'pdb')
+                    #print bestrota
+                    rotadir=os.path.join(self.dataset_dir,pn,"rotamere")
+                    bestpdb=os.path.join(self.dataset_dir,pn,"rotamere",bestrota)
+
+                    npdb = numpdb.NumPdb( bestpdb, {
+                        "phi_psi": False,
+                        "sstruc": False,
+                        "backbone_only": False,
+                        "protein_only": False,
+                        "detect_incomplete": False,
+                        "configuration": False,
+                        "info": False
+                        })
+                    sele = npdb.sele()
+                    #npdb2=get_npdb( oripdb )
+                    npdb2 = numpdb.NumPdb( oripdb, {
+                        "phi_psi": False,
+                        "sstruc": False,
+                        "backbone_only": False,
+                        "protein_only": False,
+                        "detect_incomplete": False,
+                        "configuration": False,
+                        "info": False
+                        })
+                    sele2 = npdb2.sele()
+                    a1=np.array(npdb['xyz'])
+                    a2=np.array(npdb2['xyz'])
+                    #print npdb['xyz']
+                    rootm=rmsd(npdb['xyz'],npdb2['xyz'])
+                    bestrmsd=[]
+                    for file in os.listdir(rotadir):
+                        
+                        if file.endswith(".pdb"):
+                            #print file, "hallo"
+                            npdb3 = numpdb.NumPdb(os.path.join(rotadir,file), {
+                        "phi_psi": False,
+                        "sstruc": False,
+                        "backbone_only": False,
+                        "protein_only": False,
+                        "detect_incomplete": False,
+                        "configuration": False,
+                        "info": False
+                        })
+                            #print npdb3['xyz']
+                            rootm2=rmsd(npdb3['xyz'],npdb2['xyz'])
+                            bestrmsd.append(float(rootm2))
+                    test100=sorted(bestrmsd)
+                    print file, test100 [0], test100 [-1]
+                    if test100[0]==rootm:
+                        print "yeahaa!"
+                        y=1
+                        g+=1
+                    if rootm <1.2 and not test100[0]==rootm:
+                        m+=1
+                        y=2
+                        
+                    if rootm >=1.2 and not test100[0]==rootm:
+                        y=0
+                        b+=1
+                        
+                    hurz2="%s,%s,%s,%s,%s,%s%s" %  (pn,hurz,corr,rootm,z,y,"\n")
+                    rf.write(hurz2)
+            with open (self.res_file, 'w') as gh:
+                juhu="%s %s %s %s" % (a,g,m,b)
+                gh.write(juhu)
+            print a,g,m,b
+
+
 class SpiderCropMrc ( PyTool ):
     args = [
    
@@ -884,6 +866,8 @@ class SpiderCropMrc ( PyTool ):
         self.spider_convert()
         self.spider_crop()
         self.spider_reconvert()
+
+
 class LoopCrosscorrel( PyTool ):
     args = [
         _( "mrc_file", type="file", ext="mrc" ),
@@ -901,38 +885,42 @@ class LoopCrosscorrel( PyTool ):
         _( "ori_pdb_linker_file3", file="ori_pdb_linker_file3.pdb")
     ]
     tmpl_dir = TMPL_DIR
+
     def _init( self, *args, **kwargs ):
         self.spider_shift = SpiderShift(
-            self.mrc_file,self.pdb_file,
-            **copy_dict( 
-                kwargs, run=False, output_dir=self.subdir("shift") 
+            self.mrc_file, self.pdb_file,
+            **copy_dict(
+                kwargs, run=False, output_dir=self.subdir("shift")
             )
         )
-        self.spider_convert = SpiderConvert( 
-            self.spider_shift.map_shift, 
-            **copy_dict( 
-                kwargs, run=False, output_dir=self.subdir("convert") 
+        self.spider_convert = SpiderConvert(
+            self.spider_shift.map_shift,
+            **copy_dict(
+                kwargs, run=False, output_dir=self.subdir("convert")
             )
         )
         self.spider_box = SpiderBox(
             self.spider_shift.map_shift,
-            self.spider_convert.map_file, 
-            self.spider_shift.edited_pdb_file, self.res1, self.res2, 
+            self.spider_convert.map_file,
+            self.spider_shift.edited_pdb_file, self.res1, self.res2,
             self.length, self.resolution,
             **copy_dict( kwargs, run=False, output_dir=self.subdir("box") )
         )
-        self.pdb_box =  SpiderPdbBox(
-           self.spider_shift.edited_pdb_file, 
-           self.spider_box.box_file,
-           self.spider_shift.map_shift,
-           **copy_dict( kwargs, run=False, output_dir=self.subdir("pdbbox"))
+        self.pdb_box = SpiderPdbBox(
+            self.spider_shift.edited_pdb_file,
+            self.spider_box.box_file,
+            self.spider_shift.map_shift,
+            **copy_dict( kwargs, run=False, output_dir=self.subdir("pdbbox"))
         )
-        self.spider_delete_filled_densities = SpiderDeleteFilledDensities( 
-            self.spider_shift.map_shift,self.spider_box.box_map_file, self.pdb_box.edited_pdb_file, self.spider_box.box_file,
-            self.resolution,self.res1,self.res2,
-            **copy_dict( 
-                kwargs, run=False, 
-                output_dir=self.subdir("delete_filled_densities") 
+        self.spider_delete_filled_densities = SpiderDeleteFilledDensities(
+            self.spider_shift.map_shift,
+            self.spider_box.box_map_file,
+            self.pdb_box.edited_pdb_file,
+            self.spider_box.box_file,
+            self.resolution, self.res1, self.res2,
+            **copy_dict(
+                kwargs, run=False,
+                output_dir=self.subdir("delete_filled_densities")
             )
         )
         self.spider_reconvert = SpiderReConvert(
@@ -940,113 +928,114 @@ class LoopCrosscorrel( PyTool ):
             self.spider_convert.map_file,
             self.spider_box.box_map_file,
             self.spider_convert.map_file,
-            **copy_dict( 
-                kwargs, run=False, output_dir=self.subdir("reconvert") 
+            **copy_dict(
+                kwargs, run=False, output_dir=self.subdir("reconvert")
             )
         )
         self.spider_crosscorrelation = SpiderCrosscorrelation(
-            self.spider_convert.map_file, 
-            self.spider_delete_filled_densities.empty_map_file, 
-            self.spider_box.box_file, 
+            self.spider_convert.map_file,
+            self.spider_delete_filled_densities.empty_map_file,
+            self.spider_box.box_file,
             self.loop_file,
             self.linkerinfo,
-            **copy_dict( 
+            **copy_dict(
                 kwargs, run=False, output_dir=self.subdir("crosscorrelation"),
                 max_loops=self.max_loops
             )
         )
         self.output_files.extend( list( itertools.chain(
-            self.spider_convert.output_files, 
+            self.spider_convert.output_files,
             self.spider_delete_filled_densities.output_files,
             self.spider_box.output_files,
             self.spider_reconvert.output_files,
             self.spider_crosscorrelation.output_files
         )))
+
     def func( self ):
         self._crop_pdb()
         self.spider_shift()
         self.spider_convert()
         self.spider_box()
-        self.pdb_box ()
+        self.pdb_box()
         self.spider_delete_filled_densities()
         self.spider_reconvert()
         self.spider_crosscorrelation()
-    
+
     def _post_exec( self ):
         self.backshift_linker()
-        
+
     def _crop_pdb( self ):
         npdb = NumPdb( self.pdb_file )
-        npdb.write( 
-            self.cropped_pdb, 
-            chain=self.res1["chain"], 
-            resno=[ self.res1["resno"]+1, self.res2["resno"]-1 ],
+        npdb.write(
+            self.cropped_pdb,
+            chain=self.res1["chain"],
+            resno=[ self.res1["resno"] + 1, self.res2["resno"] - 1 ],
             invert=True
         )
-    
-    def backshift_linker ( self ) :
-        shiftpath=self.relpath(self.spider_shift.output_dir)
-        shiftfile="%s/%s" % (shiftpath,'shift.cpv')
-        with open (shiftfile, "r") as rs:
-            file_lines=rs.readlines()
-            loc_file = file_lines[1].strip()
-            shxb=float(loc_file[5:13])*-1
-            shyb=float(loc_file[19:27])*-1
-            shzb=float(loc_file[33:42])*-1
 
-            backshift= np.array([shxb,shyb,shzb])
-   
-        loop_dir=self.relpath(self.spider_crosscorrelation.loop_dir)
-        outputdir=self.subdir("oriloops")
-        with open ( self.linkerinfo , 'r') as li:
-            lilines=li.readlines()
-        with open (self.loop_file, 'r') as lf:
-            with open (self.ori_pdb_linker_file3, 'w') as fp_out:
+    def backshift_linker( self ):
+        shiftpath = self.relpath(self.spider_shift.output_dir)
+        shiftfile = "%s/%s" % (shiftpath, 'shift.cpv')
+        with open( shiftfile, "r" ) as rs:
+            file_lines = rs.readlines()
+            loc_file = file_lines[1].strip()
+            shxb = float(loc_file[5:13]) * -1
+            shyb = float(loc_file[19:27]) * -1
+            shzb = float(loc_file[33:42]) * -1
+
+        loop_dir = self.relpath(self.spider_crosscorrelation.loop_dir)
+        outputdir = self.subdir("oriloops")
+        with open( self.linkerinfo, 'r') as li:
+            lilines = li.readlines()
+        with open( self.loop_file, 'r' ) as lf:
+            with open( self.ori_pdb_linker_file3, 'w' ) as fp_out:
                 for line in lf:
                     if line.startswith("ATOM"):
-                        x="%4.3f" % (float(line[31:38])+shxb)
-                        a="%7s" % x
-                        
-                        y="%4.3f" % (float(line[39:46])+shyb)
-                        b="%7s" % y
-                        z="%4.3f" % (float(line[47:54])+shzb)
-                        c="%7s" % z
-        
-                        line = line = line[0:30] + a + line[38:]
-                        line = line = line[0:38] + b + line[46:]
-                        line = line = line[0:46] + c + line[53:]
-        
+                        x = "%4.3f" % (float(line[31:38]) + shxb)
+                        a = "%7s" % x
+
+                        y = "%4.3f" % (float(line[39:46]) + shyb)
+                        b = "%7s" % y
+                        z = "%4.3f" % (float(line[47:54]) + shzb)
+                        c = "%7s" % z
+
+                        line = line[0:30] + a + line[38:]
+                        line = line[0:38] + b + line[46:]
+                        line = line[0:46] + c + line[53:]
+
                         fp_out.write( line )
                     else:
                         continue
                 fp_out.write( "END" )
         for i in os.listdir(loop_dir):
             if i.endswith(".pdb"):
-                loopfile="%s/%s" % (loop_dir,i)
-                
-                outfile="%s/%s" %(outputdir,i)
-                with open (loopfile, 'r') as lp:
-                    lonr=int(i[0:3])
-                    lino=(lonr*4)-2
+                loopfile = "%s/%s" % (loop_dir, i)
 
-                    title= "%s     %s %s ,%s ,%s ,%s ,%s" % ("TITLE","linker",lonr,lilines[lino].strip(),lilines[lino+1].strip(),lilines[lino+2].strip(),lilines[lino+3])
+                outfile = "%s/%s" % (outputdir, i)
+                with open( loopfile, 'r' ) as lp:
+                    lonr = int(i[0:3])
+                    lino = (lonr * 4) - 2
 
-                    with open (outfile, 'w') as of:
+                    title = "%s     %s %s ,%s ,%s ,%s ,%s" % (
+                        "TITLE", "linker", lonr, lilines[lino].strip(),
+                        lilines[lino + 1].strip(), lilines[lino + 2].strip(),
+                        lilines[lino + 3])
+
+                    with open( outfile, 'w' ) as of:
                         of.write(title)
                         for line in lp:
                             if line.startswith("ATOM"):
-                                x="%4.3f" % (float(line[31:38])+shxb)
-                                a="%7s" % x
-                                
-                                y="%4.3f" % (float(line[39:46])+shyb)
-                                b="%7s" % y
-                                z="%4.3f" % (float(line[47:54])+shzb)
-                                c="%7s" % z
-                        
+                                x = "%4.3f" % (float(line[31:38]) + shxb)
+                                a = "%7s" % x
+
+                                y = "%4.3f" % (float(line[39:46]) + shyb)
+                                b = "%7s" % y
+                                z = "%4.3f" % (float(line[47:54]) + shzb)
+                                c = "%7s" % z
+
                                 line = line = line[0:30] + a + line[38:]
                                 line = line = line[0:38] + b + line[46:]
                                 line = line = line[0:46] + c + line[53:]
-                        
+
                                 of.write( line )
                         of.write("END")
- 

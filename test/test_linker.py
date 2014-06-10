@@ -11,17 +11,20 @@ PARENT_DIR = os.path.split( DIR )[0]
 DATA_DIR = os.path.join( PARENT_DIR, "data", "test" )
 TMP_DIR = os.path.join( DIR, "tmp" )
 
+
 def data( file_name ):
     return os.path.join( DATA_DIR, file_name )
+
 
 def tmp( *dir_name ):
     return os.path.join( TMP_DIR, "linker", *dir_name )
 
 
-@unittest.skipUnless( 
+@unittest.skipUnless(
     utils.path.which( 'wine' ), 'wine cmd not found' )
 class LinkItTestCase( unittest.TestCase ):
     def setUp( self ):
+        shutil.rmtree( tmp( "ssfe_p2y12" ), True )
         self.link_it = LinkIt(
             data( "ssfe_p2y12.pdb" ),
             "88", "94", "TGPLR",
@@ -29,14 +32,14 @@ class LinkItTestCase( unittest.TestCase ):
             run=False,
             verbose=False
         )
+
     @unittest.skipIf( '-quick' in sys.argv, 'Long running' )
     def test_check( self ):
         self.link_it()
         self.assertEquals( self.link_it.check( full=True ), "Ok" )
 
 
-
-@unittest.skipUnless( 
+@unittest.skipUnless(
     utils.path.which( 'wine' ), 'wine cmd not found' )
 class MultiLinkItTestCase( unittest.TestCase ):
     def setUp( self ):
@@ -57,18 +60,19 @@ class MultiLinkItTestCase( unittest.TestCase ):
             run=False,
             verbose=False
         )
+
     @unittest.skipIf( '-quick' in sys.argv, 'Long running' )
     def test_check( self ):
         self.multi_link_it()
         self.assertEquals( self.multi_link_it.check( full=True ), "Ok" )
 
 
-        
-@unittest.skipUnless( 
+@unittest.skipUnless(
     utils.path.which( 'wine' ), 'wine cmd not found' )
 class LinkitDensTestCase( unittest.TestCase ):
     def setUp( self ):
-        self.linkitdens= LinkItDensity(
+        shutil.rmtree( tmp( "ribosomexample" ), True )
+        self.linkitdens = LinkItDensity(
             data( "ribosomexample.pdb"),
             data(  "ribocut4a.mrc"),
             "154:C", "164:C", "EDKVEGYKK", 4.2, 9200,
@@ -76,7 +80,7 @@ class LinkitDensTestCase( unittest.TestCase ):
             run=False,
             verbose=False
         )
+
     def test_check( self ):
         self.linkitdens()
         self.assertEquals( self.linkitdens.check( full=True ), "Ok" )
-
