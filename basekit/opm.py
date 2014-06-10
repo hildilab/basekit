@@ -341,5 +341,5 @@ class OpmInfo( PyTool ):
         if not hasattr( self, "info" ):
             with open( self.info_file, "r" ) as fp:
                 self.info = json.load( fp )
-        return self.info
+        return self.info or {}
 

@@ -291,7 +291,6 @@ class Msms( CmdTool, ProviMixin ):
         ]
         if self.all_components:
             self.cmd.append( "-all_components" )
-            self.get_nrholes=True
         if self.no_area:
             self.cmd.append( "-no_area" )
         if self.envelope:
@@ -396,22 +395,21 @@ class Msms( CmdTool, ProviMixin ):
         v = "tri_surface(_?[0-9]*)\.(vert)"
         self.obj_list=[]
         
-        
         for m, vertfile in dir_walker( self.output_dir, v ):
             facefile = vertfile[:-4]+'face'
             meshfile = vertfile[:-4]+'obj'
             num=meshfile.split('_')[-1].split('.')[0]
             a=self.get_vert(vertfile=vertfile)
             b=self.get_face(facefile=facefile)
-           
-            try:
+
+            if num=="surface":
+                face_vertex_to_obj(b, a, meshfile, flip=False)
+            else:
                 self.obj_list.append([int(num), meshfile])
                 face_vertex_to_obj(b, a, meshfile, flip=True)
-            except ValueError:
-                face_vertex_to_obj(b, a, meshfile, flip=False)
-                pass
+
         # get the nrholes and the pymol script
-        if self.get_nrholes:
+        if self.all_components:
             area = parse_msms_area( self.area_file)
             mean_dct, neighbours, self.obj_list, last_hetresno, mean_lst = make_nrhole_pdb( self.pdb_file, area, self.nh_file, self.mean_file, self.pymol_file, self.obj_list )
             values_dict={
@@ -451,8 +449,7 @@ class Msms( CmdTool, ProviMixin ):
             result_list.append([comps[cav][0], comps[cav][1], comps[cav][2], r])
         with open( self.info_file, "w" ) as fp:
             json.dump( result_list, fp, indent=4 )
-    def components_provi( self, color="", translucent=0.0, relpath=None,
-                            max_atomno=None ):
+    def components_provi( self, color="", translucent=0.0, relpath=None, max_atomno=None ):
         if self.all_components:
             comps = self.get_components()
             if max_atomno:

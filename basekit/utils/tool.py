@@ -424,7 +424,7 @@ def call( tool ):
 class ParallelMixin( Mixin ):
     args = [
         _( "parallel|p", type="str", default=False,
-            options=[ "", "directory", "pdb_archive", "list" ] ),
+            options=[ "", "directory", "pdb_archive", "list", "file", "file_list", "data" ] ),
         _( "interval|i", type="int", default=[ 0, None ], 
             metavar=("BEG", "END"), nargs=2 ),
         _( "filter_id|id", type="str", default=[], nargs="*" ),

@@ -211,9 +211,18 @@ pdb.py compare \
 time mppd.py pdb \
 	mppd_lists/opm_tmdet_mpstruc/joined_list.txt \
 	-o mppd/ -p file \
-	-i 0 1862 -nw 1 \
+	-i 0 2326 -nw 1 \
 	--variants fin \
 	-co
+
+# calc template
+time mppd.py pdb \
+	mppd_lists/opm_tmdet_mpstruc/joined_list.txt \
+	-o mppd/ -p file \
+	-i 0 2326 -nw 4 \
+	--variants fin \
+	--tools proc \
+	-id 2L87 2MAW 2MGY 2RRS 3J5P 3J5Q 3W9T 3WG5 3WGU 3WGV 3WI4 3WI5 3WKV 3WME 3WMF 3WMM 3WMN 3WMO 3WO6 3WO7 3ZEV 3ZJZ 4BBJ 4BEM 4BEV 4BEW 4BPM 4BUM 4BUO 4BV0 4BVN 4BWB 4BWZ 4C4V 4C7R 4C9G 4C9H 4C9J 4C9Q 4CAD 4CAS 4CBK 4CL4 4CL5 4CU4 4G7V 4G7Y 4G80 4J4Q 4J7T 4J7Y 4JC7 4JCZ 4JFB 4JR8 4JRZ 4K0E 4K0J 4K34 4K7K 4K7R 4KHZ 4KI0 4KT0 4L6V 4LBE 4LCU 4LDE 4LDL 4LDO 4LDS 4LMJ 4LMK 4LML 4LP8 4LSE 4LSF 4LSH 4LSI 4LTO 4LTP 4LZ6 4M1M 4M48 4M58 4M5B 4M5C 4M64 4M8J 4MLB 4MM4 4MM5 4MM6 4MM7 4MM8 4MM9 4MMA 4MMB 4MMC 4MMD 4MME 4MMF 4MQS 4MQT 4MQX 4MRN 4MRP 4MRR 4MRS 4MRV 4MS2 4MSW 4MTF 4MTG 4MTO 4MVM 4MVO 4MVQ 4MVR 4MVS 4MVU 4MVZ 4MW3 4MW8 4MYC 4MYH 4N4W 4N6H 4N75 4N7K 4N7L 4N7W 4N7X 4NAB 4NC3 4NEF 4NJN 4NJP 4NPP 4NTJ 4NTW 4NTX 4NTY 4NV2 4NV5 4NYK 4O6Y 4O79 4O7G 4O9R 4OAA 4OD4 4OD5 4OH3 4OR2 4P00 4P02
 
 # check all good
 time mppd.py pdb \
@@ -251,7 +260,7 @@ time mppd.py pdb \
 time mppd.py pdb \
 	mppd_lists/opm_tmdet_mpstruc/joined_list.txt \
 	-o mppd/ -p file \
-	-i 0 1862 \
+	-i 0 2326 \
 	-nw 1 \
 	--variants fin \
 	-co \

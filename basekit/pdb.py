@@ -11,6 +11,7 @@ import datetime
 import shutil
 import scipy.spatial
 import itertools
+from cStringIO import StringIO
 import numpy as np
 np.seterr( all="raise" )
 
@@ -27,7 +28,8 @@ DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "pdb" )
 
 PDB_SEARCH_URL = 'http://www.rcsb.org/pdb/rest/search'
 PDB_DOWNLOAD_URL = 'http://www.rcsb.org/pdb/files/'
-PDBE_ASSEMBLY = 'http://www.ebi.ac.uk/pdbe-srv/view/files/{pdb_id:}_1.mmol'
+PDBE_ASSEMBLY = 'http://www.ebi.ac.uk/pdbe-srv/view/files/{pdb_id:}_1.mmol' # not available anymore ASR 20 May 2014
+RCSB_ASSEMBLY = 'http://www.rcsb.org/pdb/files/{pdb_id:}.pdb1.gz'
 
 TMPL_DIR_CIONIZE = _dir_init( PARENT_DIR, "cionize" )
 cionize_CMD = os.path.join( PARENT_DIR, "cionize" )
@@ -132,19 +134,14 @@ class PdbUnzip( PyTool ):
 
 
 
-def pdb_download( pdb_id, output_file ):
+def pdb_download( pdb_id ):
     pdb_download_urls = [
-        PDB_DOWNLOAD_URL,
-        "http://198.202.122.52/pdb/files/", # outdated?
-        "http://198.202.122.51/pdb/files/"  # outdated?
+        PDB_DOWNLOAD_URL
     ]
     for base_url in pdb_download_urls:
         try:
             url = "%s%s.pdb" % ( base_url, pdb_id )
-            data = urllib2.urlopen( url ).read()
-            with open( output_file, 'wb' ) as fp:
-                fp.write( data )
-            return True
+            return urllib2.urlopen( url ).read()
         except urllib2.HTTPError:
             pass
     else:
@@ -167,15 +164,16 @@ class PdbDownload( PyTool ):
         self.output_files += self.pdb_file_list
     def func( self ):
         for pdb_id, pdb_file in zip( self.pdb_id_list, self.pdb_file_list ):
-            pdb_download( pdb_id, pdb_file )
-
-
+            with open( pdb_file, 'wb' ) as fp:
+                fp.write( pdb_download( pdb_id ) )
 
 
 def pdb_assembly( pdb_id ):
     try:
-        url = PDBE_ASSEMBLY.format( pdb_id=pdb_id )
-        return urllib2.urlopen( url ).read()
+        url = RCSB_ASSEMBLY.format( pdb_id=pdb_id )
+        buf = StringIO( urllib2.urlopen( url ).read() )
+        with gzip.GzipFile( fileobj=buf ) as f:
+            return f.read()
     except urllib2.HTTPError:
         raise Exception( "Error downloading pdb assembly '%s'" % pdb_id )
 
@@ -188,8 +186,14 @@ class PdbAssembly( PyTool ):
         _( "assembly_file", file="assembly.pdb" )
     ]
     def func( self ):
+        try:
+            data = pdb_assembly( self.pdb_id )
+        except:
+            # if assembly download fails there is probably no assembly
+            # so download the standard pdb file
+            data = pdb_download( self.pdb_id )
         with open( self.assembly_file, "w" ) as fp:
-            fp.write( pdb_assembly( self.pdb_id ) )
+            fp.write( data )
 
 
 
