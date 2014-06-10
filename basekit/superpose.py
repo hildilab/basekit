@@ -34,6 +34,7 @@ LOG = logging.getLogger('superpose')
 LOG.setLevel( logging.ERROR )
 
 
+
 class Theseus( CmdTool ):
     """A wrapper around the 'theseus' programm."""
     args = [
@@ -56,8 +57,8 @@ class Theseus( CmdTool ):
         
     ]
     out = [
-        _( "test_sup", file="test_sup.pdb" ),
-        _( "test_sup_var", file="test_sup_var.pdb" ),
+        _( "test_sup", file="{prefix}_sup.pdb" ),
+        _( "test_sup_var", file="{prefix}_sup_var.pdb" ),
         _( "theseus_cmd", file="theseus_cmd.log"),
     ]
     tmpl_dir = TMPL_DIR
@@ -132,14 +133,13 @@ class Theseus( CmdTool ):
             stem=self.reference.split("/")[-1]
             os.symlink(self.reference, stem)
             self.cmd=self.cmd+["-o", stem]
-        v = ".*[pdb]$"
         self.cmd=self.cmd+pdb_filess
     def _post_exec( self ):
         if self.check( full=True ):
             newout=self.subdir("additional_files")
             for m, pdbfile in dir_walker( self.output_dir, "" ):
                 stem=utils.path.stem(pdbfile)+utils.path.ext(pdbfile)
-                if pdbfile.endswith("test_sup.pdb") or pdbfile.endswith("test_sup_var.pdb") or pdbfile.endswith("theseus_cmd.log"):
+                if pdbfile.endswith(self.prefix+"_sup.pdb") or pdbfile.endswith(self.prefix+"_sup_var.pdb") or pdbfile.endswith("theseus_cmd.log"):
                     pass
                 else:
                     shutil.move(pdbfile, os.path.join(newout, stem))
