@@ -1,0 +1,45 @@
+[
+    {
+        "inline": "jspt",
+        "raw": "set echo middle center; echo [Job Running] Loop calculation;"
+    },
+    {
+        "inline": "job",
+        "raw": {
+            "type": "multi-linkit",
+            "make_widget": {
+                "collapsed": true
+            },
+            "autoload": true,
+            "name": "Loop calculation",
+            "params": {
+               "pdb_file": "http://www.ssfa-7tmr.de/tmp/fragfit/TMH_templates1_topmodel_rechain_p2y12.pdb",
+                 "input": [
+                    "53 57 RSK",
+                    "88 94 TGPLR",
+                    "128 137 PFKTSNPK",
+                    "161 187 LTNRQPRDKNVKKCSFLKSEFGLVW",
+                    "212 230 TKELYRSYVRTRGVGKV",
+                    "262 276 QTRDVFDCTAENT",
+                    "299 302 FL"
+                ],
+                "names": [ 
+                    "ICL1", "ECL1", "ICL2", "ECL2", "ICL3", "ECL3", "TM7-H8"
+                ]
+            }
+        }
+    },
+    {
+        "widget": "Provi.Widget.StoryWidget",
+        "params": {
+            "sort_key": -2,
+            "parent_id": "tab_widgets",
+            "persist_on_applet_delete": true,
+            "heading": "Info",
+            "collapsed": false,
+            "template": "<i>Hello SSFE</i>",
+            "data": {},
+            "buttons": {}
+        }
+    }
+]

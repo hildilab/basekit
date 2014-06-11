@@ -243,8 +243,6 @@ def superpose( npdb1, npdb2, sele1, sele2, subset="CA", inplace=True,
     return sp, msg
 
 
-
-
 PDB_DELIMITER = (6, 5, 1, 4, 1, 3, 1, 1, 4, 1, 3, 8, 8, 8, 6, 6, 6, 4, 2, 2 )
 PDB_DTYPE = [
     ('record', '|S6'),          # 0
