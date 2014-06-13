@@ -32,6 +32,7 @@
             "sort_key": {{linker.i}},
             "heading": "{{linker.name}}",
             "parent_id": "tab_widgets",
+            "collapsed": true,
             "datalist": "DATALIST_linker_datalist_{{linker.i}}"
         }
     }{% if not loop.last %},{% endif %}

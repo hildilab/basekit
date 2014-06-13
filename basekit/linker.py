@@ -183,7 +183,7 @@ class LinkIt( CmdTool, ProviMixin ):
                 json.dump( linker_dict, fp, separators=(',', ':') )
             else:
                 json.dump( linker_dict, fp, indent=4 )
- #1
+
 
 class MultiLinkIt( PyTool, ProviMixin ):
     args = [

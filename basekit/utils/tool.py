@@ -50,7 +50,6 @@ LOG = logging.getLogger('tool')
 LOG.setLevel( logging.INFO )
 
 
-
 def _( name, **kwargs ):
     kwargs.update( name=name )
     return kwargs
@@ -176,6 +175,8 @@ def parse_subargs( tools, description=None ):
 
 
 MIXIN_REGISTER = {}
+
+
 class ToolMetaclass( type ):
     def __init__(cls, name, bases, dct):
         # print cls, name, bases, dct
@@ -189,7 +190,7 @@ class ToolMetaclass( type ):
             p["name"] = flags[0]
             if "default" in p:
                 flags[0] = "--%s" % flags[0]
-            if len(flags)>1:
+            if len(flags) > 1:
                 if "default" not in p:
                     flags[0] = "--%s" % flags[0]
                     p["required"] = True
@@ -266,11 +267,13 @@ class ProviMixin( TmplMixin ):
         return self._make_file_from_tmpl( provi_tmpl, **kwargs )
 
 
-
 BACKEND_REGISTER = {}
+
+
 class BackendMetaclass( type ):
     def __init__(cls, name, bases, dct):
         BACKEND_REGISTER[ cls.name ] = cls
+
 
 class RecordsBackend( object ):
     __metaclass__ = BackendMetaclass
@@ -282,6 +285,7 @@ class RecordsBackend( object ):
         pass
     def read( self ):
         pass 
+
 
 class CsvBackend( RecordsBackend ):
     name = "csv"
@@ -296,6 +300,7 @@ class CsvBackend( RecordsBackend ):
             cr = csv.reader( fp, delimiter=',')
             cr.next() # ignore header
             return map( self.cls._make, cr )
+
 
 class JsonBackend( RecordsBackend ):
     name = "json"
@@ -315,6 +320,7 @@ class JsonBackend( RecordsBackend ):
             records_list 
         ) 
 
+
 class PickleBackend( RecordsBackend ):
     name = "pickle"
     def write( self, records ):
@@ -323,6 +329,7 @@ class PickleBackend( RecordsBackend ):
     def read( self ):
         with open( self.file_name, "r" ) as fp:
             return pickle.load( fp ) 
+
 
 class SqliteBackend( RecordsBackend ):
     name = "sqlite"
@@ -358,9 +365,11 @@ class SqliteBackend( RecordsBackend ):
             c.execute( self.q )
             return c.fetchone() if count else c.fetchall()
 
+
 def records_backend( backend, file_name, records_cls ):
     backend_cls = BACKEND_REGISTER[ backend ]
     return backend_cls( file_name, records_cls )
+
 
 class RecordsMixin( Mixin ):
     args = [
@@ -402,7 +411,6 @@ class RecordsMixin( Mixin ):
             map( operator.attrgetter( "records" ), tool_list )
         ))
         self.backend_obj_p.write( self.records )
-
 
 
 def call( tool ):
@@ -511,9 +519,9 @@ class ParallelMixin( Mixin ):
             fn( self )
 
 
-
 class Tool( object ):
     __metaclass__ = ToolMetaclass
+
     def __init__( self, *args, **kwargs ):
         args, kwargs = self._pre_init( args, kwargs )
         self.name = self.__class__.__name__.lower()
@@ -527,15 +535,15 @@ class Tool( object ):
         self.fileargs = kwargs.get("fileargs", False)
         self.verbose = kwargs.get("verbose", False)
         self.debug = kwargs.get("debug", False)
-        self.output_dir = os.path.abspath( 
-            kwargs.get("output_dir", ".") 
+        self.output_dir = os.path.abspath(
+            kwargs.get("output_dir", ".")
         ) + os.sep
 
         if not self.no_output:
             if not os.path.exists( self.output_dir ):
                 os.makedirs( self.output_dir )
-            self.args_file = os.path.join( 
-                self.output_dir, "%s.json" % self.name 
+            self.args_file = os.path.join(
+                self.output_dir, "%s.json" % self.name
             )
             if self.fileargs:
                 with open( self.args_file, "r" ) as fp:
@@ -558,15 +566,15 @@ class Tool( object ):
                     raise Exception( 'Missing positional argument' )
             # TODO check if the name already exists
             self.__dict__[ name ] = self.__prep_arg( value, params )
-            if params["type"]=="file" and "nargs" not in params:
+            if params["type"] == "file" and "nargs" not in params:
                 self.input_files_dict[ name ] = utils.Bunch(
                     stem=utils.path.stem( value ),
                     basename=os.path.basename( value ),
                     ext=utils.path.ext( value )
                 )
-            elif params["type"]=="str" and "nargs" not in params:
+            elif params["type"] == "str" and "nargs" not in params:
                 self.input_files_dict[ name ] = value
-        
+
         self.output_files = []
         for name, params in self.out.iteritems():
             value = self.__prep_out( params )
@@ -582,49 +590,64 @@ class Tool( object ):
         self.stdout_file = self.outpath( "%s_cmd.log" % self.name )
 
         self._init( *args, **kwargs )
-        
-        if kwargs.get("run", True) and not kwargs.get("check", False) and not self.fileargs:
+
+        if kwargs.get("run", True) and \
+                not kwargs.get("check", False) and \
+                not self.fileargs:
             self.__run()
+
     def __prep_arg( self, value, params ):
-        if not value: 
+        if not value:
             return value
         if params.get("type") in [ "file", "dir" ]:
             if "nargs" in params:
                 return map( self.abspath, value )
             return self.abspath( value )
-        elif params.get("type")=="sele":
+        elif params.get("type") == "sele":
             return numpdb.numsele( value )
         return value
+
     def __prep_out( self, params ):
         if "file" in params:
             return self.outpath( params["file"] )
         elif "dir" in params:
             return self.subdir( params["dir"] )
         raise Exception( "do not know how to prep output" )
+
     def __run( self ):
         with working_directory( self.output_dir ):
-            if self.pre_exec: self._pre_exec()
+            if self.pre_exec:
+                self._pre_exec()
             self._run()
-            if self.post_exec: self._post_exec()
+            if self.post_exec:
+                self._post_exec()
+
     def __call__( self ):
         self.__run()
         return self
+
     def _pre_init( self, args, kwargs ):
         return args, kwargs
+
     def _init( self, *args, **kwargs ):
         pass
+
     def _run( self ):
         pass
+
     def _pre_exec( self ):
         pass
+
     def _post_exec( self ):
         pass
+
     def __check_file( self, f ):
         f = os.path.abspath(f)
         try:
-            return os.path.isfile(f)# and os.path.getsize(f)>0
+            return os.path.isfile(f)  # and os.path.getsize(f)>0
         except:
             return False
+
     def check( self, full=False ):
         if hasattr( self, "output_files" ):
             with working_directory( self.output_dir ):
@@ -639,18 +662,23 @@ class Tool( object ):
                     return all( isfile )
         else:
             return True
+
     def __str__( self ):
         status = "ok" if self.check() else "failed"
         return "%s status: %s" % ( self.name, status )
+
     def relpath( self, path, no_ext=False ):
         if no_ext:
             path = os.path.splitext( path )[0]
         return str( os.path.relpath( path, self.output_dir ) )
+
     def outpath( self, file_name ):
         file_name = file_name.format( **self.input_files_dict )
         return os.path.join( self.output_dir, file_name )
+
     def abspath( self, path ):
         return os.path.abspath( path )
+
     def subdir( self, directory, filename=None ):
         subdir = os.path.join( self.output_dir, directory )
         if not os.path.exists( subdir ):
@@ -659,12 +687,11 @@ class Tool( object ):
             return os.path.join( subdir, filename )
         else:
             return subdir
+
     def datapath( self, file_name ):
         if not hasattr( self, "tmpl_dir" ):
             raise "No data path available."
         return os.path.join( self.tmpl_dir, file_name )
-
-
 
 
 class PyTool( Tool ):
@@ -672,6 +699,7 @@ class PyTool( Tool ):
         super(PyTool, self).__init__( *args, **kwargs )
         if not hasattr( self, "func" ):
             raise Exception("A PyTool needs a 'func' attribute")
+
     def _run( self ):
         if self.verbose:
             return self.func()
@@ -690,10 +718,12 @@ class CmdTool( Tool ):
     cmd_input = None
     use_shell = False
     no_cmd = None
+
     def __init__( self, *args, **kwargs ):
         super(CmdTool, self).__init__( *args, **kwargs )
         if not hasattr( self, "cmd" ):
             raise Exception("A CmdTool needs a 'cmd' attribute")
+
     def _run( self ):
         if self.no_cmd:
             return
@@ -702,18 +732,8 @@ class CmdTool( Tool ):
             print " ".join( map( str, cmd ) )
         if self.timeout:
             cmd = [ TIMEOUT_CMD, self.timeout ] + cmd
-        ret = run_command( 
-            cmd, log=self.stdout_file, verbose=self.verbose, 
+        ret = run_command(
+            cmd, log=self.stdout_file, verbose=self.verbose,
             input_file=self.cmd_input, shell=self.use_shell
         )
         return ret
-
-
-
-
-
-
-
-
-
-
