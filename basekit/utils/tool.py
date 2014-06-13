@@ -589,6 +589,9 @@ class Tool( object ):
             )
         self.stdout_file = self.outpath( "%s_cmd.log" % self.name )
 
+        self.sub_tool_list = []
+        self.tool_log = self.outpath( "tool.log" )
+
         self._init( *args, **kwargs )
 
         if kwargs.get("run", True) and \
@@ -615,12 +618,14 @@ class Tool( object ):
         raise Exception( "do not know how to prep output" )
 
     def __run( self ):
+        self.log( "started" )
         with working_directory( self.output_dir ):
             if self.pre_exec:
                 self._pre_exec()
             self._run()
             if self.post_exec:
                 self._post_exec()
+        self.log( "finished" )
 
     def __call__( self ):
         self.__run()
@@ -662,6 +667,23 @@ class Tool( object ):
                     return all( isfile )
         else:
             return True
+
+    def log( self, msg ):
+        with open( self.tool_log, "a" ) as fp:
+            fp.write( "[%s] %s\n" % ( self.name, msg ) )
+
+    def get_log( self ):
+        if os.path.isfile( self.tool_log ):
+            with open( self.tool_log, "r" ) as fp:
+                return fp.read().strip().split("\n")
+        else:
+            return []
+
+    def get_full_log( self ):
+        log = self.get_log()
+        for tool in self.sub_tool_list:
+            log += tool.get_full_log()
+        return log
 
     def __str__( self ):
         status = "ok" if self.check() else "failed"

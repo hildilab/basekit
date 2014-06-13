@@ -80,8 +80,17 @@ class LinkIt( CmdTool, ProviMixin ):
             ]
             for sele, atomname in d:
                 sele["atomname"] = atomname
-                coords = npdb.get( 'xyz', **sele )
-                fp.write( "%s\n" % "\n".join(map( str, coords[0] ) ) )
+                try:
+                    coords = npdb.get( 'xyz', **sele )
+                    fp.write( "%s\n" % "\n".join(map( str, coords[0] ) ) )
+                except Exception as e:
+                    self.log(
+                        ( "error applying selection with "
+                            "residue '%i' and chain '%s'" ) % (
+                            sele.get("resno"), sele.get("chain")
+                        )
+                    )
+                    raise e
             fp.write( "%s\n" % self.seq )
             for sele in ( self.res1, self.res2 ):
                 fp.write(
@@ -206,9 +215,11 @@ class MultiLinkIt( PyTool, ProviMixin ):
                              output_dir=self.subdir("link_it_%i" % i) )
             )
             self.output_files += link_it.output_files
+            self.sub_tool_list.append( link_it )
             self.link_it_list.append( link_it )
 
     def func( self ):
+        self.log( "%i linkit runs" % len( self.input ) )
         for link_it in self.link_it_list:
             link_it()
 
