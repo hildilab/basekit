@@ -127,7 +127,11 @@ def rmsd( coords1, coords2 ):
     return np.sqrt( 
         np.sum( np.power( coords1-coords2, 2 ) ) / coords1.shape[0]
     )
-
+def tmscore(coords1, coords2):
+    distance=np.sqrt(np.sum( (coords1-coords2)**2, axis=1), dtype=float)
+    d0=(1.24*((coords1.shape[0]-15)**(1.0/3))-1.8)
+    sum_diff=np.sum(1/(1+((distance/d0)**2)))
+    return (1/coords1.shape[0])* sum_diff
 
 
 
