@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from basekit.mapman import Mapman
+from basekit.mapman import Mapman, BrixToMap
 
 DIR = os.path.split( os.path.abspath( __file__ ) )[0]
 PARENT_DIR = os.path.split( DIR )[0]
@@ -18,7 +18,8 @@ def tmp( *dir_name ):
 class MapmanTestCase( unittest.TestCase ):
     def setUp( self ):
         self.mapman = Mapman(
-            data( "4bs3.ccp4" ),
+            data( "4bs3.brix" ),
+            "brix",
             output_dir=tmp( "single_test" ),
             run=False,
             verbose=False
@@ -27,3 +28,14 @@ class MapmanTestCase( unittest.TestCase ):
         self.mapman()
         self.assertEquals( self.mapman.check( full=True ), "Ok" )
 
+class BrixToMapTestCase( unittest.TestCase ):
+    def setUp( self ):
+        self.brix2map = BrixToMap(
+            data( "4bs3.brix" ),
+            output_dir=tmp( "single_test" ),
+            run=False,
+            verbose=False
+        )
+    def test_check( self ):
+        self.brix2map()
+        self.assertEquals( self.brix2map.check( full=True ), "Ok" )
