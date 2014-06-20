@@ -17,11 +17,8 @@ from utils.tool import (
 from utils.numpdb import NumPdb
 
 
-
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "capture" )
 CAPTURE_URL = "http://capture.caltech.edu/"
-
-
 
 
 def capture_web(pdb_file, output_file):
@@ -38,12 +35,14 @@ def capture_web(pdb_file, output_file):
             "note": "note"
         })
         # Create the Request object
-        request = urllib2.Request(CAPTURE_URL + "capture_ul.cgi", datagen, headers)
+        request = urllib2.Request(
+            CAPTURE_URL + "capture_ul.cgi", datagen, headers
+        )
         # Actually do the request, get and read the response
         response = urllib2.urlopen(request).read()
     with open( output_file, 'w' ) as fp:
         fp.write( response )
-    
+
 
 def parse_capture( capture_file, pdb_id=None ):
     capture_list = []
@@ -60,9 +59,9 @@ def parse_capture( capture_file, pdb_id=None ):
 
 
 CaptureRecord = collections.namedtuple( 'CaptureRecord', [
-    'pdb_id', 
-    'resname_cation', 'resno_cation', 'chain_cation', 
-    'resname_pi', 'resno_pi', 'chain_pi', 
+    'pdb_id',
+    'resname_cation', 'resno_cation', 'chain_cation',
+    'resname_pi', 'resno_pi', 'chain_pi',
     'es', "vdw"
 ])
 
@@ -81,10 +80,12 @@ class Capture( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
     RecordsClass = CaptureRecord
     tmpl_dir = TMPL_DIR
     provi_tmpl = "capture.provi"
+
     def _init( self, *args, **kwargs ):
         self.pdb_id = utils.path.stem( self.pdb_input )
         self._init_records( None, **kwargs )
         self._init_parallel( self.pdb_input, **kwargs )
+
     def func( self ):
         if not self.parse_only:
             capture_web( self.pdb_input, self.capture_file )
@@ -93,6 +94,7 @@ class Capture( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             parse_capture( self.capture_file )
         ]
         self.write()
+
     def _pre_exec( self ):
         if self.occupancy_one:
             occ_file = "occupancy_one.pdb"
@@ -100,18 +102,19 @@ class Capture( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             npdb['occupancy'] = 1.0
             npdb.write( occ_file )
             self.pdb_input = self.outpath( occ_file )
+
     def _post_exec( self ):
         script = []
         for r in self.records:
             p = (
-                 r.es, r.chain_cation, r.resno_cation,
+                r.es, r.chain_cation, r.resno_cation,
                 r.chain_pi, r.resno_pi
             )
             s = (
                 "var colr = color( 'rwb', -5, 5, %f ); "
                 "select { "
-                    "(chain='%s' and resno=%i) or "
-                    "(chain='%s' and resno=%i) "
+                "   (chain='%s' and resno=%i) or "
+                "   (chain='%s' and resno=%i) "
                 "}; "
                 "wireframe 0.2; color @colr; " % p
             )
@@ -120,4 +123,3 @@ class Capture( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             pdb_file=self.relpath( self.pdb_input ),
             script=" ".join( script )
         )
-
