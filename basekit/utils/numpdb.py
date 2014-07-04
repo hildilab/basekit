@@ -934,7 +934,7 @@ class NumPdb:
                         ( line[0:6] == "HETATM" and line[17:20] in aminoacids ):
                     if po and line[17:20] in nucleotides:
                         continue
-                    if ( nbo or line[12:16] in backbone ): #  and line[16] in altloc:
+                    if ( nbo or line[12:16] in backbone ) and line[16] in altloc:
                         atoms_append( tupl(
                             [ line[ c[0]:c[1] ] for c in cols ] + extra
                         ))

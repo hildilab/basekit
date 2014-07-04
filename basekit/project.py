@@ -271,12 +271,6 @@ class ProjectRun( PyTool ):
                         kwargs["__parts__"] if pid in parts_all
                     ])
 
-                # TODO hardly usable, needs regex
-                # if "__parts_ignore__" in kwargs:
-                #     for pid in kwargs["__parts_ignore__"]:
-                #         if pid in parts:
-                #             del parts[ pid ]
-
                 if "__append__" in kwargs:
                     d = collections.defaultdict(list)
                     for pid, p in parts.iteritems():
@@ -365,6 +359,8 @@ class ProjectRun( PyTool ):
         return kwargs
 
     def get_args( self, tool, kwargs ):
+        print tool
+        print kwargs
         args = []
         for a, params in tool.args.iteritems():
             if "default" not in params:
