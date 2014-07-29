@@ -359,8 +359,6 @@ class ProjectRun( PyTool ):
         return kwargs
 
     def get_args( self, tool, kwargs ):
-        print tool
-        print kwargs
         args = []
         for a, params in tool.args.iteritems():
             if "default" not in params:
