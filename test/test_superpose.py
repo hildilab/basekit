@@ -18,7 +18,11 @@ def tmp( *dir_name ):
 class SuperposeTestCase( unittest.TestCase ):
     def setUp( self ):
         self.theseus = Theseus(
-            [data( "1U19.pdb" ), data( "1CRN.pdb" )],
+            [
+                data( "1U19.pdb" ),
+                data( "3R8S.pdb" ),
+                data( "3PXO.pdb" )
+            ],
             prefix="test",
             output_dir=tmp( "single_test" ),
             run=False,
