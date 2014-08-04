@@ -18,7 +18,7 @@ from array import array
 from basekit import utils
 from utils import memoize_m
 from utils.tool import _, _dir_init, CmdTool, ProviMixin, ParallelMixin
-from utils.tool import RecordsMixin, PyTool
+from utils.tool import RecordsMixin, PyTool, SqliteBackend
 from utils.listing import merge_dic_list
 import provi_prep as provi
 
@@ -420,6 +420,7 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                     )
                 ]
             self.write()
+            
             # get the nrholes and the pymol script
             if self.get_nrholes:
                 neighbours, mean_dct, last_hetresno, mean_lst = make_nrhole_pdb(self.pdb_input,self.holes, self.nh_file, self.mean_file)
@@ -437,6 +438,8 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                     json.dump( dct, fp, indent=4 )
             with open(self.protor_log_file, 'w') as fp:
                 fp.write( log_list )
+            db = SqliteBackend( "v4rna.db", InfoRecord )
+            db.write( self.records )
     @memoize_m
     def get_vol( self ):
         return parse_vol( self.vol_file, self.pdb_input )
