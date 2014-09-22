@@ -419,6 +419,8 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                         self.zscorerms
                     )
                 ]
+            db = SqliteBackend( "voronoia_records.sqlite", InfoRecord )
+            db.write( self.records )
             self.write()
             
             # get the nrholes and the pymol script
@@ -430,6 +432,8 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                     'last_hetresno': last_hetresno, 'mean_list':mean_lst
                 }
                 self._make_file_from_tmpl(self.pymol_tmpl, **values_dict)
+            
+            
         if self.parallel and self.make_reference:
             dict_dens, dict_dev, log_list, out_pd_at_dict = make_ref( self.tool_results )
             d = ( self.dens_file, dict_dens ), ( self.dev_file, dict_dev ), (self.pd_at_file, out_pd_at_dict)
@@ -438,7 +442,7 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                     json.dump( dct, fp, indent=4 )
             with open(self.protor_log_file, 'w') as fp:
                 fp.write( log_list )
-            db = SqliteBackend( "v4rna.db", InfoRecord )
+            db = SqliteBackend( "voronoia_records.sqlite", InfoRecord )
             db.write( self.records )
     @memoize_m
     def get_vol( self ):
