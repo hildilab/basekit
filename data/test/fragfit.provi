@@ -1,0 +1,39 @@
+[
+    {
+        "inline": "jspt",
+        "raw": "set echo middle center; echo [Job Running] Loop calculation;"
+    },
+    {
+        "inline": "job",
+        "raw": {
+            "type": "multi-linkit",
+            "make_widget": {
+                "collapsed": true
+            },
+            "autoload": true,
+            "name": "Loop calculation",
+            "params": {
+               "pdb_file": "http://www.rcsb.org/pdb/files/1CRN.pdb",
+                 "input": [
+                    "10 15 AAAA"
+                ],
+                "names": [ 
+                    "FOO"
+                ]
+            }
+        }
+    },
+    {
+        "widget": "Provi.Widget.StoryWidget",
+        "params": {
+            "sort_key": -2,
+            "parent_id": "tab_widgets",
+            "persist_on_applet_delete": true,
+            "heading": "Info",
+            "collapsed": false,
+            "template": "<i>FragFit test</i>",
+            "data": {},
+            "buttons": {}
+        }
+    }
+]

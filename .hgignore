@@ -12,6 +12,7 @@ Icon*
 *.sublime-workspace
 
 *.pyc
+
 *.so
 
 data/voronoia/get_volume.lg

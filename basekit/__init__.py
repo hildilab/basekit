@@ -1,3 +1,8 @@
+
+import matplotlib
+# matplotlib.use( "Cairo" )
+matplotlib.use( "Agg" )
+
 import utils
 
 import apbs
@@ -9,4 +14,5 @@ import voronoia
 import spider
 import linker
 import capture
+import mapman
 

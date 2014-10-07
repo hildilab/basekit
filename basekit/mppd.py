@@ -76,6 +76,10 @@ CURATED_INFO = collections.defaultdict( dict, {
     "4FZ0": {
         "comment": "membrane plane by superposition with 2QTS"
     },
+    "ROGL": {
+        "no_pdb_entry": True,
+        "comment": ""
+    },
 })
 
 # no rep
@@ -93,9 +97,12 @@ CURATED_INFO = collections.defaultdict( dict, {
 
 
 
+# too large for hbexplore?
+# 4NTW 4NTX 4NTY
+
 for x in [
     # membrane extrinsic atpase parts
-    "1BMF", "1COW", "1EFR", "2CK3", "2HLD", "2JDI", "2WSS", "3OAA",
+    "1AQT", "1BMF", "1COW", "1EFR", "2CK3", "2HLD", "2JDI", "2WSS", "3OAA",
     "3VR2", "3W3A", "3ZIA",
     # periplasmic MexA
     "1T5E", "1VF7",
@@ -117,6 +124,10 @@ for x in [
     "3RBZ", "3RBX",
     # SLO3 gating ring
     "4HPF",
+    # flagellar cytoplasmic protein FliK
+    "2RRL",
+    # signal peptidase
+    "1B12",
     # by inspection (data calculated)
     "4FYF", "4FYE", "3BPP", "2LS4", "2KO2", "4FYG", "3VIV", "3FWL",
 ]:
@@ -197,23 +208,23 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             step=0.1, default=1.4, help="coulombic probe radius" ),
         _( "vdw_probe_radius|vpr", type="float", range=[0.1, 5], 
             step=0.1, default=1.7 ),
-        _( "analyze_only|ao", type="checkbox", default=False ),
-        _( "check_only|co", type="checkbox", default=False ),
+        _( "analyze_only|ao", type="bool", default=False ),
+        _( "check_only|co", type="bool", default=False ),
         _( "variants", type="str", nargs="*", default=[], 
             help="a '!' as the first arg negates the list" ),
         _( "tools", type="str", nargs="*", default=[],
             help="a '!' as the first arg negates the list" ),
         _( "extract", type="str", default="" ),
-        _( "figures|fig", type="checkbox", default=False ),
-        _( "database|db", type="checkbox", default=False ),
+        _( "figures|fig", type="bool", default=False ),
+        _( "database|db", type="bool", default=False ),
         # msms tweaks
         _( "envelope_hclust|ehc", type="str", default="",
             options=[ "", "ward", "average" ], help="average, ward" ),
         _( "atom_radius_add|ara", type="float", default=None ),
         # opm fallback to ppm2
-        _( "use_ppm2", type="checkbox", default=False ),
+        _( "use_ppm2", type="bool", default=False ),
         # voronoia shuffle
-        _( "voro_shuffle", type="checkbox", default=False ),
+        _( "voro_shuffle", type="bool", default=False ),
         # dowser max repeats
         _( "dowser_max", type="int", default=None ),
     ]
@@ -247,6 +258,10 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 **copy_dict( kwargs, run=False, 
                     output_dir=self.subdir("pdb_info") ) )
             self.output_files += [ self.pdb_info.info_file ]
+
+            self.opm_info = OpmInfo( self.pdb_id,
+                **copy_dict( kwargs, run=False, 
+                    output_dir=self.subdir("opm_info") ) )
 
             # self.opm.info_file can be used to distinguish
             if self.use_ppm2:
@@ -292,9 +307,6 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             ))
             self.output_files += self.dssp.output_files
 
-            self.opm_info = OpmInfo( self.pdb_id,
-                **copy_dict( kwargs, run=False, 
-                    output_dir=self.subdir("opm_info") ) )
             self.mpstruc_info = MpstrucInfo( self.pdb_id,
                 **copy_dict( kwargs, run=False, 
                     output_dir=self.subdir("mpstruc_info") ) )
@@ -342,7 +354,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             self.output_files += [ self.info_file ]
             self.output_files += [ self.outpath( "mppd.provi" ) ]
             self.output_files += [ self.stats_file ]
-            self.output_files += [ self.stats2_file ]
+            # self.output_files += [ self.stats2_file ]
 
     def _pre_exec( self ):
         pass
@@ -359,6 +371,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 return name in self.tools
 
         if not self.analyze_only:
+            if do( "opm_info" ):
+                self.opm_info()
             if do( "opm" ):
                 self.opm()
             if do( "proc" ):
@@ -376,8 +390,6 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 self.dssp()
             if do( "pdb_info" ):
                 self.pdb_info()
-            if do( "opm_info" ):
-                self.opm_info()
             if do( "mpstruc_info" ):
                 self.mpstruc_info()
             if do( "info" ):
@@ -422,20 +434,23 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 check_info = t.check( full=True )
                 cur_info = CURATED_INFO.get( t.pdb_id, {} )
                 tag = re.split( "/|\.", check_info )[0]
+
                 if tag=="mppd":
                     tag = "provi"
+
                 if tag!="opm":
                     # check if opm found two mplanes
                     try:
                         if len( t.opm.get_planes() )!=2:
                             tag = "mplane"
-                    except:
-                        #print tag, check_info, t.id
+                    except IOError:
+                        # print tag, check_info, t.id
                         pass
                 else:
                     if os.path.isfile( t.opm.outpath( "ppm_error.txt" ) ):
                         tag = "ppm"
                         # print open( t.opm.outpath( "ppm_error.txt" ) ).read()
+                
                 if tag!="pdb_info" and t.pdb_info.check():
                     info = t.pdb_info.get_info()
                     if "CA ATOMS ONLY" in info.get( "model_type", {} ):
@@ -449,6 +464,13 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                         tag = "resolution"
                     if info.get( "obsolete" ):
                         tag = "obsolete"
+
+                try:
+                    opm_info = t.opm_info.get_info()
+                    if opm_info and opm_info.get( "type" )!="Transmembrane":
+                        tag = "no_transmembrane"
+                except:
+                    pass
 
                 if cur_info.get("no_pdb_entry"):
                     tag = "no_pdb_entry"
@@ -464,9 +486,13 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 zip( [x]*len(dct[x]), dct[x] ) 
                 for x in [ "opm", "ppm", "msms0", "msms_vdw_fin", "dowser" ]
             ])
+            print test_rep_list
             for tag, t in test_rep_list:
-                opm_info = t.opm_info.get_info()
-                mpstruc_info = t.mpstruc_info.get_info()
+                try:
+                    opm_info = t.opm_info.get_info()
+                    mpstruc_info = t.mpstruc_info.get_info()
+                except:
+                    continue
                 rid_list = []
                 if opm_info:
                     rep_id = opm_info.get("representative")
@@ -952,6 +978,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             json.dump( mppd_stats, fp )
     def make_stats2( self ):
         segments = zip( [ "ALL", "TM", "SOL" ], self.get_npdb_dicts() )
+        print segments
         mppd_stats2 = []
         for seg, npdb_d in segments:
             npdb_dow = npdb_d[ "dow" ]

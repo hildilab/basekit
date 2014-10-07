@@ -14,10 +14,12 @@ import re
 def class_wraps(cls):
     """Update a wrapper class `cls` to look like the wrapped."""
     class Wrapper(cls):
-        """New wrapper that will extend the wrapper `cls` to make it look like `wrapped`.
+        """New wrapper that will extend the wrapper `cls` to make
+        it look like `wrapped`.
 
         wrapped: Original function or class that is beign decorated.
-        assigned: A list of attribute to assign to the the wrapper, by default they are:
+        assigned: A list of attribute to assign to the the wrapper,
+        by default they are:
              ['__doc__', '__name__', '__module__', '__annotations__'].
 
         """
@@ -27,6 +29,7 @@ def class_wraps(cls):
             for attr in assigned:
                 setattr(self, attr, getattr(wrapped, attr))
             super(Wrapper, self).__init__(wrapped)
+
         def __repr__(self):
             return repr(self.__wrapped)
     return Wrapper
@@ -35,14 +38,15 @@ def class_wraps(cls):
 @functools.wraps
 def memoize(f):
     cache = {}
+
     def memf( *args, **kwargs ):
         x = tuple((
-            tuple([ 
+            tuple([
                 v if isinstance(v, Hashable) else tuple(v)
                 for v in args
-            ]), 
-            tuple([ 
-                ( k, v if isinstance(v, Hashable) else tuple(v) ) 
+            ]),
+            tuple([
+                ( k, v if isinstance(v, Hashable) else tuple(v) )
                 for k, v in kwargs.items()
             ])
         ))
@@ -58,12 +62,12 @@ class memoize_m(object):
     From: http://code.activestate.com/recipes/577452/
 
     cache the return value of a method
-    
+
     This class is meant to be used as a decorator of methods. The return value
     from a given method invocation will be cached on the instance whose method
-    was invoked. All arguments more passed to a method decorated with memoize must
-    be hashable.
-    
+    was invoked. All arguments more passed to a method decorated with memoize
+    must be hashable.
+
     If a memoized method is invoked directly on its class the result will not
     be cached. Instead the method will be invoked like a static method:
     class Obj(object):
@@ -75,10 +79,12 @@ class memoize_m(object):
     """
     def __init__(self, func):
         self.func = func
+
     def __get__(self, obj, objtype=None):
         if obj is None:
             return self.func
         return functools.partial(self, obj)
+
     def __call__(self, *args, **kwargs):
         obj = args[0]
         try:
@@ -87,12 +93,12 @@ class memoize_m(object):
             cache = obj.__cache = {}
         key = (
             self.func,
-            tuple([ 
+            tuple([
                 v if isinstance(v, Hashable) else tuple(v)
                 for v in args[1:]
             ]),
-            tuple([ 
-                ( k, v if isinstance(v, Hashable) else tuple(v) ) 
+            tuple([
+                ( k, v if isinstance(v, Hashable) else tuple(v) )
                 for k, v in kwargs.items()
             ])
         )
@@ -109,12 +115,13 @@ def memoize1(f):
     class memodict(dict):
         def __missing__(self, key):
             ret = self[key] = f(key)
-            return ret 
+            return ret
     return memodict().__getitem__
 
 
 def lazy_property(fn):
     attr_name = '_lazy_' + fn.__name__
+
     @property
     def _lazy_property(self):
         if not hasattr(self, attr_name):
@@ -122,21 +129,29 @@ def lazy_property(fn):
         return getattr(self, attr_name)
     return _lazy_property
 
+
 def try_int(s, default=None):
     "Convert to integer if possible."
-    try: return int(s)
-    except: return default if default!=None else s
+    try:
+        return int(s)
+    except:
+        return default if default is not None else s
+
 
 def try_float(s, default=None):
     "Convert to float if possible."
-    try: return float(s)
-    except: return default if default!=None else s
+    try:
+        return float(s)
+    except:
+        return default if default is not None else s
+
 
 def try_div( x, y, default=0 ):
     try:
-        return x/y
+        return x / y
     except ZeroDivisionError:
         return default
+
 
 def get_index(seq, index, default=None):
     if not hasattr(seq, "__getitem__"):
@@ -145,6 +160,7 @@ def get_index(seq, index, default=None):
         return seq[index]
     except IndexError:
         return default
+
 
 def boolean(string):
     string = string.lower()
@@ -155,6 +171,7 @@ def boolean(string):
     else:
         raise ValueError()
 
+
 def wrap(text, width):
     """
     http://code.activestate.com/recipes/148061-one-liner-word-wrap-function/
@@ -162,27 +179,29 @@ def wrap(text, width):
     and most spaces in the text. Expects that existing line
     breaks are posix newlines (\n).
     """
-    return reduce(lambda line, word, width=width: '%s%s%s' %
-                  (line,
-                   ' \n'[(len(line)-line.rfind('\n')-1
-                         + len(word.split('\n',1)[0]
-                              ) >= width)],
-                   word),
-                  text.split(' ')
-                 )
+    return reduce(lambda line, word, width=width: '%s%s%s' % (
+        line,
+        ' \n'[(
+            len(line) - line.rfind('\n') - 1 +
+            len(word.split('\n', 1)[0] ) >= width
+        )],
+        word
+    ), text.split(' ') )
+
 
 def sizeof_fmt(num):
-    for x in ['bytes','KB','MB','GB']:
+    for x in ['bytes', 'KB', 'MB', 'GB']:
         if num < 1024.0 and num > -1024.0:
             return "%3.1f%s" % (num, x)
         num /= 1024.0
     return "%3.1f%s" % (num, 'TB')
 
+
 def listify( item ):
     """
     Makes a single item a single item list, or returns a list if passed a
     list. Passing a None returns an empty list.
-    
+
     >>> listify( 'a' )
     ['a']
     """
@@ -193,36 +212,43 @@ def listify( item ):
     else:
         return [ item ]
 
+
 def flatten( lists ):
     return list( itertools.chain.from_iterable( lists ) )
 
+
 def common_prefix( a, b ):
     i = 0
-    for i, (x, y) in enumerate( itertools.izip(a,b) ):
-        if x!=y: break
+    for i, (x, y) in enumerate( itertools.izip(a, b) ):
+        if x != y:
+            break
     return a[0:i]
+
 
 def common_suffix( a, b ):
     return reversed( common_prefix( reversed( a ), reversed( b ) ) )
 
+
 def iter_overlap( iterator, n=None ):
     iterator = iter(iterator)
     if n:
-        iterator = itertools.chain( 
-            [None]*n, iterator, [None]*n
+        iterator = itertools.chain(
+            [None] * n, iterator, [None] * n
         )
     return iterator
+
 
 def iter_window( iterator, n=2, boundary_overlap=None ):
     "Returns a sliding window (of width n) over data from the iterable"
     "   s -> (s0,s1,...s[n-1]), (s1,s2,...,sn), ...                   "
     iterator = iter_overlap( iterator, boundary_overlap )
     result = tuple( itertools.islice( iterator, n ) )
-    if len(result)==n:
-        yield result    
+    if len(result) == n:
+        yield result
     for elem in iterator:
         result = result[1:] + (elem,)
         yield result
+
 
 def iter_stride( iterator, n=2, boundary_overlap=None ):
     "Returns non-overlapping windows (of width n) over data from the iterable"
@@ -230,13 +256,14 @@ def iter_stride( iterator, n=2, boundary_overlap=None ):
     iterator = iter_overlap( iterator, boundary_overlap )
     while True:
         result = tuple( itertools.islice( iterator, n ) )
-        if len(result)!=n:
+        if len(result) != n:
             return
         yield result
 
+
 def iter_consume( iterator, n ):
     "Advance the iterator n-steps ahead. If n is none, consume entirely."
-    iterator = iter(iterator)
+    iterator = iter( iterator )
     # Use functions that consume iterators at C speed.
     if n is None:
         # feed the entire iterator into a zero-length deque
@@ -245,31 +272,33 @@ def iter_consume( iterator, n ):
         # advance to the empty slice starting at position n
         next( itertools.islice( iterator, n, n ), None )
 
+
 def dir_walker( directory, pattern ):
-    for root, dirs, files in os.walk(directory):
+    for root, dirs, files in os.walk( directory ):
         files.sort()
         for name in files:
-            fpath = os.path.join(root, name)
+            fpath = os.path.join( root, name )
             m = re.match( pattern, name )
             if( m ):
-                yield (m, fpath)
+                yield ( m, fpath )
 
-@contextlib.contextmanager 
+
+@contextlib.contextmanager
 def working_directory(directory):
     if not directory:
         directory = "."
     original_directory = os.getcwd()
-    try: 
-        os.chdir(directory) 
-        yield directory 
-    finally: 
-        os.chdir(original_directory) 
+    try:
+        os.chdir(directory)
+        yield directory
+    finally:
+        os.chdir(original_directory)
+
 
 def copy_dict( dict, **kwargs ):
     dict2 = dict.copy()
     dict2.update( kwargs )
     return dict2
-
 
 
 class Bunch( object ):
@@ -279,36 +308,42 @@ class Bunch( object ):
 
 class DefaultOrderedDict( collections.OrderedDict ):
     def __init__(self, default_factory=None, *a, **kw):
-        if (default_factory!=None and not callable(default_factory)):
+        if (default_factory is not None and not callable(default_factory)):
             raise TypeError('first argument must be callable')
         collections.OrderedDict.__init__(self, *a, **kw)
         self.default_factory = default_factory
+
     def __getitem__(self, key):
         try:
             return collections.OrderedDict.__getitem__(self, key)
         except KeyError:
             return self.__missing__(key)
+
     def __missing__(self, key):
         if self.default_factory is None:
             raise KeyError(key)
         self[key] = value = self.default_factory()
         return value
+
     def __reduce__(self):
         if self.default_factory is None:
             args = tuple()
         else:
             args = self.default_factory,
         return type(self), args, None, None, self.items()
+
     def copy(self):
         return self.__copy__()
+
     def __copy__(self):
         return type(self)(self.default_factory, self)
+
     def __deepcopy__(self, memo):
         return type(self)(
             self.default_factory, copy.deepcopy(self.items())
         )
+
     def __repr__(self):
         return 'OrderedDefaultDict(%s, %s)' % (
             self.default_factory, collections.OrderedDict.__repr__(self)
         )
-

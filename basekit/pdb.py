@@ -11,6 +11,7 @@ import datetime
 import shutil
 import scipy.spatial
 import itertools
+from cStringIO import StringIO
 import numpy as np
 np.seterr( all="raise" )
 
@@ -27,7 +28,8 @@ DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "pdb" )
 
 PDB_SEARCH_URL = 'http://www.rcsb.org/pdb/rest/search'
 PDB_DOWNLOAD_URL = 'http://www.rcsb.org/pdb/files/'
-PDBE_ASSEMBLY = 'http://www.ebi.ac.uk/pdbe-srv/view/files/{pdb_id:}_1.mmol'
+PDBE_ASSEMBLY = 'http://www.ebi.ac.uk/pdbe-srv/view/files/{pdb_id:}_1.mmol' # not available anymore ASR 20 May 2014
+RCSB_ASSEMBLY = 'http://www.rcsb.org/pdb/files/{pdb_id:}.pdb1.gz'
 
 TMPL_DIR_CIONIZE = _dir_init( PARENT_DIR, "cionize" )
 cionize_CMD = os.path.join( PARENT_DIR, "cionize" )
@@ -132,19 +134,14 @@ class PdbUnzip( PyTool ):
 
 
 
-def pdb_download( pdb_id, output_file ):
+def pdb_download( pdb_id ):
     pdb_download_urls = [
-        PDB_DOWNLOAD_URL,
-        "http://198.202.122.52/pdb/files/", # outdated?
-        "http://198.202.122.51/pdb/files/"  # outdated?
+        PDB_DOWNLOAD_URL
     ]
     for base_url in pdb_download_urls:
         try:
             url = "%s%s.pdb" % ( base_url, pdb_id )
-            data = urllib2.urlopen( url ).read()
-            with open( output_file, 'wb' ) as fp:
-                fp.write( data )
-            return True
+            return urllib2.urlopen( url ).read()
         except urllib2.HTTPError:
             pass
     else:
@@ -167,15 +164,16 @@ class PdbDownload( PyTool ):
         self.output_files += self.pdb_file_list
     def func( self ):
         for pdb_id, pdb_file in zip( self.pdb_id_list, self.pdb_file_list ):
-            pdb_download( pdb_id, pdb_file )
-
-
+            with open( pdb_file, 'wb' ) as fp:
+                fp.write( pdb_download( pdb_id ) )
 
 
 def pdb_assembly( pdb_id ):
     try:
-        url = PDBE_ASSEMBLY.format( pdb_id=pdb_id )
-        return urllib2.urlopen( url ).read()
+        url = RCSB_ASSEMBLY.format( pdb_id=pdb_id )
+        buf = StringIO( urllib2.urlopen( url ).read() )
+        with gzip.GzipFile( fileobj=buf ) as f:
+            return f.read()
     except urllib2.HTTPError:
         raise Exception( "Error downloading pdb assembly '%s'" % pdb_id )
 
@@ -188,8 +186,14 @@ class PdbAssembly( PyTool ):
         _( "assembly_file", file="assembly.pdb" )
     ]
     def func( self ):
+        try:
+            data = pdb_assembly( self.pdb_id )
+        except:
+            # if assembly download fails there is probably no assembly
+            # so download the standard pdb file
+            data = pdb_download( self.pdb_id )
         with open( self.assembly_file, "w" ) as fp:
-            fp.write( pdb_assembly( self.pdb_id ) )
+            fp.write( data )
 
 
 
@@ -272,7 +276,8 @@ class LoopDelete (PyTool):
         test =npdb.sele(chain=self.chain,resno=[ self.res1, self.res2], invert=True)
         
         npdb.write( self.noloop_pdb_file,sele=test )
-        
+
+
 class PdbEdit( PyTool ):
     """ Edits a pdb file. Manipulations are done in this order:
         center, shift, box.
@@ -285,13 +290,14 @@ class PdbEdit( PyTool ):
             metavar=("X", "Y", "Z") ),
         _( "box", type="float", nargs=6, default=None,
             help="Two sets of 3d coordinates; first one corner, "
-                "then the extent at which the opposing corner is. "
-                "Outputs only the atoms within the box.",
+            "then the extent at which the opposing corner is. "
+            "Outputs only the atoms within the box.",
             metavar=("X", "Y", "Z", "EX", "EY", "EZ") ),
     ]
     out = [
         _( "edited_pdb_file", file="edited.pdb" )
     ]
+
     def func( self ):
         npdb = numpdb.NumPdb( self.pdb_file, {
             "phi_psi": False,
@@ -315,8 +321,8 @@ class PdbEdit( PyTool ):
             corner1 = np.array( self.box[0:3] )
             corner2 = corner1 + np.array( self.box[3:6] )
             sele &= (
-                ( npdb['xyz']>corner1 ) & 
-                ( npdb['xyz']<corner2 )
+                ( npdb['xyz'] > corner1 ) &
+                ( npdb['xyz'] < corner2 )
             ).all( axis=1 )
 
         if self.remove_h:
@@ -342,6 +348,7 @@ class PdbSuperpose( PyTool, ProviMixin ):
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "superpose.provi"
+
     def func( self ):
         npdb1 = numpdb.NumPdb( self.pdb_file1 )
         npdb2 = numpdb.NumPdb( self.pdb_file2 )
@@ -349,8 +356,8 @@ class PdbSuperpose( PyTool, ProviMixin ):
         sele1 = map( numpdb.numsele, self.sele1.split() )
         sele2 = map( numpdb.numsele, self.sele2.split() )
 
-        sp, msg = numpdb.superpose( 
-            npdb1, npdb2, sele1, sele2, 
+        sp, msg = numpdb.superpose(
+            npdb1, npdb2, sele1, sele2,
             subset=self.subset, inplace=True,
             rmsd_cutoff=self.rmsd_cutoff, max_cycles=100,
             align=self.align
@@ -360,8 +367,10 @@ class PdbSuperpose( PyTool, ProviMixin ):
         _sele1 = np.zeros( npdb1.length, bool )
         _sele2 = np.zeros( npdb2.length, bool )
 
-        for s in sele1: _sele1 |= npdb1.sele( **s )
-        for s in sele2: _sele2 |= npdb2.sele( **s )
+        for s in sele1:
+            _sele1 |= npdb1.sele( **s )
+        for s in sele2:
+            _sele2 |= npdb2.sele( **s )
 
         s1 = npdb1.copy( **{ "sele": _sele1 } )
         s2 = npdb2.copy( **{ "sele": _sele2 } )
@@ -372,23 +381,24 @@ class PdbSuperpose( PyTool, ProviMixin ):
         i1 = s1.iter_resno()
         i2 = s2.iter_resno()
 
-        for n1, n2 in itertools.izip( i1, i2 ):
-            for i in xrange( len(n1) ):
-                a1 = n1[i]
-                a2 = n2[ n2['atomname']==a1['atomname'] ][0]
-                d = mag( n1['xyz'][i] - n2['xyz'][ n2['atomname']==a1['atomname'] ][0] )
-                n1['bfac'][i] = d
+        # for n1, n2 in itertools.izip( i1, i2 ):
+        #     for i in xrange( len(n1) ):
+        #         a1 = n1[i]
+        #         idx = n2['atomname'] == a1['atomname']
+        #         a2 = n2[ idx ][0]
+        #         d = mag( n1['xyz'][i] - n2['xyz'][ idx ][0] )
+        #         n1['bfac'][i] = d
         s1.write( self.superposed2_file )
 
         with open( self.info_file, "w" ) as fp:
             fp.write( "\n".join( msg ) )
+
     def _post_exec( self ):
         self._make_provi_file(
             pdb_file1=self.relpath( self.pdb_file1 ),
             pdb_file2=self.relpath( self.pdb_file2 ),
             superposed_file=self.relpath( self.superposed_file ),
         )
-
 
 
 class PdbInfo( PyTool ):
@@ -398,28 +408,34 @@ class PdbInfo( PyTool ):
     out = [
         _( "info_file", file="pdb_info.json" )
     ]
+
     def _init( self, *args, **kwargs ):
-        if len(self.pdb_input)==4:
+        if len(self.pdb_input) == 4:
             self.pdb_download = PdbDownload(
                 self.pdb_input,
-                **copy_dict( kwargs, run=False,
-                    output_dir=self.subdir("download") )
+                **copy_dict(
+                    kwargs, run=False,
+                    output_dir=self.subdir("download")
+                )
             )
             self.pdb_file = self.pdb_download.pdb_file_list[0]
         else:
             self.pdb_download = None
             self.pdb_file = self.abspath( self.pdb_input )
+
     def _pre_exec( self ):
         if self.pdb_download:
             self.pdb_download()
+
     def func( self ):
         self.info = numpdb.NumPdb( self.pdb_file, features={
-            "phi_psi": False, 
+            "phi_psi": False,
             "info": True,
             "backbone_only": True
         })._info
         with open( self.info_file, "w" ) as fp:
             json.dump( self.info, fp, indent=4 )
+
     def get_info( self ):
         if not hasattr( self, "info" ):
             with open( self.info_file, "r" ) as fp:
@@ -430,13 +446,16 @@ class PdbInfo( PyTool ):
 def numpdb_test( pdb_file ):
     with Timer("read/parse pdb plain"):
         numpdb.NumPdb( pdb_file, features={
-            "phi_psi": False, 
-            "sstruc": False, 
+            "phi_psi": False,
+            "sstruc": False,
             "backbone_only": True,
             "detect_incomplete": False
         })
     with Timer("read/parse pdb incomplete"):
-        numpdb.NumPdb( pdb_file, features={"phi_psi": False, "sstruc": False, "backbone_only": False, "detect_incomplete": False} )
+        numpdb.NumPdb( pdb_file, features={
+            "phi_psi": False, "sstruc": False,
+            "backbone_only": False, "detect_incomplete": False
+        } )
     with Timer("read/parse pdb phi/psi"):
         numpdb.NumPdb( pdb_file, features={"sstruc": False} )
     with Timer("read/parse pdb"):
@@ -454,11 +473,11 @@ def numpdb_test( pdb_file ):
         for numa in npdb.iter_sstruc():
             pass
     with Timer("sequence"):
-        print npdb.sequence(chain="A", resno=[1,100])
-    
+        print npdb.sequence(chain="A", resno=[1, 100])
+
     npdb = numpdb.NumPdb( pdb_file, features={
-        "phi_psi": False, 
-        "sstruc": False, 
+        "phi_psi": False,
+        "sstruc": False,
         "backbone_only": False,
         "detect_incomplete": False
     })
@@ -469,8 +488,8 @@ def numpdb_test( pdb_file ):
         npdb.write( "test.pdb" )
 
     npdb = numpdb.NumPdb( pdb_file, features={
-        "phi_psi": False, 
-        "sstruc": False, 
+        "phi_psi": False,
+        "sstruc": False,
         "backbone_only": False,
         "detect_incomplete": True
     })
@@ -479,12 +498,11 @@ def numpdb_test( pdb_file ):
             pass
 
 
-
-
 def rcsb_search( data ):
     req = urllib2.Request( PDB_SEARCH_URL, data=data )
     result = urllib2.urlopen(req).read()
     return result.split() if result else []
+
 
 def rna_list( max_res=3.5 ):
     """ author: Johanna Tiemann, Alexander Rose
@@ -496,16 +514,16 @@ def rna_list( max_res=3.5 ):
     searchstr_res = [
         'Resolution',
         'refine.ls_d_res_high.min>0.0</refine.ls_d_res_high.min',
-        'refine.ls_d_res_high.max>'+str(max_res)+'</refine.ls_d_res_high.max'
+        'refine.ls_d_res_high.max>' + str(max_res) + '</refine.ls_d_res_high.max'
     ]
     searchstr_nmr = [
         'ExpType',
         ('mvStructure.expMethod.value>'
             'SOLUTION NMR'
-        '</mvStructure.expMethod.value'),
+            '</mvStructure.expMethod.value'),
         ('mvStructure.hasExperimentalData.value>'
             'Y'
-        '</mvStructure.hasExperimentalData.value')
+            '</mvStructure.hasExperimentalData.value')
     ]
     rna_query_temp = string.Template(
         open( os.path.join( TMPL_DIR, "rna_query.tpl" ) ).read()
@@ -521,8 +539,6 @@ def rna_list( max_res=3.5 ):
         None, None, pdb_list
     )
     return list_record
-
-
 
 
 def get_rotno( resname ):

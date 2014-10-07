@@ -12,7 +12,6 @@ from utils import working_directory, listify
 from utils.tool import _, _dir_init, PyTool
 
 
-
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "project" )
 
 
@@ -22,13 +21,13 @@ def decode_project_json( pairs ):
     concat = None
     update = None
     for k, v in pairs:
-        if k=='__source__':
+        if k == '__source__':
             source = v
-        elif k=='__key__':
+        elif k == '__key__':
             key = v
-        elif k=='__concat__':
+        elif k == '__concat__':
             concat = v
-        elif k=='__update__':
+        elif k == '__update__':
             update = v
     if source:
         data = read_project_file( source )
@@ -52,7 +51,7 @@ def read_project_file( project_file ):
     temp.seek(0)
     try:
         with working_directory( os.path.dirname( project_file ) ):
-            return json.load( 
+            return json.load(
                 temp, object_pairs_hook=decode_project_json
             )
     except ValueError as e:
@@ -82,7 +81,7 @@ def project_info( project_json ):
             print " `-- directory available."
         else:
             print " `-- Error: directory not found."
-    
+
     print "{:#^80}".format( " TOOLS " )
     for tid, t in project_json["tools"].iteritems():
         print "ID: {id:<45}NAME: {__name__}".format( id=tid, **t )
@@ -97,26 +96,23 @@ def project_info( project_json ):
 
 class ProjectInfo( PyTool ):
     """
-    
     """
     args = [
         _( "project_file", type="file", ext="json" )
     ]
     out = []
+
     def _init( self, *args, **kwargs ):
         self.project = read_project_file( self.project_file )
+
     def func( self ):
         if not self.project:
             return
         project_info( self.project )
-        
-        
-
 
 
 class ProjectRun( PyTool ):
     """
-    
     """
     args = [
         _( "project_file", type="file", ext="json" ),
@@ -132,11 +128,11 @@ class ProjectRun( PyTool ):
         # mdkit extension
         _( "analyze_only|ao", type="int", default=None ),
     ]
-    out = [
-        
-    ]
+    out = []
+
     def _init( self, *args, **kwargs ):
         self.project = read_project_file( self.project_file )
+
     def func( self ):
         if not self.project:
             return
@@ -146,9 +142,9 @@ class ProjectRun( PyTool ):
             new_args.update( defaults )
             if ( "__append__" in args and "__append__" in defaults ):
                 new_args["__append__"] = copy.deepcopy(
-                     args["__append__"]
+                    args["__append__"]
                 )
-                new_args["__append__"].update( 
+                new_args["__append__"].update(
                     defaults["__append__"]
                 )
             return new_args
@@ -172,11 +168,11 @@ class ProjectRun( PyTool ):
                                 if each3:
                                     for name3, defaults3 in each3.iteritems():
                                         d3 = args_copy( d2, defaults3 )
-                                        tools_pp[ tid+name+name2+name3 ] = d3
+                                        tools_pp[ tid + name + name2 + name3 ] = d3
                                 else:
-                                    tools_pp[ tid+name+name2 ] = d2
+                                    tools_pp[ tid + name + name2 ] = d2
                         else:
-                            tools_pp[ tid+name ] = d
+                            tools_pp[ tid + name ] = d
                 else:
                     tools_pp[ tid ] = t
             return copy.deepcopy( tools_pp )
@@ -187,7 +183,7 @@ class ProjectRun( PyTool ):
             if "__parent__" in p:
                 parent = p["__parent__"]
                 del p["__parent__"]
-                p2 = copy.deepcopy( 
+                p2 = copy.deepcopy(
                     self.project["parts"][ parent ]
                 )
                 parts_pp[ pid ] = p2
@@ -197,7 +193,7 @@ class ProjectRun( PyTool ):
 
         for pid, p in self.project["parts"].iteritems():
             if p.get("__sub__"):
-                self.project["parts"][pid]["__sub__"] = pre_process( 
+                self.project["parts"][pid]["__sub__"] = pre_process(
                     p["__sub__"]
                 )
 
@@ -208,38 +204,39 @@ class ProjectRun( PyTool ):
                     if "__range__" in sub or "__list__" in sub:
                         if "__range__" in sub:
                             r = sub.pop("__range__")
-                            range_list = range( r[0], r[1]+1 )
+                            range_list = range( r[0], r[1] + 1 )
                         elif "__list__" in sub:
                             range_list = sub.pop("__list__")
                         for i in range_list:
-                            sub_pp[ pid+str(i) ] = copy.deepcopy(
+                            sub_pp[ pid + str(i) ] = copy.deepcopy(
                                 p["__sub__"][pid]
                             )
-                            for k, v in sub_pp[ pid+str(i) ].iteritems():
+                            sub_pp[ pid + str(i) ][ "i" ] = i
+                            for k, v in sub_pp[ pid + str(i) ].iteritems():
                                 if isinstance( v, basestring ):
                                     v = v.format( i=i )
-                                    sub_pp[ pid+str(i) ][k] = v
+                                    sub_pp[ pid + str(i) ][k] = v
                         del p["__sub__"][pid]
                     else:
                         sub_pp[ pid ] = sub
                 p["__sub__"] = sub_pp
-            
+
         parts_pp = collections.OrderedDict()
         for pid, p in self.project["parts"].iteritems():
             parts_pp[pid] = p
             if p.get("__sub__"):
                 sub = p.pop("__sub__")
                 for sid, s in sub.iteritems():
-                    parts_pp[ pid+"#"+sid ] = copy.deepcopy( p )
-                    parts_pp[ pid+"#"+sid ].update( s )
-                    parts_pp[ pid+"#"+sid ]["__dir__"] = os.path.join(
+                    parts_pp[ pid + "#" + sid ] = copy.deepcopy( p )
+                    parts_pp[ pid + "#" + sid ].update( s )
+                    parts_pp[ pid + "#" + sid ]["__dir__"] = os.path.join(
                         p["__dir__"], s["__dir__"]
                     )
         self.project["parts"] = parts_pp
 
         with open( "foo.json", "w" ) as fp:
             json.dump( self.project, fp, indent=4 )
-        
+
         print "{:#^80}".format( " FILTER " )
 
         self.project["parts_all"] = copy.deepcopy( self.project["parts"] )
@@ -247,14 +244,14 @@ class ProjectRun( PyTool ):
             print "%s: %s" % (s.upper(), ", ".join(x) if x else "all")
             if x:
                 self.project[s] = collections.OrderedDict([
-                    (yid, y) for (yid, y) in self.project[s].iteritems() 
-                    if any([ re.match( xid, yid ) for xid in x ])
+                    (yid, y) for (yid, y) in self.project[s].iteritems()
+                    if any([ re.match( "^" + xid + "$", yid ) for xid in x ])
                 ])
 
         project_info( self.project )
-        
-        print "{:#^80}".format( 
-            " SIMULATE " if self.simulate else " RUN " 
+
+        print "{:#^80}".format(
+            " SIMULATE " if self.simulate else " RUN "
         )
 
         for tid, t in self.project["tools"].iteritems():
@@ -270,16 +267,10 @@ class ProjectRun( PyTool ):
                 parts_all = copy.deepcopy( self.project["parts_all"] )
                 if "__parts__" in kwargs:
                     parts = collections.OrderedDict([
-                        (pid, parts_all[pid]) for pid in 
+                        (pid, parts_all[pid]) for pid in
                         kwargs["__parts__"] if pid in parts_all
                     ])
-                
-                # TODO hardly usable, needs regex
-                # if "__parts_ignore__" in kwargs:
-                #     for pid in kwargs["__parts_ignore__"]:
-                #         if pid in parts:
-                #             del parts[ pid ]
-                
+
                 if "__append__" in kwargs:
                     d = collections.defaultdict(list)
                     for pid, p in parts.iteritems():
@@ -288,7 +279,7 @@ class ProjectRun( PyTool ):
                             v2 = []
                             for _v in v:
                                 if isinstance( _v, basestring ):
-                                    _v = _v.format( 
+                                    _v = _v.format(
                                         dir=get_wd( self.project, p ),
                                         **self.get_kwargs( tid, t, p )
                                     )
@@ -298,11 +289,11 @@ class ProjectRun( PyTool ):
                     kwargs.update( d )
 
                 for k, v in kwargs.iteritems():
-                    if v=="$part_name_list":
+                    if v == "$part_name_list":
                         kwargs[ k ] = parts.keys()
                     elif isinstance( v, basestring ):
-                        kwargs[ k ] = v.format( 
-                            pid="|".join( parts.keys() ), 
+                        kwargs[ k ] = v.format(
+                            pid="|".join( parts.keys() ),
                             tid=tid, **kwargs
                         )
 
@@ -318,24 +309,24 @@ class ProjectRun( PyTool ):
 
             else:
                 for pid, p in self.project["parts"].iteritems():
-                    print " `-- ID: {id:<20}DIR: {__dir__}".format( 
-                        id=pid, **p 
+                    print " `-- ID: {id:<20}DIR: {__dir__}".format(
+                        id=pid, **p
                     )
-                    
+
                     kwargs = self.get_kwargs( tid, t, p )
-                    
+
                     for k, v in kwargs.iteritems():
                         if isinstance( v, basestring ):
                             if v.startswith("$") and "__variables__" in p:
                                 for var, d in p["__variables__"].iteritems():
-                                    if v==var: 
+                                    if v == var:
                                         kwargs[ k ] = d
                                         break
                                 else:
                                     print "%s not found in __variables__" % v
                             else:
-                                kwargs[ k ] = v.format( 
-                                    pid=pid, tid=tid, **kwargs 
+                                kwargs[ k ] = v.format(
+                                    pid=pid, tid=tid, **kwargs
                                 )
 
                     wd = get_wd( self.project, p, pid=pid, tid=tid, **kwargs )
@@ -350,6 +341,7 @@ class ProjectRun( PyTool ):
                     if not self.simulate:
                         ret = self.call_tool( tool, kwargs, wd )
                         print "      `-- TOOL: %s" % ret
+
     def get_kwargs( self, tid, t, p ):
         kwargs = {
             "analyze_only": self.analyze_only,
@@ -365,12 +357,14 @@ class ProjectRun( PyTool ):
         if "__tool_defaults__" in kwargs:
             del kwargs["__tool_defaults__"]
         return kwargs
+
     def get_args( self, tool, kwargs ):
         args = []
         for a, params in tool.args.iteritems():
             if "default" not in params:
                 args.append( kwargs.pop(a) )
         return args
+
     def call_tool( self, tool, kwargs, wd ):
         args = self.get_args( tool, kwargs )
         if not os.path.exists( wd ):
@@ -384,5 +378,3 @@ class ProjectRun( PyTool ):
                     traceback.print_exc()
                 ret = "Exception, %s" % e
         return ret
-
-            

@@ -18,7 +18,7 @@ from array import array
 from basekit import utils
 from utils import memoize_m
 from utils.tool import _, _dir_init, CmdTool, ProviMixin, ParallelMixin
-from utils.tool import RecordsMixin, PyTool
+from utils.tool import RecordsMixin, PyTool, SqliteBackend
 from utils.listing import merge_dic_list
 import provi_prep as provi
 
@@ -44,7 +44,7 @@ VolHole = collections.namedtuple( "VolHole", [
     "no", "type", "neighbours"
 ])
 InfoRecord = collections.namedtuple( "InfoRecord", [
-    "pdb_id", "pdb_res", "pdb_title", "pdb_experiment", "pdb_zscorerms"
+    "pdb_id", "pdb_res", "pdb_title", "pdb_experiment", "pdb_zscorerms", "pdb_header"
 ])
 
 def parse_vol( vol_file, pdb_file ):
@@ -349,6 +349,9 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
     pymol_tmpl = "pymol_settings.py"
     RecordsClass = InfoRecord
     def _init( self, *args, **kwargs ):
+        #if self.pdb_input.endswith("pdb"):
+        #    self.log("no pdb")
+        #    return
         self._init_records( None, **kwargs )
         self._init_parallel( self.pdb_input, **kwargs )
         if not self.analyze_only:
@@ -408,18 +411,21 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                     InfoRecord(
                         pdbid, self.info["resolution"],
                         self.info["title"], self.info["experiment"],
-                        self.zscorerms
+                        self.zscorerms, self.info["header"][2]
                     )
                 ]
             except:
                 self.records = [
                     InfoRecord(
                         pdbid, 0.0,
-                        "", "",
-                        self.zscorerms
+                        "no data", "no data",
+                        self.zscorerms, "no data"
                     )
                 ]
+            db = SqliteBackend( "voronoia_records.sqlite", InfoRecord )
+            db.write( self.records )
             self.write()
+            
             # get the nrholes and the pymol script
             if self.get_nrholes:
                 neighbours, mean_dct, last_hetresno, mean_lst = make_nrhole_pdb(self.pdb_input,self.holes, self.nh_file, self.mean_file)
@@ -429,6 +435,8 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                     'last_hetresno': last_hetresno, 'mean_list':mean_lst
                 }
                 self._make_file_from_tmpl(self.pymol_tmpl, **values_dict)
+            
+            
         if self.parallel and self.make_reference:
             dict_dens, dict_dev, log_list, out_pd_at_dict = make_ref( self.tool_results )
             d = ( self.dens_file, dict_dens ), ( self.dev_file, dict_dev ), (self.pd_at_file, out_pd_at_dict)
@@ -437,6 +445,8 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                     json.dump( dct, fp, indent=4 )
             with open(self.protor_log_file, 'w') as fp:
                 fp.write( log_list )
+            db = SqliteBackend( "voronoia_records.sqlite", InfoRecord )
+            db.write( self.records )
     @memoize_m
     def get_vol( self ):
         return parse_vol( self.vol_file, self.pdb_input )

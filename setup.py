@@ -42,6 +42,7 @@ setup(
         'scripts/hbexplore.py',
         'scripts/jmol.py',
         'scripts/linker.py',
+        'scripts/mapman.py',
         'scripts/moderna_tools.py',
         'scripts/motif.py',
         'scripts/mppd.py',

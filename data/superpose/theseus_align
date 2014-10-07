@@ -1,0 +1,220 @@
+#!/bin/bash
+# THESEUS: Maximum likelihood superpositioning of multiple 
+#          macromolecular structures
+# 
+# -/_|:|_|_\- 
+# Douglas L. Theobald
+# Department of Biochemistry
+# Brandeis University
+# Waltham, MA  02454
+#
+# dtheobald@brandeis.edu
+# dtheobald@gmail.com
+#
+# theseus_align
+#
+# Usage: theseus_align [theseus_options] -f pdbfile1.pdb pdbfile2.pdb ...
+#
+# 'theseus_align' allows for a quick-and-dirty way to ML superposition proteins
+# with different sequences. It should work very well when the protein sequences
+# are relatively similar, although the ML method will still give much better
+# results than least-squares when the sequences are moderately divergent.
+# Technically, this procedure gives a structure-based superposition of a
+# sequence-based alignment. It _does not_ perform a structure-based alignment.
+#
+# First, the script uses THESEUS to create FASTA formatted sequence files
+# corresponding to the exact protein sequences found in the pdb files that you
+# supply.
+#
+# Second, these sequences are aligned using the multiple sequence alignment
+# program of your choice -- currently set up for MUSCLE and easily modified for
+# CLUSTALW, T_COFFEE, KALIGN, DIALIGN2, or MAFFT. Any multiple sequence
+# alignment program can be used, as long as it can generate clustal-formatted
+# files. However, I highly recommend Bob Edgar's MUSCLE program for both its
+# speed and accuracy. It is easy to install using either precompiled binaries or
+# by compiling from scratch:
+# http://www.drive5.com/muscle/
+#
+# Third, THESEUS performs a superposition of the structures using the sequence
+# alignment as a guide.
+#
+# The following six constant strings should be modified to whatever is
+# convenient and applicable.
+
+CAT="/bin/cat";
+SED="/usr/bin/sed";
+TEE="/usr/bin/tee";
+theseus="/home/student/Johanna/repos/basekit/data/superpose/theseus"; # where to find the THESEUS binary executable
+fastafile="theseus.fasta";
+filemapfile="theseus.filemap";
+alignmentfile="theseus.aln";
+
+# for MUSCLE -- http://www.drive5.com/muscle/
+alignprog="/home/student/Johanna/repos/basekit/data/align/muscle3.8.31";
+align_cmd="${alignprog} -maxiters 32 -in ${fastafile} -out ${alignmentfile} -clwstrict";
+
+# for PROBCONS -- http://probcons.stanford.edu/
+#alignprog="/usr/local/bin/probcons";
+#align_cmd="( ${alignprog} -clustalw ${fastafile} | ${SED} 's/PROBCONS/CLUSTALW/' | ${TEE} ${alignmentfile} )";
+#echo $align_cmd
+
+# for CLUSTALW -- ftp://ftp-igbmc.u-strasbg.fr/pub/ClustalW/
+#alignprog="/usr/local/bin/clustalw";
+#align_cmd="${alignprog} -outorder=input -infile=${fastafile} -outfile=${alignmentfile}";
+
+# for MAFFT -- http://www.biophys.kyoto-u.ac.jp/%7Ekatoh/programs/align/mafft/
+#alignprog="/usr/local/bin/mafft";
+#align_cmd="${alignprog} --maxiterate 1000 --localpair --clustalout ${fastafile} > ${alignmentfile}";
+
+# for T_COFFEE -- http://igs-server.cnrs-mrs.fr/%7Ecnotred/Projects_home_page/t_coffee_home_page.html
+#alignprog="/usr/local/bin/t_coffee";
+#align_cmd="${alignprog} ${fastafile} -outfile=${alignmentfile}";
+
+# for KALIGN -- http://msa.cgb.ki.se/
+#alignprog="/usr/local/bin/kalign"
+#align_cmd="${alignprog} -i ${fastafile} -f aln | sed 's/Kalign/CLUSTALW/' > ${alignmentfile}";
+
+# for DIALIGN2 -- http://bibiserv.techfak.uni-bielefeld.de/dialign/
+#alignprog="/usr/local/bin/dialign2"
+#align_cmd="${alignprog} -cw ${fastafile}; sed 's/\/\///' ${fastafile%.*}.cw | sed 's/DIALIGN/CLUSTALW/'";
+
+
+################################################################################
+################################################################################
+# NOTHING BELOW HERE SHOULD BE CHANGED
+################################################################################
+
+if [ ! -f ${alignprog} ] || [ ! -x ${alignprog} ] || [ ! -s ${alignprog} ]
+then
+    printf "\nERROR: Problem with multiple sequence aligment executable, ${alignprog}\n";
+    ${alignprog};
+    exit 1;
+elif [ ! -f ${theseus} ] || [ ! -x ${theseus} ] || [ ! -s ${theseus} ]
+then
+    printf "\nERROR: Problem with THESEUS executable, ${alignprog}\n";
+    ${theseus};
+    exit 1;
+fi
+
+usage="Usage: ${0} [theseus_options] -f pdbfile1.pdb pdbfile2.pdb ...";
+
+declare -a opts=( $@ ); # save the command line arguments
+(( argc = $# )); # save the number of command line arguments
+
+# shift up until we get past '-f', which signifies that the rest are files
+(( optn = 0 ));
+while [ "${1}" != "-f" ] && [ ! -z "${1}" ]
+do
+    shift;
+    (( optn++ ));
+done
+
+# Ensure that there is something on the command line
+if [[ -z "$@" ]] # double brackets don't do word splitting
+then
+    printf "\n${usage}\n\n";
+    exit 1;
+else
+    shift;
+fi
+
+for (( i = optn; i < argc; ++i ))
+do
+    unset opts[${i}]; # nix the pdb files from the options array
+done
+
+pdbs="$@";
+echo "PDBs for superpositioning: ${pdbs}"
+
+# Make sure there are pdb files on the command line
+if [[ -z "${pdbs}" ]] # double brackets don't do word splitting
+then
+    printf "\n${usage}\n\n";
+    exit 1;
+else
+    shift;
+fi
+
+# Check each pdb file to see if it exists, if it is readable, and if it is non-empty
+for pdb in ${pdbs}
+do
+    if [ ! -f ${pdb} ] || [ ! -r ${pdb} ] || [ ! -s ${pdb} ]
+    then
+        printf "\nProblem with file: ${pdb}\n"
+        printf "\n${usage}\n\n";
+        exit 1;
+    fi
+done
+
+theseus_cmd="${theseus} ${opts[@]} -f -M ${filemapfile} -A ${alignmentfile} ${pdbs}";
+
+# Use THESEUS to make fasta sequence files corresponding to each pdb
+${theseus} -f -F ${pdbs};
+
+if [ ! $? ]
+then
+    printf "\nERROR: THESEUS did not successfully create all FASTA sequence files.\n";
+	printf "\n${usage}\n\n";
+	exit 1;
+fi
+
+for pdb in ${pdbs}
+do
+    fasta="${pdb}.fst";
+    if [ ! -f ${fasta} ] || [ ! -r ${fasta} ] || [ ! -s ${fasta} ]
+    then
+        printf "\nProblem with FASTA sequence file ${fastafile} for ${pdb}\n"
+        printf "\n${usage}\n\n";
+        exit 1;
+    fi
+done
+
+if [ -f ${fastafile} ]
+then
+    rm ${fastafile};
+fi
+
+# Concatenate all fasta files into one large multiple sequence fasta file
+for pdb in ${pdbs}
+do
+    ${CAT} ${pdb}.fst >> ${fastafile};
+done
+
+#ls -1 ${pdbs} | awk '{print $1" "$1}' > ${filemapfile};
+
+if [ -f ${filemapfile} ]
+then
+    rm ${filemapfile};
+fi
+
+# Make the mapfile for THESEUS to use (which sequence corresponds to which file)
+for pdb in ${pdbs}
+do
+    echo "${pdb} ${pdb}" >> ${filemapfile};
+done
+
+# Align the sequences
+printf "\n\n${align_cmd}\n";
+eval ${align_cmd};
+
+if [ ! $? ]
+then
+    printf "\nERROR: Sequence alignment failed.\n";
+	printf "\n${usage}\n\n";
+	exit 1;
+fi
+
+
+if [ ! -s ${alignmentfile} ]
+then
+    printf "\nERROR: Sequence alignment failed: no alignment file.\n";
+    printf "\n${usage}\n\n";
+    exit 1;
+fi
+
+# Superimpose with THESEUS based on the sequence alignment generated above
+printf "\n\n${theseus_cmd}\n";
+${theseus_cmd};
+
+exit 0;
+
