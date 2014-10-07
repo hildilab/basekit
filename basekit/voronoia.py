@@ -44,7 +44,7 @@ VolHole = collections.namedtuple( "VolHole", [
     "no", "type", "neighbours"
 ])
 InfoRecord = collections.namedtuple( "InfoRecord", [
-    "pdb_id", "pdb_res", "pdb_title", "pdb_experiment", "pdb_zscorerms"
+    "pdb_id", "pdb_res", "pdb_title", "pdb_experiment", "pdb_zscorerms", "pdb_header"
 ])
 
 def parse_vol( vol_file, pdb_file ):
@@ -349,6 +349,9 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
     pymol_tmpl = "pymol_settings.py"
     RecordsClass = InfoRecord
     def _init( self, *args, **kwargs ):
+        #if self.pdb_input.endswith("pdb"):
+        #    self.log("no pdb")
+        #    return
         self._init_records( None, **kwargs )
         self._init_parallel( self.pdb_input, **kwargs )
         if not self.analyze_only:
@@ -408,15 +411,15 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                     InfoRecord(
                         pdbid, self.info["resolution"],
                         self.info["title"], self.info["experiment"],
-                        self.zscorerms
+                        self.zscorerms, self.info["header"][2]
                     )
                 ]
             except:
                 self.records = [
                     InfoRecord(
                         pdbid, 0.0,
-                        "", "",
-                        self.zscorerms
+                        "no data", "no data",
+                        self.zscorerms, "no data"
                     )
                 ]
             db = SqliteBackend( "voronoia_records.sqlite", InfoRecord )

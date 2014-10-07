@@ -502,7 +502,11 @@ class InfoParser( object ):
         elif line.startswith("REMARK"):
             if line[9] == "2":
                 self._dict["resolution"] += line[10:].rstrip()
-
+        elif line.startswith("HEADER"):
+            if self._dict["header"]:
+                self._dict["header"].append(line[10:50].rstrip(), line[50:62].rstrip(), line[62:].rstrip())
+            else:
+                self._dict["header"] = [line[10:50].rstrip(), line[50:62].rstrip(), line[62:].rstrip()]
         elif line.startswith("OBSLTE"):
             self._dict["obsolete"] += line[31:].rstrip()
 
@@ -528,7 +532,8 @@ class InfoParser( object ):
             ),
             "splited_entry": dct.get("split", "").split(),
             "model_type": mdl_dct,
-            "obsolete": dct.get("obsolete", "").split()
+            "obsolete": dct.get("obsolete", "").split(),
+            "header": dct.get("header", "")
         }
 
 
