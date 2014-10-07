@@ -8,7 +8,7 @@ from utils.numpdb import NumPdb
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "dssp" )
 
-DSSP_CMD = "dsspcmbi"
+DSSP_CMD = "mkdssp"
 
 
 

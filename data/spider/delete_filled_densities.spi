@@ -62,6 +62,9 @@ _1                        ; Filtered vol    (output)
 FS [max],[min]            ; Max & min 
 _1                        ; Filtered vol    (input)
 
+;
+
+
 [th]=([max]+[min])/2      ; The threshold is a value halfway between min & max
 
 ;maske erstellen

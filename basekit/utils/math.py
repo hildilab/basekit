@@ -129,9 +129,18 @@ def rmsd( coords1, coords2 ):
     )
 
 
+def tmscore(coords1, coords2):
+    distance=np.sqrt(np.sum( (coords1-coords2)**2, axis=1), dtype=float)
+    d0=(1.24*((coords1.shape[0]-15)**(1.0/3))-1.8)
+    sum_diff=np.sum(1/(1+((distance/d0)**2)))
+    return (1/coords1.shape[0])* sum_diff
 
-
-
+#def tmscore(coords1, coords2,length):
+#    distance=np.sqrt(np.sum( (coords1-coords2)**2, axis=1), dtype=float)
+#    d0=(1.24*((coords1.shape[0]-15)**(1.0/3))-1.8)
+#    sum_diff=np.sum(1/(1+((distance/d0)**2)))
+#    return (1/length)* sum_diff
+#
 
 
 class Superposition( object ):
