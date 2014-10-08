@@ -199,7 +199,7 @@ class PdbAssembly( PyTool ):
 
 
 def pdb_split( pdb_file, output_dir, backbone_only=False, 
-               resno_ignore=False, max_models=False, zfill=False ):
+               resno_ignore=False, max_models=True, zfill=False ):
     """ author: Johanna Tiemann
         author: Alexander Rose
         This function puts pdb-models into their own file.
@@ -213,7 +213,7 @@ def pdb_split( pdb_file, output_dir, backbone_only=False,
         for line in fp:
             if line[0:5]=='MODEL':
                 model_no += 1
-                if max_models and model_no>max_models:
+                if model_no>max_models:
                     break
                 file_name = "%s%s.pdb" % ( str(model_no).zfill( zfill ), bb_tag )
                 file_path = os.path.join( output_dir, file_name )
@@ -246,6 +246,7 @@ class PdbSplit( PyTool ):
             if isinstance( self.resno_ignore, basestring ):
                 self.resno_ignore = map( int, self.resno_ignore.split(",") )
     def func( self ):
+        
         pdb_split( 
             self.pdb_file, self.output_dir,
             backbone_only=self.backbone_only,

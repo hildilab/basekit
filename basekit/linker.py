@@ -35,7 +35,8 @@ class LinkIt( CmdTool, ProviMixin ):
         _( "pdb_file", type="file", ext="pdb" ),
         _( "res1", type="sele" ),
         _( "res2", type="sele" ),
-        _( "seq", type="str" )
+        _( "seq", type="str" ),
+        _( "max_loops", type="int", range=[0, 500], default=100 )
     ]
     out = [
         _( "bin_file", file="{pdb_file.stem}_linker.bin" ),
@@ -137,7 +138,7 @@ class LinkIt( CmdTool, ProviMixin ):
     def _split_loop_file( self ):
         PdbSplit(
             self.pdb_linker_file2, output_dir=self.loop_dir,
-            backbone_only=True, resno_ignore=[ 1000, 2000 ], zfill=3
+            backbone_only=True, resno_ignore=[ 1000, 2000 ], zfill=3,max_models=self.max_loops
         )
 
     def _find_clashes( self ):
@@ -180,12 +181,13 @@ class LinkIt( CmdTool, ProviMixin ):
             fp.next()
             fp.next()
             for i, d in enumerate( iter_stride( fp, 4 ), start=1 ):
-                linker_dict[ i ] = [
-                    float(d[0]), float(d[1]),
-                    str(d[2].strip()),
-                    str(d[3].strip()),
-                    model_clash_count[ i ]
-                ]
+                if i<=self.max_loops:
+                    linker_dict[ i ] = [
+                        float(d[0]), float(d[1]),
+                        str(d[2].strip()),
+                        str(d[3].strip()),
+                        model_clash_count[ i ]
+                    ]
 
         with open( self.json_file, "w" ) as fp:
             if compact:

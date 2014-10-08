@@ -36,7 +36,8 @@ class LinkIt( CmdTool, ProviMixin ):
         _( "pdb_file", type="file", ext="pdb" ),
         _( "res1", type="sele" ),
         _( "res2", type="sele" ),
-        _( "seq", type="str" )
+        _( "seq", type="str" ),
+        _( "max_loops", type="int", range=[0, 500], default=50 )
     ]
     out = [
         _( "bin_file", file="{pdb_file.stem}_linker.bin" ),
@@ -47,6 +48,7 @@ class LinkIt( CmdTool, ProviMixin ):
         _( "kos_file", file="{pdb_file.stem}_kos.txt" ),
         _( "json_file", file="{pdb_file.stem}_linker.json" ),
         _( "loop_dir", dir="loops" )
+        
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "link_it.provi"
@@ -131,7 +133,7 @@ class LinkIt( CmdTool, ProviMixin ):
     def _split_loop_file( self ):
         PdbSplit( 
             self.pdb_linker_file2, output_dir=self.loop_dir, backbone_only=True, 
-             resno_ignore=[ 1000, 2000 ], zfill=3
+             resno_ignore=[ 1000, 2000 ], zfill=3, max_models=self.max_loops
         )                    
     def _find_clashes ( self ):
         backbone = ( ' N  ',' C  ', ' CA ',' O  ' )
@@ -146,8 +148,11 @@ class LinkIt( CmdTool, ProviMixin ):
                 lf=os.path.join(self.loop_dir,fn)
                 npdb2=NumPdb( lf,
             {"backbone_only": True} )
+                print 'build tree', time.time()
                 loops=get_tree(npdb2['xyz'])
+                print 'quiery tree', time.time()
                 k=loops.query_ball_tree(protein, 3)
+                print 'tree end'
                 g = [x for x in k if x != []]
     
                 f=itertools.chain(*g)
@@ -161,21 +166,21 @@ class LinkIt( CmdTool, ProviMixin ):
                 if len(clashes)!=0:
                     model=fn.split('_')[0]
                     clashing_models.append(float(model))
-    
+                print 'rest', time.time()
         return clashing_models
     def _make_linker_json( self, compact=False ):
         linker_dict = {}
-        #clashing_models =self._find_clashes()
-        #
-        #with open( self.txt_file, "r" ) as fp:
-        #    fp.next()
-        #    fp.next()
-        #    for i, d in enumerate( iter_stride( fp, 4 ), start=1 ):
-        #        if i in clashing_models :
-        #            flag=1
-        #        else:
-        #            flag=0
-        #        linker_dict[ i ] = [ float(d[0]), float(d[1]), str(d[2].strip()),str(d[3].strip()),flag ]
+        clashing_models =self._find_clashes()
+        
+        with open( self.txt_file, "r" ) as fp:
+            fp.next()
+            fp.next()
+            for i, d in enumerate( iter_stride( fp, 4 ), start=1 ):
+                if i in clashing_models :
+                    flag=1
+                else:
+                    flag=0
+                linker_dict[ i ] = [ float(d[0]), float(d[1]), str(d[2].strip()),str(d[3].strip()),flag ]
 
         with open( self.json_file, "w" ) as fp:
             if compact:
