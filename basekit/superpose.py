@@ -238,7 +238,7 @@ class Theseus( CmdTool ):
             for m, pdbfile in dir_walker( self.pdb_input[0], v ):
                 name=utils.path.stem(pdbfile)+utils.path.ext(pdbfile)
                 self.stem_list.append(name)
-        else:
+        elif isinstance(self.pdb_input, list):
             for pdbfile in self.pdb_input:
                 name=utils.path.stem(pdbfile)+utils.path.ext(pdbfile)
                 self.stem_list.append(name)

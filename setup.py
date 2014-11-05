@@ -58,6 +58,7 @@ setup(
         'scripts/tmdet.py',
         'scripts/voronoia.py',
         'scripts/voronoia_pipeline.py',
+        'scripts/voro.py',
         'scripts/wine_watcher.py',
     ]
 )

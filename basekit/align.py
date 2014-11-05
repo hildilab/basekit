@@ -102,7 +102,7 @@ class Muscle( CmdTool):
         #get all files from dir
         if len(self.pdb_files)==1:
             v = ".*[pdb]$"
-            for m, pdbfile in dir_walker( self.pdb_files, v ):
+            for m, pdbfile in dir_walker( self.pdb_files[0], v ):
                 files.append(pdbfile)
         else:
             files=self.pdb_files
@@ -110,7 +110,7 @@ class Muscle( CmdTool):
             fp2=open(self.map_file, "w")
         self.new_files=[]
         #generating a new pdb with only ATOM and if wanted selected chains
-        for index, fi in enumerate(self.pdb_files):
+        for index, fi in enumerate(files):#self.pdb_files):
             name=utils.path.stem(fi)+utils.path.ext(fi)
             if self.mapfile:
                 fp2.write(fi.split("/")[-1]+" "+name+"\n")
