@@ -18,7 +18,7 @@ import provi_prep as provi
 from spider import LoopCrosscorrel
 from pdb import PdbEdit, SplitPdbSSE, LoopDelete, PdbSplit, get_tree
 import utils.numpdb as numpdb
-
+import timeit
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "linker" )
 
 
@@ -258,7 +258,7 @@ class LinkItDensity( PyTool, ProviMixin ):
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "link_it_density.provi"
-
+    #start=timeit.timeit()
     def _init( self, *args, **kwargs ):
         if self.res1['resno'] > self.res2['resno']:
             self.res1, self.res2 = self.res2, self.res1
@@ -298,7 +298,7 @@ class LinkItDensity( PyTool, ProviMixin ):
 
         self.link_it()
         self.loop_correl()
-
+        print len(self.seq)
     def _post_exec( self ):
         self._make_correl_json()
         self._make_provi_file(
@@ -338,9 +338,10 @@ class LinkItDensity( PyTool, ProviMixin ):
                 json.dump( linker_correl_dict, fp, separators=(',', ':') )
             else:
                 json.dump( linker_correl_dict, fp, indent=4 )
-
-
-
+    
+    #end = timeit.timeit()
+    #print "zEdIT", end - start
+    
 class LnkItVali(PyTool, ProviMixin):
     args = [
         _( "dataset_dir", type="dir" ),

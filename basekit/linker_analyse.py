@@ -8,8 +8,9 @@ import operator
 import json
 import collections
 import xml.etree.ElementTree as ET
-
+import timeit
 import utils.path
+from utils.timer import Timer
 from utils import copy_dict, iter_stride
 from utils.tool import _, _dir_init, CmdTool, PyTool, ProviMixin
 from utils.numpdb import NumPdb, numsele
@@ -31,7 +32,7 @@ def LINKIT_CMD():
 
 
 
-class LinkIt( CmdTool, ProviMixin ):
+class LinkIt_analyse( CmdTool, ProviMixin ):
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
         _( "res1", type="sele" ),
@@ -57,7 +58,7 @@ class LinkIt( CmdTool, ProviMixin ):
     def _init( self, *args, **kwargs ):
         if self.res1['resno']>self.res2['resno']:
             self.res1, self.res2 = self.res2, self.res1
-        print 'dtart linkit',time.time()    
+        #print 'dtart linkit',time.time()    
         self.cmd = [ "wine", LINKIT_CMD(), self.kos_file, self.bin_file, "t" ]
         
         
@@ -65,22 +66,22 @@ class LinkIt( CmdTool, ProviMixin ):
         self._make_kos_file()
     def _post_exec( self ):
         
-        print 'end linkit', time.time()
+     #   print 'end linkit', time.time()
         self._fix_linker_pdb( self.pdb_linker_file2 )
-        print '1.fix', time.time()
+      #  print '1.fix', time.time()
         self._fix_linker_pdb( self.pdb_linker_file3, atoms_only=True )
-        print '2.fix', time.time()
+       # print '2.fix', time.time()
         self._split_loop_file()
-        print '2.fix', time.time()
+       # print '2.fix', time.time()
         self._make_linker_json( compact=True )
-        print 'make linker_json', time.time()
+       # print 'make linker_json', time.time()
         self._make_provi_file(
             pdb_file=self.relpath( self.pdb_file ),
             pdb_linker_file3=self.relpath( self.pdb_linker_file3 ),
             json_file=self.relpath( self.json_file )
         
         )
-        print 'make provi',time.time()
+        #print 'make provi',time.time()
         #print t3-t1
     def _make_kos_file( self ):
         npdb = NumPdb( self.pdb_file, features={ 
@@ -103,7 +104,7 @@ class LinkIt( CmdTool, ProviMixin ):
     def _fix_linker_pdb( self, output_file, atoms_only=False, stems=True ):
         backbone = ( ' N  ',' C  ', ' CA ',' O  ' )
         chain = self.res1['chain']
-        print chain
+       # print chain
         #print time.time()
         with open( self.pdb_linker_file, "r" ) as fp:
             with open( output_file, "w" ) as fp_out:
@@ -148,11 +149,11 @@ class LinkIt( CmdTool, ProviMixin ):
                 lf=os.path.join(self.loop_dir,fn)
                 npdb2=NumPdb( lf,
             {"backbone_only": True} )
-                print 'build tree', time.time()
+               # print 'build tree', time.time()
                 loops=get_tree(npdb2['xyz'])
-                print 'quiery tree', time.time()
+              #  print 'quiery tree', time.time()
                 k=loops.query_ball_tree(protein, 3)
-                print 'tree end'
+              #  print 'tree end'
                 g = [x for x in k if x != []]
     
                 f=itertools.chain(*g)
@@ -166,7 +167,7 @@ class LinkIt( CmdTool, ProviMixin ):
                 if len(clashes)!=0:
                     model=fn.split('_')[0]
                     clashing_models.append(float(model))
-                print 'rest', time.time()
+              #  print 'rest', time.time()
         return clashing_models
     def _make_linker_json( self, compact=False ):
         linker_dict = {}
@@ -401,7 +402,7 @@ class CutPDB (PyTool):
             print rel
             print cha
             os.mkdir(cha)
-            for x in range (20,35,1):
+            for x in range (5,35,1):
                 ch=numa.get('chain')[0]
                 gum= "%s/%s" % (cha,x)
                 os.mkdir(gum)
@@ -410,7 +411,7 @@ class CutPDB (PyTool):
                     
                    
                     res1=numa.get('resno')[0]
-                    if res1 % 5 == 0 :#-->jeder 7. loop
+                    if res1 % 30 == 0 :#-->jeder 7. loop
                         res2=res1+x-1
                         print res1
                         test=npdb.copy(resno=[res1,res2],chain=cha)
@@ -428,6 +429,7 @@ class CutPDB (PyTool):
                             ires2="%s:%s" % (res2+1,cha)
                             print ires1, ires2
                             print 'sequence',seq
+                            start = timeit.timeit()
                             #print 'richtige?',numa.sequence()
                             try:
                                 LinkItDensity (name2,self.mrc_file,ires1,ires2,seq,self.resolution, self.cutoff,output_dir=di)
@@ -473,8 +475,16 @@ class AnalyseLiniktRun( PyTool , ProviMixin):
                     continue
                     #print "%s:%s" % (pn, 'is no directory')
                     
+#class Timer:    
+#    def __enter__(self):
+#        self.start = time.clock()
+#        return self
+#
+#    def __exit__(self, *args):
+#        self.end = time.clock()
+#        self.interval = self.end - self.start
 #/home/jochen/work/fragfit/validation/dataset/EMD-5249/pieces/3IZM_B_705-708/loop_correl/crosscorrelation
-class CutPDB2 (PyTool):
+class Cut_analyse_PDB2 (PyTool):
     args = [
     _( "pdb_file", type="file"),
     _( "mrc_file", type="file"),
@@ -482,60 +492,49 @@ class CutPDB2 (PyTool):
     _( "cutoff", type="float" )
         ]
     def func( self, *args, **kwargs ):
-        
         npdb=numpdb.NumPdb( self.pdb_file)
-
-        for z, numa in enumerate (npdb.iter_chain()):
-            cha=numa.get('chain')[0]
-            rel=numa.get('resno')[-1]
-            #if cha!='0':
-            #if cha in ('1') : 
-            print rel
-            print cha
-            try:
-                os.mkdir(cha)
-            except:
-                continue
-            for x in range (30,36,1):
-                ch=numa.get('chain')[0]
-                gum= "%s/%s" % (cha,x)
-                os.mkdir(gum)
-                for i,numa in enumerate (npdb.iter_resno(chain=cha)):
-                    #numa.next()
-                    #numa.next()
-                    #numa.next()
-                    res1=numa.get('resno')[0]
-                    if res1 % 3 == 0 :#-->jeder 7. loop
-                        res2=res1+x-1
-                        print res1
-                        test=npdb.copy(resno=[res1,res2],chain=cha)
-                        oripdb=npdb.sele(resno=[res1,res2],chain=cha, invert=True)
-                        if rel-x+1>=res1:
-                            di="%s/%s_%s" % (gum,res1,res2)
-                            try:
-                                os.mkdir(di)
-                                name= "%s/%s_%s.%s" % (di,res1,res2,'pdb')
-                                name2= "%s/%s_%s_%s.%s" % (di,'ganz',res1,res2,'pdb')
-                                print name2
-                                test.write(name)
-                                npdb.write(name2,sele=oripdb)
-                                seq=test.sequence()
-                                ires1="%s:%s" % (res1-1,cha)
-                                ires2="%s:%s" % (res2+1,cha)
-                                print ires1, ires2
-                                print 'sequence',seq
-                                #print 'richtige?',numa.sequence()
-                                try:
-                                    LinkItDensity2 (name2,self.mrc_file,ires1,ires2,seq,self.resolution, self.cutoff,output_dir=di)
-                                except:
-                                    print 'linikt error'
-                                #    neuen loop suchen
-                            except:
-                                continue
-                    #else:
-                    #    continue
-                    #        
-class LinkItDensity2( PyTool, ProviMixin ):
+        cha='R' 
+        rel=198
+        os.mkdir(cha)
+        for x in range (5,36,1):
+            ch='R'
+            gum= "%s/%s" % (cha,x)
+            os.mkdir(gum)
+            res1=198
+            res2=res1+x-1
+            test=npdb.copy(resno=[res1,res2],chain=cha)
+            oripdb=npdb.sele(resno=[res1,res2],chain=cha, invert=True)
+            di="%s/%s_%s" % (gum,res1,res2)
+            os.mkdir(di)
+            name= "%s/%s_%s.%s" % (di,res1,res2,'pdb')
+            name2= "%s/%s_%s_%s.%s" % (di,'ganz',res1,res2,'pdb')
+            test.write(name)
+            npdb.write(name2,sele=oripdb)
+            seq=test.sequence()
+            ires1="%s:%s" % (res1-1,cha)
+            ires2="%s:%s" % (res2+1,cha)
+            with Timer() as t:
+                print len(seq)
+                try:
+                   # LinkIt_analyse (name2,ires1,ires2,seq)
+                #print name2,self.mrc_file,ires1,ires2,seq,self.resolution, self.cutoff,di
+                    LinkItDensity2_analyse (name2,self.mrc_file,ires1,ires2,seq,self.resolution, self.cutoff,output_dir=di)
+            #print t
+                except:
+                    print 'linikt error'
+            #    neuen loop suchen
+            #
+                
+            #except:
+            #    print 'aha'
+            #    continue
+            #end = timeit.timeit()
+            #print end - start
+            #print t.interval
+        #else:
+            #    continue
+                #        
+class LinkItDensity2_analyse( PyTool, ProviMixin ):
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
         _( "mrc_file", type="file", ext="mrc" ),
@@ -552,44 +551,47 @@ class LinkItDensity2( PyTool, ProviMixin ):
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "link_it_density.provi"
-
+    #start=timeit.timeit()
     def _init( self, *args, **kwargs ):
-        if self.res1['resno']>self.res2['resno']:
-            self.res1,self.res2=self.res2,self.res1
-        self.link_it = LinkIt( 
+        if self.res1['resno'] > self.res2['resno']:
+            self.res1, self.res2 = self.res2, self.res1
+        self.link_it = LinkIt_analyse(
             self.edited_pdb_file, self.res1, self.res2, self.seq,
             **copy_dict( kwargs, run=False, output_dir=self.subdir("link_it") )
         )
-        self.loop_correl = LoopCrosscorrel2 (
-            self.mrc_file, self.pdb_file, self.link_it.pdb_linker_file2, self.link_it.txt_file,
+        self.loop_correl = LoopCrosscorrel2(
+            self.mrc_file, self.pdb_file,
+            self.link_it.pdb_linker_file2,
+            self.link_it.txt_file,
             self.res1, self.res2, len(self.seq),
-            self.resolution,            
-            **copy_dict( 
+            self.resolution,
+            **copy_dict(
                 kwargs, run=False, output_dir=self.subdir("loop_correl"),
                 max_loops=self.max_loops,
             )
         )
         self.output_files += list( itertools.chain(
-            self.link_it.output_files, 
+            self.link_it.output_files,
             self.loop_correl.output_files,
         ))
+
     def func( self ):
-        boxsize=getMrc(self.mrc_file,'nx' )
-        originx=abs(getMrc(self.mrc_file,'nxstart' ))
-        originy=abs(getMrc(self.mrc_file,'nystart' ))
-        originz=abs(getMrc(self.mrc_file,'nzstart' ))
-        size=getMrc(self.mrc_file,'xlen' )
-        pixelsize=(size/boxsize)
-        shx = (originx -(boxsize/2)) * pixelsize
-        shy = (originy -(boxsize/2)) * pixelsize
-        shz = (originz -(boxsize/2)) * pixelsize
-        #print shx,shy,shz
-        PdbEdit( 
-            self.pdb_file, shift= [shx, shy, shz]
-        )    
-   
+        boxsize = getMrc(self.mrc_file, 'nx' )
+        originx = abs(getMrc(self.mrc_file, 'nxstart' ))
+        originy = abs(getMrc(self.mrc_file, 'nystart' ))
+        originz = abs(getMrc(self.mrc_file, 'nzstart' ))
+        size = getMrc(self.mrc_file, 'xlen' )
+        pixelsize = size / boxsize
+        shx = (originx - (boxsize / 2)) * pixelsize
+        shy = (originy - (boxsize / 2)) * pixelsize
+        shz = (originz - (boxsize / 2)) * pixelsize
+        PdbEdit(
+            self.pdb_file, shift=[ shx, shy, shz ]
+        )
+
         self.link_it()
         self.loop_correl()
+        print len(self.seq)
     def _post_exec( self ):
         self._make_correl_json()
         self._make_provi_file(
@@ -598,27 +600,27 @@ class LinkItDensity2( PyTool, ProviMixin ):
             mrc_file=self.relpath( self.mrc_file ),
             # mrc_file=self.relpath( self.loop_correl.spider_shift.map_shift ),
             cutoff=self.cutoff,
-            # box_mrc_file=self.relpath( 
-            #     self.loop_correl.spider_reconvert.mrc_file 
+            # box_mrc_file=self.relpath(
+            #     self.loop_correl.spider_reconvert.mrc_file
             # ),
-            # box_ori_mrc_file=self.relpath( 
-            #     self.loop_correl.spider_reconvert.mrc_ori_file 
+            # box_ori_mrc_file=self.relpath(
+            #     self.loop_correl.spider_reconvert.mrc_ori_file
             # ),
-            pdb_linker_file3=self.relpath( 
+            pdb_linker_file3=self.relpath(
                 self.loop_correl.ori_pdb_linker_file3 ),
             linker_correl_file=self.relpath( self.linker_correl_file )
         )
         #self._make_fixed_linker()
-        
+
     def _make_correl_json( self, compact=False ):
         li = self.link_it.json_file
         cc = self.loop_correl.spider_crosscorrelation.crosscorrel_json
         with open( li, "r" ) as fp:
-            li_dict = json.load( 
+            li_dict = json.load(
                 fp, object_pairs_hook=collections.OrderedDict
             )
         with open( cc, "r" ) as fp:
-            cc_dict = json.load( 
+            cc_dict = json.load(
                 fp, object_pairs_hook=collections.OrderedDict
             )
         linker_correl_dict = {}
@@ -626,9 +628,12 @@ class LinkItDensity2( PyTool, ProviMixin ):
             linker_correl_dict[k] = [ v ] + li_dict[k]
         with open( self.linker_correl_file, "w" ) as fp:
             if compact:
-                json.dump( linker_correl_dict, fp, separators=(',',':') )
+                json.dump( linker_correl_dict, fp, separators=(',', ':') )
             else:
                 json.dump( linker_correl_dict, fp, indent=4 )
+    
+    #end = timeit.timeit()
+    #print "zEdIT", end - start
 
 class CutPDB3 (PyTool):
     args = [

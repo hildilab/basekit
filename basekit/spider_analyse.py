@@ -1353,165 +1353,162 @@ class LoopCrosscorrel2( PyTool ):
         _( "ori_pdb_linker_file3", file="ori_pdb_linker_file3.pdb")
     ]
     tmpl_dir = TMPL_DIR
+
     def _init( self, *args, **kwargs ):
-        #self.spider_shift = SpiderShift(
-        #    self.mrc_file,self.pdb_file,
-        #    **copy_dict( 
-        #        kwargs, run=False, output_dir=self.subdir("shift") 
-        #    )
-        #)
-        #self.spider_convert = SpiderConvert( 
-        #    self.spider_shift.map_shift, 
-        #    **copy_dict( 
-        #        kwargs, run=False, output_dir=self.subdir("convert") 
-        #    )
-       # )
+        self.spider_shift = SpiderShift(
+            self.mrc_file, self.pdb_file,
+            **copy_dict(
+                kwargs, run=False, output_dir=self.subdir("shift")
+            )
+        )
+        self.spider_convert = SpiderConvert(
+            self.spider_shift.map_shift,
+            **copy_dict(
+                kwargs, run=False, output_dir=self.subdir("convert")
+            )
+        )
         self.spider_box = SpiderBox(
-            self.mrc_file,
-            #self.spider_shift.map_shift,
-            "/home/jochen/work/fragfit/benchmark/trpv1/files/mapupload.cpv",
-            #self.spider_convert.map_file, 
-            #self.spider_shift.edited_pdb_file
-            "/home/jochen/work/fragfit/benchmark/trpv1/files/pdb3j5q.pdb", self.res1, self.res2, 
+            self.spider_shift.map_shift,
+            self.spider_convert.map_file,
+            self.spider_shift.edited_pdb_file, self.res1, self.res2,
             self.length, self.resolution,
             **copy_dict( kwargs, run=False, output_dir=self.subdir("box") )
         )
-        self.pdb_box =  SpiderPdbBox(
-           #self.spider_shift.edited_pdb_file,
-           "/home/jochen/work/fragfit/benchmark/trpv1/files/pdb3j5q.pdb",
-           self.spider_box.box_file,
-           self.mrc_file,
-           #self.spider_shift.map_shift,
-           **copy_dict( kwargs, run=False, output_dir=self.subdir("pdbbox"))
+        self.pdb_box = SpiderPdbBox(
+            self.spider_shift.edited_pdb_file,
+            self.spider_box.box_file,
+            self.spider_shift.map_shift,
+            **copy_dict( kwargs, run=False, output_dir=self.subdir("pdbbox"))
         )
         self.spider_delete_filled_densities = SpiderDeleteFilledDensities(
-            self.mrc_file,self.spider_box.box_map_file,self.pdb_box.edited_pdb_file,self.spider_box.box_file,
-            
-            #self.spider_shift.map_shift,self.spider_box.box_map_file, self.pdb_box.edited_pdb_file, self.spider_box.box_file,
-            self.resolution,self.res1,self.res2,
-            **copy_dict( 
-                kwargs, run=False, 
-                output_dir=self.subdir("delete_filled_densities") 
+            self.spider_shift.map_shift,
+            self.spider_box.box_map_file,
+            self.pdb_box.edited_pdb_file,
+            self.spider_box.box_file,
+            self.resolution, self.res1, self.res2,
+            **copy_dict(
+                kwargs, run=False,
+                output_dir=self.subdir("delete_filled_densities")
             )
         )
         self.spider_reconvert = SpiderReConvert(
             self.spider_box.box_file,
-            "/home/jochen/work/fragfit/benchmark/trpv1/files/mapupload.cpv",
-            #self.spider_convert.map_file,
+            self.spider_convert.map_file,
             self.spider_box.box_map_file,
-            "/home/jochen/work/fragfit/benchmark/trpv1/files/mapupload.cpv",
-            #self.spider_convert.map_file,
-            **copy_dict( 
-                kwargs, run=False, output_dir=self.subdir("reconvert") 
+            self.spider_convert.map_file,
+            **copy_dict(
+                kwargs, run=False, output_dir=self.subdir("reconvert")
             )
         )
         self.spider_crosscorrelation = SpiderCrosscorrelation(
-            "/home/jochen/work/fragfit/benchmark/trpv1/files/mapupload.cpv",
-            #self.spider_convert.map_file, 
-            self.spider_delete_filled_densities.empty_map_file, 
-            self.spider_box.box_file, 
+            self.spider_convert.map_file,
+            self.spider_delete_filled_densities.empty_map_file,
+            self.spider_box.box_file,
             self.loop_file,
             self.linkerinfo,
-            **copy_dict( 
+            **copy_dict(
                 kwargs, run=False, output_dir=self.subdir("crosscorrelation"),
                 max_loops=self.max_loops
             )
         )
         self.output_files.extend( list( itertools.chain(
-            #self.spider_convert.output_files, 
+            self.spider_convert.output_files,
             self.spider_delete_filled_densities.output_files,
             self.spider_box.output_files,
             self.spider_reconvert.output_files,
             self.spider_crosscorrelation.output_files
         )))
+
     def func( self ):
         self._crop_pdb()
-        #self.spider_shift()
-        #self.spider_convert()
+        self.spider_shift()
+        self.spider_convert()
         self.spider_box()
-        self.pdb_box ()
+        self.pdb_box()
         self.spider_delete_filled_densities()
         self.spider_reconvert()
         self.spider_crosscorrelation()
-    
+
     def _post_exec( self ):
         self.backshift_linker()
-        
+
     def _crop_pdb( self ):
         npdb = NumPdb( self.pdb_file )
-        npdb.write( 
-            self.cropped_pdb, 
-            chain=self.res1["chain"], 
-            resno=[ self.res1["resno"]+1, self.res2["resno"]-1 ],
+        npdb.write(
+            self.cropped_pdb,
+            chain=self.res1["chain"],
+            resno=[ self.res1["resno"] + 1, self.res2["resno"] - 1 ],
             invert=True
         )
-    
-    def backshift_linker ( self ) :
-        #shiftpath=self.relpath(self.spider_shift.output_dir)
-        shiftfile='/home/jochen/work/fragfit/benchmark/trpv1/files/shift.cpv'
-        #shiftfile="%s/%s" % (shiftpath,'shift.cpv')
-        with open (shiftfile, "r") as rs:
-            file_lines=rs.readlines()
-            loc_file = file_lines[1].strip()
-            shxb=float(loc_file[5:13])*-1
-            shyb=float(loc_file[19:27])*-1
-            shzb=float(loc_file[33:42])*-1
 
-            backshift= np.array([shxb,shyb,shzb])
-   
-        loop_dir=self.relpath(self.spider_crosscorrelation.loop_dir)
-        outputdir=self.subdir("oriloops")
-        with open ( self.linkerinfo , 'r') as li:
-            lilines=li.readlines()
-        with open (self.loop_file, 'r') as lf:
-            with open (self.ori_pdb_linker_file3, 'w') as fp_out:
+    def backshift_linker( self ):
+        shiftpath = self.relpath(self.spider_shift.output_dir)
+        shiftfile = "%s/%s" % (shiftpath, 'shift.cpv')
+        with open( shiftfile, "r" ) as rs:
+            file_lines = rs.readlines()
+            loc_file = file_lines[1].strip()
+            shxb = float(loc_file[5:13]) * -1
+            shyb = float(loc_file[19:27]) * -1
+            shzb = float(loc_file[33:42]) * -1
+
+        loop_dir = self.relpath(self.spider_crosscorrelation.loop_dir)
+        outputdir = self.subdir("oriloops")
+        with open( self.linkerinfo, 'r') as li:
+            lilines = li.readlines()
+        with open( self.loop_file, 'r' ) as lf:
+            with open( self.ori_pdb_linker_file3, 'w' ) as fp_out:
                 for line in lf:
                     if line.startswith("ATOM"):
-                        x="%4.3f" % (float(line[31:38])+shxb)
-                        a="%7s" % x
-                        
-                        y="%4.3f" % (float(line[39:46])+shyb)
-                        b="%7s" % y
-                        z="%4.3f" % (float(line[47:54])+shzb)
-                        c="%7s" % z
-        
-                        line = line = line[0:30] + a + line[38:]
-                        line = line = line[0:38] + b + line[46:]
-                        line = line = line[0:46] + c + line[53:]
-        
+                        x = "%4.3f" % (float(line[31:38]) + shxb)
+                        a = "%7s" % x
+
+                        y = "%4.3f" % (float(line[39:46]) + shyb)
+                        b = "%7s" % y
+                        z = "%4.3f" % (float(line[47:54]) + shzb)
+                        c = "%7s" % z
+
+                        line = line[0:30] + a + line[38:]
+                        line = line[0:38] + b + line[46:]
+                        line = line[0:46] + c + line[53:]
+
                         fp_out.write( line )
                     else:
                         continue
                 fp_out.write( "END" )
         for i in os.listdir(loop_dir):
             if i.endswith(".pdb"):
-                loopfile="%s/%s" % (loop_dir,i)
-                
-                outfile="%s/%s" %(outputdir,i)
-                with open (loopfile, 'r') as lp:
-                    lonr=int(i[0:3])
-                    lino=(lonr*4)-2
+                loopfile = "%s/%s" % (loop_dir, i)
 
-                    title= "%s     %s %s ,%s ,%s ,%s ,%s" % ("TITLE","linker",lonr,lilines[lino].strip(),lilines[lino+1].strip(),lilines[lino+2].strip(),lilines[lino+3])
+                outfile = "%s/%s" % (outputdir, i)
+                with open( loopfile, 'r' ) as lp:
+                    lonr = int(i[0:3])
+                    lino = (lonr * 4) - 2
 
-                    with open (outfile, 'w') as of:
+                    title = "%s     %s %s ,%s ,%s ,%s ,%s" % (
+                        "TITLE", "linker", lonr, lilines[lino].strip(),
+                        lilines[lino + 1].strip(), lilines[lino + 2].strip(),
+                        lilines[lino + 3])
+
+                    with open( outfile, 'w' ) as of:
                         of.write(title)
                         for line in lp:
                             if line.startswith("ATOM"):
-                                x="%4.3f" % (float(line[31:38])+shxb)
-                                a="%7s" % x
-                                
-                                y="%4.3f" % (float(line[39:46])+shyb)
-                                b="%7s" % y
-                                z="%4.3f" % (float(line[47:54])+shzb)
-                                c="%7s" % z
-                        
+                                x = "%4.3f" % (float(line[31:38]) + shxb)
+                                a = "%7s" % x
+
+                                y = "%4.3f" % (float(line[39:46]) + shyb)
+                                b = "%7s" % y
+                                z = "%4.3f" % (float(line[47:54]) + shzb)
+                                c = "%7s" % z
+
                                 line = line = line[0:30] + a + line[38:]
                                 line = line = line[0:38] + b + line[46:]
                                 line = line = line[0:46] + c + line[53:]
-                        
+
                                 of.write( line )
                         of.write("END")
+
+
 class LoopCrosscorrel3( PyTool ):
     args = [
         _( "mrc_file", type="file", ext="mrc" ),
@@ -1702,7 +1699,7 @@ class SpiderAnalyse2(PyTool):
     def func (self):
 
         with open ('loopana.csv','w') as analyse, open ('values2.csv', 'w') as valu, open ('cases.txt', 'w') as cases, open ('bettercc.txt', 'w') as bettercc, open ('diff.csv','w') as diffile:
-            title="%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % ("looplength","fragfit","std rmsd with density",
+            title="%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % ("looplength","fragfit","std rmsd with density",
                                                                    "rmsd linkit","std rmsd without density",
                                                                    "rmsd fragfit no homologues","std fragfit no homologues",
                                                                    "rmsd linkit no homologs","std rmsd linkit no homologs",
@@ -1710,7 +1707,7 @@ class SpiderAnalyse2(PyTool):
                                                                    "rmsd linkit no linker homologs","std linkit no linker homologs",
                                                                    "Anzahl Suchen","optimal","mean_correl","extragut","beste five","best ten","linkit_helical",
                                                                    "linkit_other","mean rank","median fragfit","tms scrore","Fragfit 50","Fragfit 20",
-                                                                   'ori cc mean','Diff to oricc','diff to oricc homo75','diff 75','ccbestfive','meanccbest','fragfitheli','fragfitother','fragfitbeta','sequenceidentity no homo','sequence identity full','fragfithel ori','fragfitbeta ori','fragfitother ori','\n')
+                                                                   'ori cc mean','Diff to oricc','diff to oricc homo75','diff 75','ccbestfive','meanccbest','fragfitheli','fragfitother','fragfitbeta','sequenceidentity no homo','sequence identity full','fragfithel ori','fragfitbeta ori','fragfitother ori','anteil perfekt','anteilperfekt nh','\n')
             analyse.write(title)
             correlation={
             '5':0.568783917098,
@@ -1749,7 +1746,7 @@ class SpiderAnalyse2(PyTool):
             for l in range(5,35,1):
                 indifile="%s_%s.%s" % (l,'file','csv')
                 with open (indifile, 'w') as loofile:
-                    title_loo="%s,%s,%s,%s%s" % ('rmsd','diffccabs','tmscore','diffreal','\n')
+                    title_loo="%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % ('chain','name','taken','ori_pdb','seq_identit','rmsd','SSE flag','diffccabs','tmscore','diffreal','bestes_modell','bestrmsd','fragfitbest','fragfitbesrmsd','bestpossibleall?','bestlinkitnh','bestpossiblenh','\n')
                     loofile.write(title_loo)
                     diffile.write(str(l) + ',')
                     scorr=correlation[str(l)] #standartdcorreltion fuer die looplaenge
@@ -1780,6 +1777,8 @@ class SpiderAnalyse2(PyTool):
                     result20=[]
                     hc=0
                     hc2=0
+                    sucounter=0
+                    sucounternh=0
                     greatdiff=[]
                     or_diffcc=[]
                     ordiff75=[]
@@ -1812,10 +1811,8 @@ class SpiderAnalyse2(PyTool):
                                         name="%s.%s" % (x,'pdb')
                                         ori=os.path.join(loopfolder,x,name)
                                         folo=os.path.join(loopfolder,x)
-                                        print ori
-                                        Dssp(ori,output_dir=folo)
-                                        oridssp='%s%s' % (ori[:-3],'dssp')
-                                        orirec=parse_dssp(oridssp)
+                                        #print ori
+                                        
                                         orinpdb=numpdb.NumPdb(ori, {
                                                         "phi_psi": False,
                                                         "sstruc": False,
@@ -1836,6 +1833,9 @@ class SpiderAnalyse2(PyTool):
                                         linkertxt=os.path.join(loopfolder,x,'link_it/edited_linker.txt')
                                         oricc=os.path.join(loopfolder,x,'oricrosscorrelation.cpv')
                                         if os.path.isfile(ccsort):
+                                            Dssp(ori,output_dir=folo)
+                                            oridssp='%s%s' % (ori[:-3],'dssp')
+                                            orirec=parse_dssp(oridssp)
                                             with open (ccsort,'r') as hurz:
                                                 lines=hurz.readlines()
                                                # print ori
@@ -2001,10 +2001,12 @@ class SpiderAnalyse2(PyTool):
                                                # print loop
                                                 if loop in resultnhli:
                                                     wodensnhli.append(result[loop][0])
+                                                    
                                                     hfj=os.path.join(loops,loop)
                                                     hjd='%s%s' % (hfj[:-3],'dssp')
                                                     Dssp(hfj,output_dir=loops)
                                                     dsrec=parse_dssp(hjd)
+                                                    
                                                   #  print hjd
                                                     
                                                     #with open ('hjd') as ds:
@@ -2043,36 +2045,63 @@ class SpiderAnalyse2(PyTool):
                                                     break
                                                 else:
                                                     continue
-                                                
+                                            optrmsdnhnr=min(resultnhli,key=resultnhli.get)
+                                            optrmsdnhl=result[optrmsdnhnr][0]
+                                            print optrmsdnhl
                                             for line in lines[1:]:
                                                 #lines.next()
                                                 no=line.split()[0]
                                                 lonam="%s_%s.%s" % (no.zfill(3),'bb','pdb')
                                                 if result[lonam][2]<75:
                                                     bestrmsdnhli.append(result[lonam][0])
+                                                    bestfragnoh=result[lonam][0]
                                                     tmsnhli.append(result[lonam][3])
                                                     meancc75.append(result[lonam][4])
                                                     diffh75= abs(float(ccdic[int(no)])-float(oriccval))
                                                     diffh75full=float(ccdic[int(no)])-float(oriccval)
                                                     ordiff75.append( diffh75 )
                                                     ordiffh75full.append(diffh75full )
-                                                    if any ('H'==e[3] for e in orirec[1:])==True:
-                                                        fragfithelior.append(result[lonam][0])
-                                                    elif any ('E'==e[3] for e in orirec[1:])==True:
-                                                        fragfitbetaor.append(result[lonam][0])
+                                                    suflagnh=0
+                                                    if result[lonam][0]==optrmsdnhl:
+                                                        sucounternh+=1
+                                                        suflagnh=1
                                                     else:
-                                                        fragitotheror.append(result[lonam][0])
-                                                    diffile.write(str(float(ccdic[int(no)])-float(oriccval)) +',')
-                                                    sequenceidentity.append(result[lonam][2])
-                                                    looline= "%s,%s,%s,%s%s" % (result[lonam][0],str(float(ccdic[int(no)])-float(oriccval)),result[lonam][3],diffh75full,'\n')
-                                                    loofile.write(looline)
-                                                    #if math.isnan(diffh75):
-                                                    #    print loopfolder
-                                                    #    break
-                                                    #print diffh75
-                                                    break
+                                                        suflagnh=0   
+                                            
+                                                
+                                                    
+                                                    try:
+                                                        zhf=0
+                                                        if any ('H'==e[3] for e in orirec[1:])==True:
+                                                            fragfithelior.append(result[lonam][0])
+                                                            zhf=1
+                                                        elif any ('E'==e[3] for e in orirec[1:])==True:
+                                                            fragfitbetaor.append(result[lonam][0])
+                                                            zhr=2
+                                                        else:
+                                                            fragitotheror.append(result[lonam][0])
+                                                            zhf=3
+                                                        diffile.write(str(float(ccdic[int(no)])-float(oriccval)) +',')
+                                                        sequenceidentity.append(result[lonam][2])
+                                                        
+                                                        #if math.isnan(diffh75):
+                                                        #    print loopfolder
+                                                        #    break
+                                                        #print diffh75
+                                                        break
+                                                    except:
+                                                        continue
                                                 else:
                                                     continue
+                                            suflag=0
+                                            if result[pdbkey][0] ==best[0]:
+                                                suflag=1
+                                                sucounter +=1
+                                            else:
+                                                suflag=0
+                                        
+                                            looline= "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % (g,x,lonam,result[lonam][1],result[lonam][2],result[lonam][0],zhf,str(float(ccdic[int(no)])-float(oriccval)),result[lonam][3],diffh75full,nr_opt,best[0],pdbkey,result[pdbkey][0],suflag,optrmsdnhl,suflagnh,'\n')
+                                            loofile.write(looline)
                                             for line in lines[1:]:
                                                 #lines.next()
                                                 no=line.split()[0]
@@ -2219,7 +2248,7 @@ class SpiderAnalyse2(PyTool):
                 print 'summe ordiff75:', sum(ordiff75)
                 print 'length ordiff75:', len(ordiff75)
                 print 'geteilt:',sum(ordiff75)/len(ordiff75)
-                loopline= "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % (l,sum(bestrmsds)/len(bestrmsds),np.std(bestrmsds),
+                loopline= "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % (l,sum(bestrmsds)/len(bestrmsds),np.std(bestrmsds),
                                                          sum(wodens)/len(wodens),np.std(wodens),
                                                          sum(bestrmsdsnh)/len(bestrmsdsnh),np.std(bestrmsdsnh),
                                                          sum(wodensnh)/len(wodensnh),np.std(wodensnh),
@@ -2230,7 +2259,7 @@ class SpiderAnalyse2(PyTool):
                                                          sum(besttenall)/len(besttenall),sum(linkitheli)/len(linkitheli),
                                                          sum(linkitother)/len(linkitother),sum(rank)/len(rank),
                                                          sorted(bestrmsdnhli)[len(bestrmsdnhli)//2],sum(tmsnhli)/len(tmsnhli),
-                                                         sum(result50)/len(result50),sum(result20)/len(result20),sum(ori_meancorrel)/len(ori_meancorrel),sum(or_diffcc)/len(or_diffcc),sum(ordiff75)/len(ordiff75),sum(ordiffh75full)/len(ordiffh75full),sum(diffbestfive)/len(diffbestfive),sum(meancc75)/len(meancc75),sum(fragfitheli)/len(fragfitheli),sum(fragfitother)/len(fragfitother),sum(fragfitbeta)/len(fragfitbeta),sum(sequenceidentity)/len(sequenceidentity),sum(seqidentfull)/len(seqidentfull),sum(fragfithelior)/len(fragfithelior),sum(fragfitbetaor)/len(fragfitbetaor),sum(fragitotheror)/len(fragitotheror),'\n')
+                                                         sum(result50)/len(result50),sum(result20)/len(result20),sum(ori_meancorrel)/len(ori_meancorrel),sum(or_diffcc)/len(or_diffcc),sum(ordiff75)/len(ordiff75),sum(ordiffh75full)/len(ordiffh75full),sum(diffbestfive)/len(diffbestfive),sum(meancc75)/len(meancc75),sum(fragfitheli)/len(fragfitheli),sum(fragfitother)/len(fragfitother),sum(fragfitbeta)/len(fragfitbeta),sum(sequenceidentity)/len(sequenceidentity),sum(seqidentfull)/len(seqidentfull),sum(fragfithelior)/len(fragfithelior),sum(fragfitbetaor)/len(fragfitbetaor),sum(fragitotheror)/len(fragitotheror),sucounter/len(bestrmsds),sucounternh/len(bestrmsds),'\n')
                 #print np.std(bestrmsdsnh) 
                 analyse.write(loopline)
                 diffile.write('\n')
@@ -2255,7 +2284,7 @@ class SpiderAnalyse3(PyTool):
    def func (self):
 
        with open ('loopanaresu.csv','w') as analyse, open ('values2.csv', 'w') as valu:
-           title="%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % ("looplength","fragfit","std rmsd with density",
+           title="%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % ("looplength","fragfit","std rmsd with density",
                                                                   "rmsd linkit","std rmsd without density",
                                                                   "rmsd fragfit no homologues","std fragfit no homologues",
                                                                   "rmsd linkit no homologs","std rmsd linkit no homologs",
@@ -2596,13 +2625,13 @@ class SpiderAnalyse3(PyTool):
                print 'mean no homologues',sum(bestrmsdsnh)/len(bestrmsdsnh),'anzahl:',len(bestrmsdsnh)
                print 'mean wo dens no homologue', sum(wodensnh)/len(wodensnh),'anzahl:',len(wodensnh)
                print 'extragut', sum(extragut), 'anzahl', len(extragut)
-               loopline= "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % (l,sum(bestrmsds)/len(bestrmsds),np.std(bestrmsds),
+               loopline= "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % (l,sum(bestrmsds)/len(bestrmsds),np.std(bestrmsds),
                                                         sum(wodens)/len(wodens),np.std(wodens),
                                                         sum(bestrmsdsnh)/len(bestrmsdsnh),np.std(bestrmsdsnh),
                                                         sum(wodensnh)/len(wodensnh),np.std(wodensnh),
                                                         sum(bestrmsdnhli)/len(bestrmsdnhli),np.std(bestrmsdnhli),
                                                         sum(wodensnhli)/len(wodensnhli),np.std(wodensnhli),
-                                                        len(wodensnh),sum (optimalrmsd)/len(optimalrmsd),sum(meancorrel)/len(meancorrel),sum(extragut)/len(extragut),sum(bestfiveall)/len(bestfiveall),sum(linkitheli)/len(linkitheli),sum(linkitother)/len(linkitother),sum(rank)/len(rank),'\n')
+                                                        len(wodensnh),sum (optimalrmsd)/len(optimalrmsd),sum(meancorrel)/len(meancorrel),sum(extragut)/len(extragut),sum(bestfiveall)/len(bestfiveall),sum(linkitheli)/len(linkitheli),sum(linkitother)/len(linkitother),sum(rank)/len(rank),sucounter/len(bestrmsds),'\n')
                print np.std(bestrmsdsnh) 
                analyse.write(loopline)
                valu.write(str(l))

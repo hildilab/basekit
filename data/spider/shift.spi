@@ -7,8 +7,9 @@
 [orz]=${originz}
 ;pixelsize
 [ps]=${pixelsize}
-
-
+[shx]=${shx}
+[shy]=${shy}
+[shz]=${shz}
 ;den origin in die ins zentrum der box setzen
 [x]=(([bs]/2)*(-1))*[ps]
 [file]='${mrc_file}' 
@@ -95,6 +96,6 @@ shift.mrc
 
 ;[xy]=[x]+[bs]
 
-sd 1, [x] [x] [x]
+sd 1, [shx] [shy] [shz]
 shift
 en
