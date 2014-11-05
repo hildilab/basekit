@@ -686,7 +686,8 @@ class Tool( object ):
         return log
 
     def __str__( self ):
-        status = "ok" if self.check() else "failed"
+        # status = "ok" if self.check( full=False ) else "failed"
+        status = self.check( full=True )
         return "%s status: %s" % ( self.name, status )
 
     def relpath( self, path, no_ext=False ):

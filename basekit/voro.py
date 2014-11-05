@@ -146,13 +146,13 @@ InfoRecord = collections.namedtuple( "InfoRecord", [
 ])
 
 _VoronoiaRecord = collections.namedtuple( "_VoronoiaRecord", [
-    "pdb_id", "source", "segment", "mplanes_dist", 
+    "pdb_id", "source", #"segment", "mplanes_dist", 
     "water_count", "residue_count", "hetero_count", 
     "chain_count", "identical_chains",
-    "hbx_protein_water", "hbx_water_water", "hbx_water_ligand",
+    #"hbx_protein_water", "hbx_water_water", "hbx_water_ligand",
     "voro_not_filled", "voro_partly_filled", 
     "packdens_all", "packdens_protein", "packdens_water", "packdens_hetero",
-    "msms", "msms_ses", "msms_gt_water", "msms_gt_water_ses"
+    #"msms", "msms_ses", "msms_gt_water", "msms_gt_water_ses"
 ])
 class VoronoiaRecord( _VoronoiaRecord ):
     def info( self ):
@@ -186,18 +186,18 @@ class VoronoiaRecord( _VoronoiaRecord ):
 VoronoiaDbRecord = collections.namedtuple( "VoronoiaDbRecord", [
     "pdb_id", "pdb_title", "pdb_keywords", "pdb_experiment", "pdb_resolution",
 
-    "opm_superfamily", "opm_family", "opm_representative", "opm_species",
-    "opm_related",
+    #"opm_superfamily", "opm_family", "opm_representative", "opm_species",
+    #"opm_related",
 
-    "mpstruc_group", "mpstruc_subgroup", "mpstruc_name", "mpstruc_species",
-    "mpstruc_master", "mpstruc_related",
+    #"mpstruc_group", "mpstruc_subgroup", "mpstruc_name", "mpstruc_species",
+    #"mpstruc_master", "mpstruc_related",
     
     "curated_representative", "curated_related",
     
     "status",
 
     "tm_packdens_protein_buried", "tm_water_count", "tm_residue_count", 
-    "tm_cavity_count"
+    #"tm_cavity_count"
 ])
 
 
@@ -209,7 +209,7 @@ def get_tree( coords ):
 
 
 class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
-    """The MPPD pipeline"""
+    """The Voronoia pipeline"""
     args = [
         _( "pdb_input", type="str" ),
         _( "probe_radius|pr", type="float", range=[0.1, 5],
@@ -237,18 +237,18 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         _( "dowser_max", type="int", default=None ),
     ]
     out = [
-        _( "processed_pdb", file="proc.pdb" ),
-        _( "no_water_file", file="nowat.pdb" ),
-        _( "dowser_dry_pdb", file="dowser_dry.pdb" ),
-        _( "original_dry_pdb", file="original_dry.pdb" ),
-        _( "final_pdb", file="final.pdb" ),
-        _( "stats_file", file="stats.json" ),
-        _( "stats2_file", file="stats2.json" ),
-        _( "info_file", file="info.json" ),
+        #_( "processed_pdb", file="proc.pdb" ),
+        #_( "no_water_file", file="nowat.pdb" ),
+        #_( "dowser_dry_pdb", file="dowser_dry.pdb" ),
+        #_( "original_dry_pdb", file="original_dry.pdb" ),
+        #_( "final_pdb", file="final.pdb" ),
+        _( "stats_file", file="stats.json", optional=True ),
+        _( "stats2_file", file="stats2.json", optional=True ),
+        _( "info_file", file="info.json", optional=True ),
     ]
     RecordsClass = VoronoiaRecord
     tmpl_dir = TMPL_DIR
-    provi_tmpl = "mppd.provi"
+    provi_tmpl = "voronoia.provi"
     def _init( self, *args, **kwargs ):
         self._init_records( None, **kwargs )
         self._init_parallel( self.pdb_input, **kwargs )
@@ -261,80 +261,19 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             }
 
             self.output_files = []
-
             self.pdb_info = PdbInfo( self.pdb_id,
                 **copy_dict( kwargs, run=False, 
                     output_dir=self.subdir("pdb_info") ) )
             self.output_files += [ self.pdb_info.info_file ]
 
-            self.opm_info = OpmInfo( self.pdb_id,
-                **copy_dict( kwargs, run=False, 
-                    output_dir=self.subdir("opm_info") ) )
-
-            # self.opm.info_file can be used to distinguish
-            if self.use_ppm2:
-                self.opm = Ppm2(
-                    self.pdb_id,
-                    **copy_dict( kwargs, run=False, 
-                        output_dir=self.subdir("opm") )
-                )
-            else:
-                self.opm = Opm(
-                    self.pdb_id,
-                    **copy_dict( kwargs, run=False, 
-                        output_dir=self.subdir("opm") )
-                )
-            self.output_files += self.opm.output_files
-            self.output_files += [ self.processed_pdb, self.no_water_file ]
-            self.dowser = DowserRepeat(
-                self.processed_pdb,
-                **copy_dict( kwargs, run=False, alt='x',
-                    output_dir=self.subdir("dowser"),
-                    max_repeats=self.dowser_max )
-            )
-            self.output_files += self.dowser.output_files
-            msms_kwargs = { 
-                "all_components": True,
-                "density": 1.0, "hdensity": 3.0,
-                "envelope": self.probe_radius * 2,
-                "envelope_hclust": self.envelope_hclust,
-                "atom_radius_add": self.atom_radius_add,
-            }
-            self.msms0 = Msms(
-                self.no_water_file, **copy_dict( kwargs, run=False, 
-                output_dir=self.subdir( "msms0" ), 
-                **copy_dict( msms_kwargs, probe_radius=self.vdw_probe_radius,
-                    all_components=False )
-            ))
-            self.output_files += self.msms0.output_files
-            self.output_files += [ self.original_dry_pdb, self.final_pdb ]
-
-            self.dssp = Dssp(
-                self.final_pdb, **copy_dict( kwargs, run=False, 
-                output_dir=self.subdir( "dssp" )
-            ))
-            self.output_files += self.dssp.output_files
-
-            self.mpstruc_info = MpstrucInfo( self.pdb_id,
-                **copy_dict( kwargs, run=False, 
-                    output_dir=self.subdir("mpstruc_info") ) )
-
             self.water_variants = [
-                ( "non", self.no_water_file ),
-                ( "org", self.original_dry_pdb ),
-                ( "dow", self.dowser_dry_pdb ),
-                ( "fin", self.final_pdb ),
+                ( "ori", self.pdb_input),
             ]
             
             self.tool_list = [
                 ( "voronoia", Voronoia, { 
                     "ex":0.2, "shuffle": self.voro_shuffle
                 }),
-                ( "hbexplore", HBexplore, {} ),
-                ( "msms_vdw", Msms, copy_dict( msms_kwargs,
-                    probe_radius=self.vdw_probe_radius) ),
-                # ( "msms_coulomb", Msms, copy_dict( msms_kwargs,
-                #     probe_radius=self.probe_radius) )
             ]
 
             def filt( lst, lst_all ):
@@ -346,7 +285,6 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     return [ e for e in lst_all if e[0] in lst ]
             self.water_variants = filt( self.variants, self.water_variants )
             self.do_tool_list = filt( self.tools, self.tool_list )
-
             for suffix, pdb_file in self.water_variants:
                 for prefix, tool, tool_kwargs in self.tool_list:
                     name = "%s_%s" % ( prefix, suffix )
@@ -356,13 +294,10 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     )
                     self.output_files += self.__dict__[ name ].output_files
 
-            
-            self.output_files += [ self.mpstruc_info.info_file ]
-            self.output_files += [ self.opm_info.info_file ]
             self.output_files += [ self.info_file ]
-            self.output_files += [ self.outpath( "voronoia.provi" ) ]
+            #self.output_files += [ self.outpath( "voronoia.provi" ) ]
             self.output_files += [ self.stats_file ]
-            # self.output_files += [ self.stats2_file ]
+            self.output_files += [ self.stats2_file ]
 
     def _pre_exec( self ):
         pass
@@ -377,46 +312,26 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 return name not in self.tools[1:]
             else:
                 return name in self.tools
-
         if not self.analyze_only:
-            if do( "opm_info" ):
-                self.opm_info()
-            if do( "opm" ):
-                self.opm()
-            if do( "proc" ):
-                self.make_processed_pdb()
-                self.make_nowat_pdb()
-            if do( "dowser" ):
-                self.dowser()
-            if do( "msms0" ):
-                self.msms0()
-            if do( "dry" ):
-                self.make_dry_pdb()
-            if do( "final" ):
-                self.make_final_pdb()
-            if do( "dssp" ):
-                self.dssp()
             if do( "pdb_info" ):
                 self.pdb_info()
-            if do( "mpstruc_info" ):
-                self.mpstruc_info()
             if do( "info" ):
                 self.make_info()
-            if do( "provi" ):
-                npdb = NumPdb( self.final_pdb, features=self.npdb_features )
-                self._make_provi_file(
-                    pdb_id=self.pdb_id,
-                    pdb_title=self.pdb_info.get_info()["title"],
-                    pdb_file=self.relpath( self.final_pdb ),
-                    pdb_org_file=self.relpath( self.original_dry_pdb ),
-                    mplane_file=self.relpath( self.opm.mplane_file ),
-                    hbx_file=self.relpath( self.hbexplore_fin.hbx_file ),
-                    vol_file=self.relpath( self.voronoia_fin.vol_file ),
-                    msms_components=self.msms_vdw_fin.components_provi(
-                        color="lightgreen", translucent=0.5, 
-                        relpath=self.relpath, max_atomno=len( npdb )
-                    ),
-                )
+#            if do( "provi" ):
+#                npdb = NumPdb( self.final_pdb, features=self.npdb_features )
+#                self._make_provi_file(
+#                    pdb_id=self.pdb_id,
+#                    pdb_title=self.pdb_info.get_info()["title"],
+#                    pdb_file=self.relpath( self.final_pdb ),
+#                    pdb_org_file=self.relpath( self.original_dry_pdb ),
+#                    mplane_file=self.relpath( self.opm.mplane_file ),
+##                    hbx_file=self.relpath( self.hbexplore_fin.hbx_file ),
+#                    vol_file=self.relpath( self.voronoia_fin.vol_file ),
+##                    msms_components=self.msms_vdw_fin.components_provi(
+##                        color="lightgreen", translucent=0.5, 
+##                        relpath=self.relpath, max_atomno=len( npdb )
+##                    ),
+#                )
 
             for suffix, pdb_file in self.water_variants:
                 for prefix, tool, tool_kwargs in self.do_tool_list:
@@ -446,19 +361,6 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 if tag=="voronoia":
                     tag = "provi"
 
-                if tag!="opm":
-                    # check if opm found two mplanes
-                    try:
-                        if len( t.opm.get_planes() )!=2:
-                            tag = "mplane"
-                    except IOError:
-                        # print tag, check_info, t.id
-                        pass
-                else:
-                    if os.path.isfile( t.opm.outpath( "ppm_error.txt" ) ):
-                        tag = "ppm"
-                        # print open( t.opm.outpath( "ppm_error.txt" ) ).read()
-                
                 if tag!="pdb_info" and t.pdb_info.check():
                     info = t.pdb_info.get_info()
                     if "CA ATOMS ONLY" in info.get( "model_type", {} ):
@@ -473,13 +375,6 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     if info.get( "obsolete" ):
                         tag = "obsolete"
 
-                try:
-                    opm_info = t.opm_info.get_info()
-                    if opm_info and opm_info.get( "type" )!="Transmembrane":
-                        tag = "no_transmembrane"
-                except:
-                    pass
-
                 if cur_info.get("no_pdb_entry"):
                     tag = "no_pdb_entry"
                 if cur_info.get("no_transmembrane"):
@@ -487,45 +382,6 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
 
                 tag_dct[ t.pdb_id ] = tag
                 dct[ tag ].append( t )
-
-
-            # representative id search
-            test_rep_list = flatten([
-                zip( [x]*len(dct[x]), dct[x] ) 
-                for x in [ "opm", "ppm", "msms0", "msms_vdw_fin", "dowser" ]
-            ])
-            print test_rep_list
-            for tag, t in test_rep_list:
-                try:
-                    opm_info = t.opm_info.get_info()
-                    mpstruc_info = t.mpstruc_info.get_info()
-                except:
-                    continue
-                rid_list = []
-                if opm_info:
-                    rep_id = opm_info.get("representative")
-                    if rep_id:
-                        rid_list.append( rep_id.upper() )
-                    rid_list += opm_info.get("related_ids", [])
-                if mpstruc_info:
-                    master_id = mpstruc_info.get("master")
-                    if master_id:
-                        rid_list.append( master_id.upper() )
-                    rid_list += mpstruc_info.get("related", [])
-                        
-                rep = None
-                for rid in rid_list:
-                    for x in dct["Ok"]:
-                        if x.pdb_id==rid:
-                            rep = x
-                            break
-                    else:
-                        continue
-                    break
-                if rep:
-                    dct[ "representative" ].append( t )
-                else:
-                    dct[ "no_representative" ].append( t )
 
             ignore_tags = [ 
                 "no_pdb_entry",
@@ -555,11 +411,6 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     status = "backbone_only"
                 elif tag=="resolution":
                     status = "low_resolution"
-                elif tag in [ "opm", "ppm", "msms0", "msms_vdw_fin" ]:
-                    if pdb_id in dct[ "representative" ]:
-                        status = "linked"
-                    else:
-                        status = "pending"
                 elif tag in ignore_tags:
                     continue
                 else:
@@ -570,7 +421,16 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
 
             for tag, t_list in dct.iteritems():
                 if tag!="Ok":
-                    print tag, " ".join( map( lambda x: x.id, t_list ) ) 
+                    print map( lambda x: x.id, t_list )
+                    missing = map( lambda x: x.id, t_list )
+                    for elem in missing:
+                        print elem
+                        voropipe = VoronoiaPipeline(
+                            os.path.join(self.pdb_input, elem + '.pdb'),
+                            run=False, 
+                            output_dir=os.path.join(self.output_dir, 'parallel', elem)
+                        )
+                        voropipe()
             for tag, t_list in dct.iteritems():
                 print tag, len(t_list)
 
@@ -582,7 +442,7 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                         t_info = t.get_info()
                         if tag=="Ok":
                             for s in t.get_stats():
-                                if s['source']=='fin' and s['segment']=='TM':
+                                if s['source']=='ori':#'fin':# and s['segment']=='TM':
                                     t_stats = s
                                     break
                             else:
@@ -596,31 +456,14 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                             ",".join( t_info['pdb_keywords'] ),
                             t_info['pdb_experiment'],
                             t_info['pdb_resolution'],
-
-                            t_info['opm_superfamily'],
-                            t_info['opm_family'],
-                            t_info['opm_representative'],
-                            t_info['opm_species'],
-                            ",".join( t_info['opm_related'] ),
-
-                            t_info['mpstruc_group'],
-                            t_info['mpstruc_subgroup'],
-                            t_info['mpstruc_name'],
-                            t_info['mpstruc_species'],
-                            t_info['mpstruc_master'],
-                            ",".join( t_info['mpstruc_related'] ),
-
                             cur_info.get('representative', ""),
                             ",".join( cur_info.get('related', []) ),
-
                             status_dct[ t.pdb_id ],
-
                             t_stats.get('packdens_protein_buried'),
                             t_stats.get('water_count'),
                             t_stats.get('residue_count'),
-                            t_stats.get('msms'),
                         ))
-                db = SqliteBackend( "voronoia.db", VoronoiaDbRecord )
+                db = SqliteBackend( "voronoia.sqlite", VoronoiaDbRecord )
                 db.write( db_records )
             if self.extract:
                 fdir = self.extract
@@ -632,14 +475,10 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 )
                 for t in dct.get( 'Ok', [] ):
                     flist = [
-                        t.original_dry_pdb,
-                        t.final_pdb,
-                        t.opm.mplane_file,
-                        t.hbexplore_fin.hbx_file + ".bonds",
+             #           t.hbexplore_fin.hbx_file + ".bonds",
                         t.voronoia_fin.vol_file + ".atmprop",
                         t.outpath( "voronoia.provi" )
                     ]
-                    flist += t.msms_vdw_fin.component_files()
                     for fsrc in flist:
                         fdst = os.path.join( fdir, t.id, t.relpath( fsrc ) )
                         if not os.path.exists( os.path.dirname( fdst ) ):
@@ -667,15 +506,12 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                         resolution[ key ].append( 
                             try_float( info["pdb_resolution"], 0.0 )    
                         )
-                        ncav[ key ].append( s["msms"] )
-                        sesvol[ key ].append( s["msms_ses"] )
                         packdens[ key ].append( s["packdens_protein"] )
                         packdens_buried[ key ].append( 
                             s["packdens_protein_buried"] 
                         )
                 print nres.keys()
                 for key in nres.keys():
-                    print key
                     x = np.array( nwater[ key ] )
                     y = np.array( nres[ key ] )
                     x_y = x/y
@@ -771,9 +607,7 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
 
                 # ...
                 tm_keys = [
-                    ( "org", "TM" ),
-                    ( "fin", "TM" ),
-                    ( "dow", "TM" )
+                    ( "ori", "TM" )
                 ]
                 if all( map( lambda k: k in nres, tm_keys ) ):
                     ydata = []
@@ -800,7 +634,6 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                             for cutoff in cutoff_list:
                                 nwater_cutoff[ key ].append([])
                         water_count = s2["water_count"]
-                        # residue_count = s2["residue_count"]
                         count_list = s2["exp_water_cutoff_count"]
                         for i, cutoff in enumerate( cutoff_list ):
                             frac = try_div( count_list[i], water_count )
@@ -813,104 +646,64 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                         map( str, cutoff_list ) 
                     )
                     fig.savefig( str( key ) + ".png" )
-    def make_final_pdb( self ):
-        npdb_dow = NumPdb( 
-            self.dowser_dry_pdb, features=self.npdb_features )
-        npdb_org = NumPdb( 
-            self.original_dry_pdb, features=self.npdb_features )
-        dow_tree = get_tree( 
-            npdb_dow.get( 'xyz', resname="HOH" ) 
-        )
-        sele = npdb_org.sele()
-        i = 0
-        for numa in npdb_org.iter_resno( incomplete=True ):
-            flag = False
-            if numa[0]['resname']=='HOH':
-                dist = dow_tree.query( numa['xyz'][0] )[0]
-                if dist>2.7:
-                    flag = True
-            for a in numa._atoms:
-                sele[i] = flag
-                i += 1
-        coords_dow, atoms_dow = npdb_dow._select()
-        coords_org, atoms_org = npdb_org._select( sele=sele )
-        npdb_final = NumAtoms( 
-            np.hstack(( atoms_dow, atoms_org )), 
-            np.vstack(( coords_dow, coords_org ))
-        )
-        npdb_final.write2( self.final_pdb )
-    def make_dry_pdb( self ):
-        envelope = self.msms0.envelope_msms.get_vert( filt=False )
-        envelope = [ ( x['x'], x['y'], x['z'] ) for x in envelope ]
-        envelope_tree = scipy.spatial.KDTree( envelope )
-        npdb_non = NumPdb( 
-            self.no_water_file, features=self.npdb_features )
-        non_tree = scipy.spatial.KDTree( npdb_non['xyz'] )
-        
-        pr2 = self.probe_radius * 2
-        pr3 = self.probe_radius * 3
-        wet_pdb = [
-            ( self.dowser.dowser_file, self.dowser_dry_pdb ),
-            ( self.processed_pdb, self.original_dry_pdb )
-        ]
-        for pdb_file, out_file in wet_pdb:
-            npdb = NumPdb( pdb_file, features=self.npdb_features )
-            sele_het = npdb.sele( record="HETATM" )
-            sele_not_wat = npdb.sele( resname="HOH", invert=True )
-            hetero_tree = get_tree(
-                npdb.get( 'xyz', sele=( sele_het&sele_not_wat ) )
-            )
-            sele = npdb.sele()
-            i = 0
-            for numa in npdb.iter_resno( incomplete=True ):
-                flag = True
-                if numa[0]['resname']=='HOH':
-                    # assume the first water atom is the oxygen
-                    dist_env = envelope_tree.query( numa['xyz'][0] )[0]
-                    dist_het = hetero_tree.query( numa['xyz'][0] )[0]
-                    dist_non = non_tree.query( numa['xyz'][0] )[0]
-                    # TODO het cutoff only for dowser_file
-                    if dist_env<pr2 or dist_het<3.9 or dist_non>pr3:
-                        flag = False
-                for a in numa._atoms:
-                    sele[i] = flag
-                    i += 1
-            npdb.copy( sele=sele ).write2( out_file )
-    def make_processed_pdb( self ):
-        npdb = NumPdb( 
-            self.opm.processed_file, features=self.npdb_features )
-        sele = npdb.sele()
-        coords_dict = {}
-        i = 0
-        tree = scipy.spatial.KDTree( npdb['xyz'] )
-        for numa in npdb._iter_resno():
-            for c in numa._coords:
-                c = tuple( c )
-                # remove atoms with identical coords
-                if c in coords_dict:
-                    print npdb._atoms[i]
-                    sele[i] = False
-                else:
-                    coords_dict[ c ] = True
-                    sele[i] = True
-                    # remove atoms with almost identical coords
-                    rslt = tree.query( c, k=10, distance_upper_bound=0.2 )
-                    rslt[1].sort()
-                    if rslt[1][0]!=i and rslt[0][1]!=np.inf:
-                        print i, npdb._atoms[i]
-                        sele[i] = False
-                i += 1
-        npdb.copy( sele=sele ).write2( self.processed_pdb )
-    def make_nowat_pdb( self ):
-        with open( self.no_water_file, "w" ) as fp:
-            with open( self.processed_pdb, "r" ) as fp_pdb:
-                for line in fp_pdb:
-                    if ( line[0:6] in ["ATOM  ", "HETATM"] and
-                            line[17:20]!="HOH" ):
-                        fp.write( line )
+    #def make_final_pdb( self ):
+    #    npdb_ori = NumPdb( 
+    #        self.pdb_input, features=self.npdb_features )
+    #    #npdb_dow = NumPdb( 
+    #    #    self.dowser_dry_pdb, features=self.npdb_features )
+    #    #npdb_org = NumPdb( 
+    #    #    self.original_dry_pdb, features=self.npdb_features )
+    #    #dow_tree = get_tree( 
+    #    #    npdb_dow.get( 'xyz', resname="HOH" ) 
+    #    #)
+    #    sele = npdb_ori.sele()
+    #    #i = 0
+    #    #for numa in npdb_org.iter_resno( incomplete=True ):
+    #    #    flag = False
+    #    #    if numa[0]['resname']=='HOH':
+    #    #        dist = dow_tree.query( numa['xyz'][0] )[0]
+    #    #        if dist>2.7:
+    #    #            flag = True
+    #    #    for a in numa._atoms:
+    #    #        sele[i] = flag
+    #    #        i += 1
+    #    coords_ori, atoms_ori = npdb_ori._select()
+    #    #coords_dow, atoms_dow = npdb_dow._select()
+    #    #coords_org, atoms_org = npdb_org._select( sele=sele )
+    #    npdb_final = NumAtoms(
+    #        atoms_ori, coords_ori
+    #        #np.hstack(( atoms_dow, atoms_org )), 
+    #        #np.vstack(( coords_dow, coords_org ))
+    #    )
+    #    npdb_final.write2( self.final_pdb )
+#    def make_processed_pdb( self ):
+#        npdb = NumPdb(
+#            self.pdb_input, features=self.npdb_features )
+##            self.opm.processed_file, features=self.npdb_features )
+#        sele = npdb.sele()
+#        coords_dict = {}
+#        i = 0
+#        tree = scipy.spatial.KDTree( npdb['xyz'] )
+#        for numa in npdb._iter_resno():
+#            for c in numa._coords:
+#                c = tuple( c )
+#                # remove atoms with identical coords
+#                if c in coords_dict:
+#                    print npdb._atoms[i]
+#                    sele[i] = False
+#                else:
+#                    coords_dict[ c ] = True
+#                    sele[i] = True
+#                    # remove atoms with almost identical coords
+#                    rslt = tree.query( c, k=10, distance_upper_bound=0.2 )
+#                    rslt[1].sort()
+#                    if rslt[1][0]!=i and rslt[0][1]!=np.inf:
+#                        print i, npdb._atoms[i]
+#                        sele[i] = False
+#                i += 1
+#        npdb.copy( sele=sele ).write2( self.processed_pdb )
+
     def get_npdb_dicts( self ):
-        mplanes = np.array( self.opm.get_planes() )
-        dist = abs( point_plane_dist( mplanes[1][0], mplanes[0] ) )
         npdb_dict = {}
         npdb_tm_dict = {}
         npdb_sol_dict = {}
@@ -922,12 +715,6 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             # create transmembrane region selection
             for numa in npdb.iter_resno( incomplete=True ):
                 flag = True
-                for c in numa._coords:
-                    d1 = abs( point_plane_dist( c, mplanes[0] ) )
-                    d2 = abs( point_plane_dist( c, mplanes[1] ) )
-                    if d1<dist and d2<dist:
-                        flag = False
-                        break
                 for a in numa._atoms:
                     sele[i] = flag
                     i += 1
@@ -939,37 +726,23 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         return npdb_dict, npdb_tm_dict, npdb_sol_dict
     def make_stats( self ):
         segments = zip( [ "ALL", "TM", "SOL" ], self.get_npdb_dicts() )
-        mplanes = np.array( self.opm.get_planes() )
-        dist = abs( point_plane_dist( mplanes[1][0], mplanes[0] ) )
         pr = self.probe_radius
         voronoia_stats = []
         for suffix, pdb_file in self.water_variants:
-            hbx = self.__dict__[ "hbexplore_%s" % suffix ]
             voro = self.__dict__[ "voronoia_%s" % suffix ]
-            msms_vdw = self.__dict__[ "msms_vdw_%s" % suffix ]
-            # msms_coulomb = self.__dict__[ "msms_coulomb_%s" % suffix ]
             for seg, npdb_d in segments:
                 _count_water = count_water( npdb_d[ suffix ] )
-                _count_hbonds = count_hbonds( npdb_d[ suffix ], hbx )
                 _count_holes_voro = count_holes_voro( npdb_d[ suffix ], voro )
                 _packing_density = packing_density( npdb_d[ suffix ], voro )
-                _count_holes_msms = count_holes_msms( 
-                    npdb_d[ suffix ], msms_vdw, pr, 
-                    len( segments[0][1][ suffix ] )
-                )
+                
                 voronoia_stats.append({
                     "pdb_id": self.pdb_id, 
                     "source": suffix,
-                    "segment": seg,
-                    "mplanes_dist": dist,
                     "water_count": _count_water[0],
                     "residue_count": _count_water[1],
                     "hetero_count": _count_water[2],
                     "chain_count": _count_water[3],
                     "identical_chains": None,
-                    "hbx_protein_water": _count_hbonds[0],
-                    "hbx_water_water": _count_hbonds[1],
-                    "hbx_water_ligand": _count_hbonds[2],
                     "voro_not_filled": _count_holes_voro[0],
                     "voro_partly_filled": _count_holes_voro[1],
                     "packdens_all": _packing_density[0],
@@ -977,36 +750,23 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     "packdens_water": _packing_density[2],
                     "packdens_hetero": _packing_density[3],
                     "packdens_protein_buried": _packing_density[4],
-                    "msms": _count_holes_msms[0],
-                    "msms_ses": _count_holes_msms[1],
-                    "msms_gt_water": _count_holes_msms[2],
-                    "msms_gt_water_ses": _count_holes_msms[3]
                 })
         with open( self.stats_file, "w" ) as fp:
             json.dump( voronoia_stats, fp )
     def make_stats2( self ):
         segments = zip( [ "ALL", "TM", "SOL" ], self.get_npdb_dicts() )
-        print segments
         voronoia_stats2 = []
         for seg, npdb_d in segments:
-            npdb_dow = npdb_d[ "dow" ]
-            npdb_org = npdb_d[ "org" ]
-            dow_tree = get_tree( 
-                npdb_dow.get( 'xyz', resname="HOH" ) 
-            )
+            npdb_ori = npdb_d[ "ori" ]
             water_count = 0
             residue_count = 0
             cutoff_list = np.arange(1.4, 3.9, step=0.1)
             count_list = [0] * len( cutoff_list )
-            for numa in npdb_org.iter_resno( incomplete=True ):
+            for numa in npdb_ori.iter_resno( incomplete=True ):
                 # count org waters that are not in dow
                 # at various cutoffs
                 if numa[0]['resname']=='HOH':
                     water_count += 1
-                    dist = dow_tree.query( numa['xyz'][0] )[0]
-                    for i, cutoff in enumerate( cutoff_list ):
-                        if dist>cutoff:
-                            count_list[ i ] += 1
                 elif numa[0]["record"]=="ATOM  ":
                     residue_count += 1
             voronoia_stats2.append({
@@ -1020,27 +780,12 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             json.dump( voronoia_stats2, fp )
     def make_info( self ):
         pdb_info = self.pdb_info.get_info() or {}
-        opm_info = self.opm_info.get_info() or {}
-        mpstruc_info = self.mpstruc_info.get_info() or {}
         info = {
             "pdb_id": self.pdb_id.upper(),
             "pdb_title": pdb_info.get("title"),
             "pdb_keywords": pdb_info.get("keywords", []),
             "pdb_experiment": pdb_info.get("experiment"),
             "pdb_resolution": pdb_info.get("resolution"),
-
-            "opm_superfamily": opm_info.get("superfamily"),
-            "opm_family": opm_info.get("family"),
-            "opm_representative": opm_info.get("representative"),
-            "opm_species": opm_info.get("species"),
-            "opm_related": opm_info.get("related_ids", []),
-
-            "mpstruc_group": mpstruc_info.get("group"),
-            "mpstruc_subgroup": mpstruc_info.get("subgroup"),
-            "mpstruc_name": mpstruc_info.get("name"),
-            "mpstruc_species": mpstruc_info.get("species"),
-            "mpstruc_master": mpstruc_info.get("master"),
-            "mpstruc_related": mpstruc_info.get("related", []),
         }
         with open( self.info_file, "w" ) as fp:
             json.dump( info, fp, indent=4 )
@@ -1063,26 +808,17 @@ class VoronoiaPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             voronoia_records.append( VoronoiaRecord(
                 stat["pdb_id"],
                 stat["source"],
-                stat["segment"],
-                stat["mplanes_dist"],
                 stat["water_count"],
                 stat["residue_count"],
                 stat["hetero_count"],
                 stat["chain_count"],
                 stat["identical_chains"],
-                stat["hbx_protein_water"],
-                stat["hbx_water_water"],
-                stat["hbx_water_ligand"],
                 stat["voro_not_filled"],
                 stat["voro_partly_filled"],
                 stat["packdens_all"],
                 stat["packdens_protein"],
                 stat["packdens_water"],
                 stat["packdens_hetero"],
-                stat["msms"],
-                stat["msms_ses"],
-                stat["msms_gt_water"],
-                stat["msms_gt_water_ses"]
             ))
         return voronoia_records
 
@@ -1188,40 +924,6 @@ def count_holes_voro( npdb, voronoia ):
             elif hole.type==HOLE_PARTLY_FILLED:
                 partly_filled += 1
     return ( not_filled, partly_filled )
-
-
-def count_holes_msms( npdb, msms, probe_radius, n ):
-    try:
-        area = msms.get_area( max_atomno=n )
-        components = msms.get_components()
-    except Exception:
-        return ( 0, 0, 0, 0 )
-    components0 = []
-    # print "FOOBAR", n, len( npdb )
-    for c in components:
-        # print c
-        if not area["ses"][ c[0] ]:
-            continue
-        for nb_atomno in area["ses"][ c[0] ]:
-            if not len( npdb.copy( atomno=nb_atomno ) ) and nb_atomno<=n:
-                # print nb_atomno, area["sas"][ c[0] ]
-                break
-        else:
-            components0.append( c )
-    components2 = [
-        c for c in components0 if c[1] < 0
-    ]
-    water_vol = (4.0/3.0) * math.pi * (probe_radius**3)
-    components3 = [
-        c for c in components0 if c[1] < -water_vol
-    ]
-    return (
-        len( components2 ), 
-        sum([ c[1] for c in components2]),
-        len( components3 ), 
-        sum([ c[1] for c in components3])
-    )
-
 
 
 class VoronoiaStats( PyTool ):
