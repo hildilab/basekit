@@ -20,7 +20,8 @@ class MpstrucDbTestCase( unittest.TestCase ):
     def test_list( self ):
         lst = self.mpstruc.list()
         dup = [ x for x, y in collections.Counter(lst).items() if y > 1 ]
-        self.assertEquals( len( lst ) - len( dup ), 949 )
+        # FIXME the length changes when the MPstruc db changes
+        # self.assertEquals( len( lst ) - len( dup ), 949 )
         self.assertListEqual( dup, [ '1BMF', '1A91' ] )
     def test_find_related_member( self ):
         info = self.mpstruc.info( "1AIG" )
@@ -38,13 +39,14 @@ class MpstrucDbTestCase( unittest.TestCase ):
         )
     def test_find_related_protein( self ):
         info = self.mpstruc.info( "2VQK" )
+        self.assertItemsEqual( info[ "related" ], ['2VQH', '2VQK', '2VQL'] )
+        del info[ "related" ]
         self.assertDictEqual(
             info,
             {
                 'group': 'TRANSMEMBRANE PROTEINS: ALPHA-HELICAL',
                 'master': None,
                 'name': 'Porin B monomer',
-                'related': ['2VQH', '2VQK', '2VQL'],
                 'species': 'Corynebacterium glutamicum',
                 'subgroup': 'Outer Membrane Proteins'
             }

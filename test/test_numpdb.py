@@ -45,15 +45,16 @@ class NumpdbHeaderParseTestCase( unittest.TestCase ):
             {
                 "title": "WATER STRUCTURE OF A HYDROPHOBIC PROTEIN AT ATOMIC "
                     "RESOLUTION. PENTAGON RINGS OF WATER MOLECULES IN CRYSTALS "
-                    "OF CRAMBIN", 
-                "obsolete": [], 
-                "model_type": {}, 
-                "experiment": "X-RAY DIFFRACTION", 
+                    "OF CRAMBIN",
+                'header': ['PLANT PROTEIN', '30-APR-81', '1CRN'],
+                "obsolete": [],
+                "model_type": {},
+                "experiment": "X-RAY DIFFRACTION",
                 "keywords": [
-                    "PLANT SEED PROTEIN", 
+                    "PLANT SEED PROTEIN",
                     "PLANT PROTEIN"
-                ], 
-                "splited_entry": [], 
+                ],
+                "splited_entry": [],
                 "resolution": 1.5
             }
         )
@@ -137,4 +138,4 @@ class NumseleTestCase( unittest.TestCase ):
             numpdb.numsele( "1: .CA" ),
             { "chain": " ", "resno": 1, "atomname": "CA" }
         )
-    
+
