@@ -20,6 +20,7 @@ from utils.numpdb import NumPdb
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "capture" )
 CAPTURE_URL = "http://capture.caltech.edu/"
 
+os.environ["HTTP_PROXY"] = 'proxy.charite.de:8080'
 
 def capture_web(pdb_file, output_file):
     """queries the CaPTURE webservice"""

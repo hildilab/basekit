@@ -61,33 +61,33 @@ def pdbtm( pdbid, db_path=PDBTM_LOCAL_PATH ):
         else:
             raise Exception('No results in tmdet db found.')
 
-    
+
 
 
 def tmdet( pdb_file ):
     """queries the TMDET webservice"""
-    
+
     # Register the streaming http handlers with urllib2
     register_openers()
-    
+
     # headers contains the necessary Content-Type and Content-Length
     # datagen is a generator object that yields the encoded parameters
     datagen, headers = multipart_encode({
-        "pdbfile": open( pdb_file ), 
+        "pdbfile": open( pdb_file ),
         "go": "cgi"
     })
-    
+
     # Create the Request object
     request = urllib2.Request(TMDET_URL + "index.php", datagen, headers)
     response = urllib2.urlopen(request).read()
-    
+
     no_tmp = re.search('is not a transmembrane protein', response)
     if no_tmp:
         return False
-    
+
     # HREF="tmp/phpd0dDXC.xml"
     m = re.search('HREF="(tmp/php.*\.xml)"', response)
-    
+
     if m:
         responseXml = urllib2.urlopen( TMDET_URL + m.group(1) )
         return responseXml.read()
@@ -127,8 +127,8 @@ class TmdetMixin( object ):
             for line in fp:
                 if line[0:6]=="HETATM" and line[17:20]=="DUM":
                     atm = line[13:14]
-                    c = np.array( map( float, [ 
-                        line[30:38], line[38:46], line[46:54] 
+                    c = np.array( map( float, [
+                        line[30:38], line[38:46], line[46:54]
                     ]))
                     if len(coords[ atm ])==2:
                         vn1 = norm( coords[ atm ][1] - coords[ atm ][0] )
@@ -153,7 +153,7 @@ class TmdetMixin( object ):
 class Tmdet( TmdetMixin, PyTool, ProviMixin ):
     """A tool to access the TMDET server"""
     args = [
-        _( "pdb_file", type="str" ),
+        _( "pdb_file", type="file" ),
     ]
     out = [
         _( "tmdet_file", file="{pdb_file.stem}.xml" ),
@@ -212,7 +212,7 @@ def pdbtm_list( xml_file=None ):
 
 class PdbtmList( PyTool ):
     args = [
-        
+
     ]
     out = [
         _( "list_file", file="pdbtm_list.json" )
