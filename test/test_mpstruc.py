@@ -2,6 +2,7 @@ import os
 import unittest
 import collections
 
+from basekit import utils
 from basekit.mpstruc import MpstrucDb
 
 DIR = os.path.split( os.path.abspath( __file__ ) )[0]
@@ -13,7 +14,8 @@ TMP_DIR = os.path.join( DIR, "tmp" )
 # cd ./test/
 # python -m unittest discover
 
-
+@unittest.skipUnless(
+    utils.path.which( 'MPSTRUC_ALPHAHELICAL_PATH' ), 'MPSTRUC_ALPHAHELICAL_PATH not set' )
 class MpstrucDbTestCase( unittest.TestCase ):
     def setUp( self ):
         self.mpstruc = MpstrucDb()

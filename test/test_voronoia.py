@@ -62,7 +62,7 @@ class VoronoiaMakeRefTestCase( unittest.TestCase ):
         self.voro()
         self.mr = make_ref( self.voro.tool_results )
     def test_check( self ):
-        dic, dic2, log = self.mr
+        dic, dic2, log, pdb = self.mr
         self.assertNotEqual(dic, [])
         self.assertNotEqual(dic2, [])
         #self.assertNotEqual(log, '')

@@ -17,17 +17,21 @@ TMP_DIR = os.path.join( DIR, "tmp" )
 
 
 # Examples: http://ball-trac.bioinf.uni-sb.de/wiki/CodeLibrary
-from BALL import *
 
-
-
+try:
+    from BALL import *
+except ImportError:
+    noBall = True
+    
+    
 def data( file_name ):
     return os.path.join( DATA_DIR, file_name )
 
 def tmp( *dir_name ):
     return os.path.join( TMP_DIR, "BALL", *dir_name )
+ 
 
-
+@unittest.skipIf(noBall==True, 'BALL library not found')   
 class BALLTestCase( unittest.TestCase ):
     def setUp( self ):
         pass

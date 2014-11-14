@@ -26,8 +26,9 @@ class MuscleTestCase( unittest.TestCase ):
         self.muscle2 = Muscle(
             data( "test.fasta" ),
             pdb_files=[
-                data( "1U19.pdb" ),
                 data( "3SN6.pdb" ),
+                data( "1U19.pdb" ),
+                
             ],
             output_dir=tmp( "single_test" ),
             mapfile=True,
