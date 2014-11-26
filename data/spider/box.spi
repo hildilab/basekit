@@ -25,9 +25,9 @@ FI [x8],[x9],[x10]
 
 
 ;boxsize shift (weil der ursprung woander sitzt
-	[sx]=([x8]/2)+1
+	[sz]=([x8]/2)+1
 	[sy]=([x9]/2)+1
-	[sz]=([x10]/2)+1
+	[sx]=([x10]/2)+1
 
 
 ;Den Abstand der Stems ausrechen
@@ -74,7 +74,7 @@ ELSE
 	boxil
 	[abstand] [abstand] [abstand]
 	[obenlinks1] [obenlinks2] [obenlinks3]
-	sd 1,[abstand] [obenlinks1] [obenlinks2] [obenlinks3] [obenlinks4] [ps] [rs]
+	sd 1,[abstand] [obenlinks1] [obenlinks2] [obenlinks3] [obenlinks4] [ps] [rs] 
 	ergebnisse
 	vm 
 	echo abstand

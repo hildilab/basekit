@@ -67,22 +67,37 @@ class SpiderShift( Spider ):
         super(SpiderShift, self)._init( "__tmpl__" )
 
     def _pre_exec( self ):
-        boxsize=getMrc(self.mrc_file,'nx' )
-        originx=abs(getMrc(self.mrc_file,'nxstart'))
-        originy=abs(getMrc(self.mrc_file,'nystart'))
-        originz=abs(getMrc(self.mrc_file,'nzstart'))
-        print originx
+        boxsizex=getMrc(self.mrc_file,'nx' )
+        boxsizey=getMrc(self.mrc_file,'ny' )
+        boxsizez=getMrc(self.mrc_file,'nz' )
+        originx=getMrc(self.mrc_file,'nxstart')*-1
+        originy=getMrc(self.mrc_file,'nystart')*-1
+        originz=getMrc(self.mrc_file,'nzstart')*-1
+        xorg=getMrc(self.mrc_file,'xorg')*-1
+        yorg=getMrc(self.mrc_file,'yorg')*-1
+        zorg=getMrc(self.mrc_file,'zorg')*-1
+        print "nxstart", abs(getMrc(self.mrc_file,'nxstart')),abs(getMrc(self.mrc_file,'nystart')),abs(getMrc(self.mrc_file,'nzstart')),
+        print "xorg", abs(getMrc(self.mrc_file,'xorg')),abs(getMrc(self.mrc_file,'yorg')),abs(getMrc(self.mrc_file,'zorg'))
+        print "origin", originx,originy, originz
         size=getMrc(self.mrc_file,'xlen' )
         order=getMrc(self.mrc_file,'mapc' )
-        pixelsize=(size/boxsize)
-        shx = (originx -(boxsize/2)) * pixelsize
-        shy = (originy -(boxsize/2)) * pixelsize
-        shz = (originz -(boxsize/2)) * pixelsize
+        pixelsize=(size/boxsizex)
+       # print
+        if originx!=0 and xorg==0 :
+            shx = (originx -(boxsizex/2)) * pixelsize
+            shy = (originy -(boxsizey/2)) * pixelsize
+            shz = (originz -(boxsizez/2)) * pixelsize
+        else:
+            shx = ((xorg  / pixelsize)-(boxsizex/2))*pixelsize
+            shy = ((yorg/ pixelsize)-(boxsizey/2))*pixelsize
+            shz = ((zorg / pixelsize)-(boxsizez/2))*pixelsize
         self._make_script_file(    
             mrc_file=self.relpath( self.mrc_file ),
             order=order,
             pixelsize=pixelsize,
-            boxsize=boxsize,
+            boxsizex=boxsizex,
+            boxsizey=boxsizey,
+            boxsizez=boxsizez,
             originx=originx,
             originy=originy,
             originz=originz,
@@ -148,12 +163,15 @@ class SpiderPdbBox( PyTool ):
             ol2 = float (rs [4])
             ol3 = float (rs [5])
             ps = float (rs [7])
-            bbs=getMrc(self.mrc_file, 'nx')#mrc_dic["nx"]
+            
+            bbsx=getMrc(self.mrc_file, 'nx')#mrc_dic["nx"]
+            bbsy=getMrc(self.mrc_file, 'ny')#mrc_dic["nx"]
+            bbsz=getMrc(self.mrc_file, 'nz')
             obs = bs*ps
-            x =  (ol1 - (bbs/2)) * ps - 1 
-            y =  (ol2 - (bbs/2)) * ps - 1
-            z =  (ol3 - (bbs/2)) * ps - 1
-            print [x,y,z, bs,bbs]
+            x =  (ol1 - (bbsx/2)) * ps - 1 
+            y =  (ol2 - (bbsy/2)) * ps - 1
+            z =  (ol3 - (bbsz/2)) * ps - 1
+            print [x,y,z, bs,bbsx]
         PdbEdit (self.pdb_file, box = [ x, y, z, obs, obs, obs ] )
 
 
@@ -175,9 +193,11 @@ class SpiderDeleteFilledDensities( Spider ):
     def _init( self, *args, **kwargs ):
         super(SpiderDeleteFilledDensities, self)._init( "__tmpl__" )
     def _pre_exec( self ):
-        boxsize=getMrc(self.mrc_file,'nx' )
+        boxsizex=getMrc(self.mrc_file,'nx' )
+        boxsizey=getMrc(self.mrc_file,'ny' )
+        boxsizez=getMrc(self.mrc_file,'nz' )
         size=getMrc(self.mrc_file,'xlen' )
-        pixelsize=(size/boxsize)
+        pixelsize=(size/boxsizex)
         print self.res1
         LoopDelete(self.pdb_file,self.res1['chain'],self.res1['resno']+1,self.res2['resno']-1)
         self._make_script_file( 
@@ -186,7 +206,9 @@ class SpiderDeleteFilledDensities( Spider ):
             result_file=self.relpath( self.result_file, no_ext=True ),
             pixelsize=pixelsize,
             resolution=self.resolution,
-            boxsize=boxsize,
+            boxsizex=boxsizex,
+            boxsizey=boxsizey,
+            boxsizez=boxsizez,
             tmp_dir=self.relpath( self.output_dir ) + os.sep
         )
 
