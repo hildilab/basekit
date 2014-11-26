@@ -1,6 +1,8 @@
 ;map informationen
 ;boxgroesse
-[bs]=${boxsize}
+[bsx]=${boxsizex}
+[bsy]=${boxsizey}
+[bsz]=${boxsizez}
 ;origin
 [orx]=${originx}
 [ory]=${originy}
@@ -11,7 +13,9 @@
 [shy]=${shy}
 [shz]=${shz}
 ;den origin in die ins zentrum der box setzen
-[x]=(([bs]/2)*(-1))*[ps]
+[x]=(([bsx]/2)*(-1))*[ps]
+[y]=(([bsy]/2)*(-1))*[ps]
+[z]=(([bsz]/2)*(-1))*[ps]
 [file]='${mrc_file}' 
 
 ;flag for order of axes
@@ -92,8 +96,8 @@ shift.mrc
 32       0
 *
 [ps] [ps] [ps]
-[x] [x] [x]
-
+[x] [y] [z]
+;[x] [x] [x]
 ;[xy]=[x]+[bs]
 
 sd 1, [shx] [shy] [shz]

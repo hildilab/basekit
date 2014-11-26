@@ -16,7 +16,10 @@ ${result_file} ;noch variabel machen
 [tmp_dir]='${tmp_dir}'
 [rs]=${resolution}
 [ps]=${pixelsize}
-[obs]=${boxsize} ;boxsize of the usermap
+[obsx]=${boxsizex}
+[obsy]=${boxsizey}
+[obsz]=${boxsizez}
+;boxsize of the usermap
 ;werte für filter
 [f1]=([ps]/[rs])-0.05
 [f2]=([ps]/[rs])+0.05
@@ -32,7 +35,7 @@ CP FROM PDB
 ${pixelsize}  ;pixelsize (wo bekomme ich die her??)
 N
 A
-[obs] [obs] [obs] 
+ [obsy] [obsx] [obsz] 
 _14
 
 wi

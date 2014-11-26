@@ -49,29 +49,43 @@ DO  [y]=1,[nl]
  [ps]
  N
  A
- [x8] [x9] [x10]
+ [x10] [x9] [x8]
  _1
  vm
  echo "PDB erstellt"
 
+IF ([x10].EQ.[x9]) and  ([x8].EQ.[x9])THEN
+    ;ausschneiden
+    wi
+    _1
+    _2
+    [bs] [bs] [bs]
+     [obenlinks2] [obenlinks1] [obenlinks4]
+    VM
+    echo "windoweq"
+    
+    ;rotierem
+    RT 3d
+    _2
+    _4
+    -90,180,0
 
-;ausschneiden
-wi
-_1
-_2
-[bs] [bs] [bs]
-[obenlinks2] [obenlinks1] [obenlinks4]
-VM
-echo "window"
-
-;rotierem
-RT 3d
-_2
-_4
--90,180,0
-
+ELSE
+   RT 3d
+    _1
+    _2
+    -90,180,0
+    
+   wi
+   _2
+   _4
+   [bs] [bs] [bs]
+   [obenlinks1] [obenlinks2] [obenlinks3]
+    VM
+    echo "windowqua"
+    
 ;Map auf resolution filtern
-
+ENDIF
  FQ
  _4
  _5
@@ -100,7 +114,12 @@ _4
 
 
 
+
 ENDDO
+;CP
+;_1
+;test
+
 doc sort
 crosscorrelation
 ccsort

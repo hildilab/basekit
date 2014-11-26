@@ -283,15 +283,25 @@ class LinkItDensity( PyTool, ProviMixin ):
         ))
 
     def func( self ):
-        boxsize = getMrc(self.mrc_file, 'nx' )
-        originx = abs(getMrc(self.mrc_file, 'nxstart' ))
-        originy = abs(getMrc(self.mrc_file, 'nystart' ))
-        originz = abs(getMrc(self.mrc_file, 'nzstart' ))
+        boxsizex = getMrc(self.mrc_file, 'nx' )
+        boxsizey=getMrc(self.mrc_file,'ny' )
+        boxsizez=getMrc(self.mrc_file,'nz' )
+        originx = getMrc(self.mrc_file, 'nxstart' )*-1
+        originy = getMrc(self.mrc_file, 'nystart' )*-1
+        originz = getMrc(self.mrc_file, 'nzstart' )*-1
+        xorg=getMrc(self.mrc_file,'xorg')*-1
+        yorg=getMrc(self.mrc_file,'yorg')*-1
+        zorg=getMrc(self.mrc_file,'zorg')*-1
         size = getMrc(self.mrc_file, 'xlen' )
-        pixelsize = size / boxsize
-        shx = (originx - (boxsize / 2)) * pixelsize
-        shy = (originy - (boxsize / 2)) * pixelsize
-        shz = (originz - (boxsize / 2)) * pixelsize
+        pixelsize = size / boxsizex
+        if originx!=0 and xorg==0 :
+            shx = (originx -(boxsizex/2)) * pixelsize
+            shy = (originy -(boxsizey/2)) * pixelsize
+            shz = (originz -(boxsizez/2)) * pixelsize
+        else:
+            shx = ((xorg  / pixelsize)-(boxsizex/2))*pixelsize
+            shy = ((yorg/ pixelsize)-(boxsizey/2))*pixelsize
+            shz = ((zorg / pixelsize)-(boxsizez/2))*pixelsize
         PdbEdit(
             self.pdb_file, shift=[ shx, shy, shz ]
         )

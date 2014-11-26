@@ -1114,17 +1114,18 @@ class LoopCrosscorrel( PyTool ):
             with open (self.ori_pdb_linker_file3, 'w') as fp_out:
                 for line in lf:
                     if line.startswith("ATOM"):
-                        x="%4.3f" % (float(line[31:38])+shxb)
-                        a="%7s" % x
-                        
-                        y="%4.3f" % (float(line[39:46])+shyb)
-                        b="%7s" % y
-                        z="%4.3f" % (float(line[47:54])+shzb)
-                        c="%7s" % z
-        
-                        line = line = line[0:30] + a + line[38:]
+                        x = "%4.3f" % (float(line[30:37]) + shxb)
+                        a = "%8s" % x
+
+                        y = "%4.3f" % (float(line[38:45]) + shyb)
+                        b = "%8s" % y
+                        z = "%4.3f" % (float(line[46:53]) + shzb)
+                        c = "%8s" % z
+                        print b
+                        line = line = line[0:29] + a + line[38:]
                         line = line = line[0:38] + b + line[46:]
-                        line = line = line[0:46] + c + line[53:]
+                        line = line = line[0:46] + c + line[54:]
+
         
                         fp_out.write( line )
                     else:
@@ -1145,17 +1146,18 @@ class LoopCrosscorrel( PyTool ):
                         of.write(title)
                         for line in lp:
                             if line.startswith("ATOM"):
-                                x="%4.3f" % (float(line[31:38])+shxb)
-                                a="%7s" % x
-                                
-                                y="%4.3f" % (float(line[39:46])+shyb)
-                                b="%7s" % y
-                                z="%4.3f" % (float(line[47:54])+shzb)
-                                c="%7s" % z
-                        
-                                line = line = line[0:30] + a + line[38:]
+                                x = "%4.3f" % (float(line[30:37]) + shxb)
+                                a = "%8s" % x
+
+                                y = "%4.3f" % (float(line[38:45]) + shyb)
+                                b = "%8s" % y
+                                z = "%4.3f" % (float(line[46:53]) + shzb)
+                                c = "%8s" % z
+                                print b
+                                line = line = line[0:29] + a + line[38:]
                                 line = line = line[0:38] + b + line[46:]
-                                line = line = line[0:46] + c + line[53:]
+                                line = line = line[0:46] + c + line[54:]
+
                         
                                 of.write( line )
                         of.write("END")
@@ -1459,17 +1461,18 @@ class LoopCrosscorrel2( PyTool ):
             with open( self.ori_pdb_linker_file3, 'w' ) as fp_out:
                 for line in lf:
                     if line.startswith("ATOM"):
-                        x = "%4.3f" % (float(line[31:38]) + shxb)
-                        a = "%7s" % x
+                        x = "%4.3f" % (float(line[30:37]) + shxb)
+                        a = "%8s" % x
 
-                        y = "%4.3f" % (float(line[39:46]) + shyb)
-                        b = "%7s" % y
-                        z = "%4.3f" % (float(line[47:54]) + shzb)
-                        c = "%7s" % z
+                        y = "%4.3f" % (float(line[38:45]) + shyb)
+                        b = "%8s" % y
+                        z = "%4.3f" % (float(line[46:53]) + shzb)
+                        c = "%8s" % z
+                        print b
+                        line = line = line[0:29] + a + line[38:]
+                        line = line = line[0:38] + b + line[46:]
+                        line = line = line[0:46] + c + line[54:]
 
-                        line = line[0:30] + a + line[38:]
-                        line = line[0:38] + b + line[46:]
-                        line = line[0:46] + c + line[53:]
 
                         fp_out.write( line )
                     else:
@@ -1493,17 +1496,18 @@ class LoopCrosscorrel2( PyTool ):
                         of.write(title)
                         for line in lp:
                             if line.startswith("ATOM"):
-                                x = "%4.3f" % (float(line[31:38]) + shxb)
-                                a = "%7s" % x
+                                x = "%4.3f" % (float(line[30:37]) + shxb)
+                                a = "%8s" % x
 
-                                y = "%4.3f" % (float(line[39:46]) + shyb)
-                                b = "%7s" % y
-                                z = "%4.3f" % (float(line[47:54]) + shzb)
-                                c = "%7s" % z
-
-                                line = line = line[0:30] + a + line[38:]
+                                y = "%4.3f" % (float(line[38:45]) + shyb)
+                                b = "%8s" % y
+                                z = "%4.3f" % (float(line[46:53]) + shzb)
+                                c = "%8s" % z
+                                print b
+                                line = line = line[0:29] + a + line[38:]
                                 line = line = line[0:38] + b + line[46:]
-                                line = line = line[0:46] + c + line[53:]
+                                line = line = line[0:46] + c + line[54:]
+
 
                                 of.write( line )
                         of.write("END")
@@ -1640,17 +1644,18 @@ class LoopCrosscorrel3( PyTool ):
             with open (self.ori_pdb_linker_file3, 'w') as fp_out:
                 for line in lf:
                     if line.startswith("ATOM"):
-                        x="%4.3f" % (float(line[31:38])+shxb)
-                        a="%7s" % x
-                        
-                        y="%4.3f" % (float(line[39:46])+shyb)
-                        b="%7s" % y
-                        z="%4.3f" % (float(line[47:54])+shzb)
-                        c="%7s" % z
-        
-                        line = line = line[0:30] + a + line[38:]
+                        x = "%4.3f" % (float(line[30:37]) + shxb)
+                        a = "%8s" % x
+
+                        y = "%4.3f" % (float(line[38:45]) + shyb)
+                        b = "%8s" % y
+                        z = "%4.3f" % (float(line[46:53]) + shzb)
+                        c = "%8s" % z
+                        print b
+                        line = line = line[0:29] + a + line[38:]
                         line = line = line[0:38] + b + line[46:]
-                        line = line = line[0:46] + c + line[53:]
+                        line = line = line[0:46] + c + line[54:]
+
         
                         fp_out.write( line )
                     else:
@@ -1671,18 +1676,18 @@ class LoopCrosscorrel3( PyTool ):
                         of.write(title)
                         for line in lp:
                             if line.startswith("ATOM"):
-                                x="%4.3f" % (float(line[31:38])+shxb)
-                                a="%7s" % x
-                                
-                                y="%4.3f" % (float(line[39:46])+shyb)
-                                b="%7s" % y
-                                z="%4.3f" % (float(line[47:54])+shzb)
-                                c="%7s" % z
-                        
-                                line = line = line[0:30] + a + line[38:]
+                                x = "%4.3f" % (float(line[30:37]) + shxb)
+                                a = "%8s" % x
+
+                                y = "%4.3f" % (float(line[38:45]) + shyb)
+                                b = "%8s" % y
+                                z = "%4.3f" % (float(line[46:53]) + shzb)
+                                c = "%8s" % z
+                                print b
+                                line = line = line[0:29] + a + line[38:]
                                 line = line = line[0:38] + b + line[46:]
-                                line = line = line[0:46] + c + line[53:]
-                        
+                                line = line = line[0:46] + c + line[54:]
+
                                 of.write( line )
                         of.write("END")
 class SpiderAnalyse2(PyTool):
