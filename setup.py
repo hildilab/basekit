@@ -47,7 +47,7 @@ setup(
         'scripts/motif.py',
         'scripts/mppd.py',
         'scripts/mpstruc.py',
-        'scripts/msa.py',
+        #'scripts/msa.py',
         'scripts/msms.py',
         'scripts/opm.py',
         'scripts/pdb.py',

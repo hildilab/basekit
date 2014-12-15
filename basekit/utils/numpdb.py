@@ -504,7 +504,7 @@ class InfoParser( object ):
                 self._dict["resolution"] += line[10:].rstrip()
         elif line.startswith("HEADER"):
             if self._dict["header"]:
-                self._dict["header"].append(line[10:50].rstrip(), line[50:62].rstrip(), line[62:].rstrip())
+                self._dict["header"].append(line[10:50].rstrip()+ line[50:62].rstrip()+ line[62:].rstrip())
             else:
                 self._dict["header"] = [line[10:50].rstrip(), line[50:62].rstrip(), line[62:].rstrip()]
         elif line.startswith("OBSLTE"):
