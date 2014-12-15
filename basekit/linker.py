@@ -31,9 +31,11 @@ def LINKIT_CMD():
 
 
 class LinkIt( CmdTool, ProviMixin ):
+    """Please define the PDB file the stem-residues with chain (i.e. 10:A)
+        and the sequence in one letter code"""
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
-        _( "res1", type="sele" ),
+        _( "res1", type="sele",help="resno:chain, i.e. 10:A" ),
         _( "res2", type="sele" ),
         _( "seq", type="str" ),
         _( "max_loops", type="int", range=[0, 500], default=100 )
@@ -242,6 +244,10 @@ class MultiLinkIt( PyTool, ProviMixin ):
 
 
 class LinkItDensity( PyTool, ProviMixin ):
+    """Please define the cutoff where the features of your map can
+       identified best, the stem residues (i.e. 10:A), the resolution of your map
+       and the sequence of the missing fragment in one letter code. For more info
+       please see the documentation"""
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
         _( "mrc_file", type="file", ext="mrc" ),

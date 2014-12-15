@@ -953,7 +953,7 @@ class Looporicc( PyTool ):
         ]
     def func ( self, *args, **kwargs ):
             #l=25
-        for l in range(5,35,1):
+        for l in range(28,35,1):
             chainfolders=os.listdir(self.dataset_dir)
             for g in chainfolders:
                 #print g
