@@ -43,8 +43,14 @@ HoleNeighbour = collections.namedtuple( "HoleNeighbour", [
 VolHole = collections.namedtuple( "VolHole", [
     "no", "type", "neighbours"
 ])
-InfoRecord = collections.namedtuple( "InfoRecord", [
-    "pdb_id", "pdb_res", "pdb_title", "pdb_experiment", "pdb_zscorerms", "pdb_header"
+VoronoiaDbRecord = collections.namedtuple( "VoronoiaDbRecord", [
+    "pdb_id", "pdb_title", "pdb_keywords", "pdb_experiment",
+   # "pdb_header",
+    "pdb_resolution",
+    "pdb_zscorerms",
+    "curated_representative", "curated_related",
+    "status",
+    "tm_packdens_protein_buried", "tm_water_count", "tm_residue_count", 
 ])
 
 def parse_vol( vol_file, pdb_file ):
@@ -453,7 +459,7 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
     tmpl_dir = TMPL_DIR
     provi_tmpl = "voronoia.provi"
     pymol_tmpl = "pymol_settings.py"
-    RecordsClass = InfoRecord
+    RecordsClass = VoronoiaDbRecord
     def _init( self, *args, **kwargs ):
         #if self.pdb_input.endswith("pdb"):
         #    self.log("no pdb")
@@ -514,21 +520,27 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                     "backbone_only": True
                 })._info
                 self.records = [
-                    InfoRecord(
-                        pdbid, self.info["resolution"],
-                        self.info["title"], self.info["experiment"],
-                        self.zscorerms, self.info["header"][2]
+                    VoronoiaDbRecord(
+                        pdbid, self.info["title"], "no data", self.info["experiment"],
+                        self.info["resolution"],
+                        self.zscorerms,
+                        0, 0,
+                        "included",
+                        0, 0, 0,
                     )
                 ]
             except:
                 self.records = [
-                    InfoRecord(
-                        pdbid, 0.0,
-                        "no data", "no data",
-                        self.zscorerms, "no data"
+                    VoronoiaDbRecord(
+                        pdbid,  "no data", "no data", "no data",
+                        0.0,
+                        self.zscorerms,
+                        0, 0,
+                        "included",
+                        0, 0, 0,
                     )
                 ]
-            db = SqliteBackend( "voronoia_records.sqlite", InfoRecord )
+            db = SqliteBackend( "voronoia.sqlite", VoronoiaDbRecord )
             db.write( self.records )
             self.write()
             
@@ -554,7 +566,7 @@ class Voronoia( CmdTool, ProviMixin, ParallelMixin, RecordsMixin ):
                     json.dump( dct, fp, indent=4 )
             with open(self.protor_log_file, 'w') as fp:
                 fp.write( log_list )
-            db = SqliteBackend( "voronoia_records.sqlite", InfoRecord )
+            db = SqliteBackend( "voronoia.sqlite", VoronoiaDbRecord )
             db.write( self.records )
     @memoize_m
     def get_vol( self ):
