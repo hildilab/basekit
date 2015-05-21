@@ -116,7 +116,7 @@ class LinkIt( CmdTool, ProviMixin ):
                             continue
                         if line[12:16] not in backbone:
                             continue
-                        if line[24] == " ":
+                        if line[25] == " ":
                             resnew = int( self.res1['resno'] )
                         else:
                             resnew = int( self.res2['resno'] )

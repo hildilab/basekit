@@ -8,7 +8,9 @@ from basekit.spider_analyse import (
     Spider, SpiderShift, SpiderConvert, SpiderDeleteFilledDensities, 
     SpiderBox, SpiderReConvert, SpiderCrosscorrelation, LoopCrosscorrel, 
     SpiderPdbBox,SpiderSidechainCorrelation,  LoopSidechainCorrelation,SpiderDeleteBackbone,BuildBest,OptimizeRotamer,
-    LoopRotamerOptimize,SideChainStatistics, SpiderCropMap,SpiderCropMrc,SpiderAnalyse,LoopCrosscorrel2,LoopCrosscorrel3,SpiderAnalyse2,SpiderAnalyse3,Calcoricc,Looporicc,BuildModel
+    LoopRotamerOptimize,SideChainStatistics, SpiderCropMap,SpiderCropMrc,SpiderAnalyse,LoopCrosscorrel2,LoopCrosscorrel3,
+    SpiderAnalyse2,SpiderAnalyse3,Calcoricc,Looporicc,BuildModel,Analyse_DSSP,LinkItRMSD,RepairLoops,RepairLinkItLoops,
+    RepairLoops2,SuperLooperAnalyse,ShortenLoops,MultiLooporicc,MultiSpiderAnalyse2
 )
 
 
@@ -41,7 +43,16 @@ def main():
         "loopcorrel3": LoopCrosscorrel3,
         "ccori":Calcoricc,
         "loopcc":Looporicc,
-        "build":BuildModel
+        "build":BuildModel,
+        "analyse_dssp":Analyse_DSSP,
+        "loopsrmsd":LinkItRMSD,
+        "repairloops":RepairLoops,
+        "rlinkitloops":RepairLinkItLoops,
+        "repair2":RepairLoops2,
+        "superanalyse":SuperLooperAnalyse,
+        "shorten":ShortenLoops,
+        "multiloopcc":MultiLooporicc,
+        "multianalyse":MultiSpiderAnalyse2
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )

@@ -989,7 +989,9 @@ class LoopCrosscorrel( PyTool ):
 
     def _post_exec( self ):
         self.backshift_linker()
-
+        os.remove(self.spider_shift.map_shift)
+        os.remove(self.spider_convert.map_file)
+        
     def _crop_pdb( self ):
         npdb = NumPdb( self.pdb_file )
         npdb.write(

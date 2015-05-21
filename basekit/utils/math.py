@@ -128,7 +128,7 @@ def axis( coords ):
 
 def rmsd( coords1, coords2 ):
     return np.sqrt(
-        np.sum( np.power( coords1 - coords2, 2 ) ) / coords1.shape[0]
+        np.sum( np.power( (coords1 - coords2), 2 ) ) / coords1.shape[0]
     )
 
 

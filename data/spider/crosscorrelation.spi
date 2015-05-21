@@ -89,7 +89,7 @@ ENDIF
  FQ
  _4
  _5
- 7
+  7
  [f1] [f2]
  
  VM
@@ -107,7 +107,7 @@ ENDIF
  
 ;zum loopmaps ausgeben:
 ;CP
-;_5
+;_4
 ;{***[y]}S
 ;vm
 ;echo "CC"

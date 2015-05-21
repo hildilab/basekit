@@ -4,7 +4,8 @@
 
 from basekit.utils.tool import parse_subargs
 from basekit.linker_analyse import(
-    LinkIt_analyse, LinkItDensity, LnkItVali, AnalyseLiniktRun,CutPDB,Cut_analyse_PDB2,LinkItDensity2_analyse,CutPDB3,LinkItDensity3
+    LinkIt, LinkItDensity, LnkItVali, CutPDB2,AnalyseLiniktRun,CutPDB,Cut_analyse_PDB2,LinkItDensity2_analyse,
+    CutPDB3,LinkItDensity3,CalcSheets,MultiLinkItDensity,MultiCutPDB,LinkItList,PdbSequence
     #MultiLinkItLinkerTest, 
 )
 
@@ -12,17 +13,22 @@ from basekit.linker_analyse import(
 
 def main():
     tools = {
-        "linkit": LinkIt_analyse, 
+        "linkit": LinkIt, 
         "linkit+dens": LinkItDensity,
         #"test": LinkerTest,
         "linkvali": LnkItVali,
         "analyse" : AnalyseLiniktRun,
         #"multi-linkit": MultiLinkIt
         "cut":CutPDB,
-        "cut2_analyse":Cut_analyse_PDB2,
+        "cut2":CutPDB2,
         "linkit+dens2":LinkItDensity2_analyse,
         "cut3":CutPDB3,
-        "linkit+dens3":LinkItDensity3,        
+        "linkit+dens3":LinkItDensity3,
+        "calcsheets":CalcSheets,
+        "multilinkdens":MultiLinkItDensity,
+        "multicut":MultiCutPDB,
+        "linkitlist":LinkItList,
+        "seqlist":PdbSequence
     }
     Tool, args, kwargs = parse_subargs( tools, description=__doc__ )
     print Tool( *args, **kwargs )
