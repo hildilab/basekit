@@ -1017,7 +1017,15 @@ class LoopCrosscorrel( PyTool ):
             lilines = li.readlines()
         with open( self.loop_file, 'r' ) as lf:
             with open( self.ori_pdb_linker_file3, 'w' ) as fp_out:
+
                 for line in lf:
+                    
+                    if line.startswith("MODEL"):
+                        
+                        if int(line.split () [1])==self.max_loops+1:
+                            fp_out.write( "END" )
+                            break
+
                     if line.startswith("ATOM"):
                         x = "%4.3f" % (float(line[30:37]) + shxb)
                         a = "%8s" % x
@@ -1032,9 +1040,11 @@ class LoopCrosscorrel( PyTool ):
                         line = line = line[0:46] + c + line[54:]
 
                         fp_out.write( line )
+                    
                     else:
-                        continue
-                fp_out.write( "END" )
+                        
+                        fp_out.write(line)
+
         for i in os.listdir(loop_dir):
             if i.endswith(".pdb"):
                 loopfile = "%s/%s" % (loop_dir, i)

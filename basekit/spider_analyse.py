@@ -13,6 +13,7 @@ from utils.mrc import get_mrc_header, getMrc
 from utils.math import rmsd,tmscore
 from pdb import *#PdbSplit
 from dssp import *
+from scipy import stats
 from itertools import groupby
 #from pdb import PdbEdit, NumpdbTest
 from operator import itemgetter
@@ -1826,9 +1827,10 @@ class SpiderAnalyse2(PyTool):
                     fullsheet[identfull].append(max(sheetlist))
                     fullsheet[identfull].append(max(sheetlist)-min(sheetlist))
         for key in sorted(fullsheet):
-            print key, fullsheet[key]
+          #  print key, fullsheet[key]
+          continue
         with open ('loopana_A.csv','w') as analyse, open ('values2.csv', 'w') as valu, open ('cases.txt', 'w') as cases, open ('bettercc.txt', 'w') as bettercc, open ('diff.csv','w') as diffile:
-            title="%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % ("looplength","fragfit","std rmsd with density",
+            title="%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % ("looplength","fragfit","std rmsd with density",
                                                                    "rmsd linkit","std rmsd without density",
                                                                    "rmsd fragfit no homologues","std fragfit no homologues",
                                                                    "rmsd linkit no homologs","std rmsd linkit no homologs",
@@ -1838,7 +1840,7 @@ class SpiderAnalyse2(PyTool):
                                                                    "linkit_other","mean rank","median fragfit","tms scrore","Fragfit 50","Fragfit 20",
                                                                    'ori cc mean','Diff to oricc','diff to oricc homo75','diff 75','ccbestfive','meanccbest','fragfitheli','fragfitother','fragfitbeta','sequenceidentity no homo','sequence identity full','fragfithel ori','fragfitbeta ori','fragfitother ori','anteil perfekt','anteilperfekt nh','linkitbetter','fragfitbetter','linkitfirst','fragfitfirst',
                                                                    'linkit>5','fragfitof>5','linkitbad','fragfitbad','conuter bad',
-                                                                   "helix_link_it","helix_fragfit",'anzahl helix',"sheet_linkit",'Sheet_fragfit','anzahl sheet','fullsheetlinkit','fullsheetfragfit','anzahl fullsheet','\n')
+                                                                   "helix_link_it","helix_fragfit",'anzahl helix',"sheet_linkit",'Sheet_fragfit','anzahl sheet','fullsheetlinkit','fullsheetfragfit','anzahl fullsheet','tmdo.5','tmdo_homo.5','\n')
             analyse.write(title)
             rmsdval={
             '5': 1.7857142857,
@@ -1909,6 +1911,7 @@ class SpiderAnalyse2(PyTool):
             }
             for l in range(5,35,1):
                 indifile="%s_%s.%s" % (l,'file','csv')
+                t_test="%s_%s.%s" % (l,'t_test','txt')
                 with open (indifile, 'w') as loofile:
                     title_loo="%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % ('chain','name','taken','ori_pdb','seq_identit','rmsd','SSE flag','diffccabs','tmscore','diffreal','bestes_modell','bestrmsd','fragfitbest','fragfitbesrmsd','bestpossibleall?','bestlinkitnh','bestpossiblenh','linkitbest','fragfitbest','linkit>5','fragfitof>5','linkitbad','fragfitbad','\n')
                     loofile.write(title_loo)
@@ -1971,18 +1974,20 @@ class SpiderAnalyse2(PyTool):
                     sheetfragfit=[]
                     fullsheetlinkit=[]
                     fullsheetfragfit=[]
+                    tmscounter=[]
+                    tmscounterho=[]
                     badf=0
 
                     for g in chainfolders:
                         #g='A'
-                        print g
+                        #print g
                         loopfolder=os.path.join(self.dataset_dir,g,str(l))
                         if os.path.isdir(loopfolder):
                             fi=sorted((os.listdir(loopfolder)), key= lambda x: int(x.split('_')[-1]))
                             #folders=os.listdir(self.dataset_dir)
                             z=2
                             homo = [line.rstrip() for line in open(self.homologue_list)]
-                            print loopfolder
+                           # print loopfolder
                             with open ("analysis.csv",'w') as ana:
                                 
                                 #print fi
@@ -2078,14 +2083,19 @@ class SpiderAnalyse2(PyTool):
                                                                 "configuration": False,
                                                                 "info": False
                                                                 })
+                                                    #print npdb.get
+                                                    res1=int(x.split('_')[0])
+                                                    res2=int(x.split('_')[1])
+                                                   # print res1, res2
+                                                    npdbshort=npdb.copy(resno=[res1,res2])
                                                     lnr=int(i[0:3]) *4+1
                                                     seqnr=int(i[0:3]) *4
     
-                                                    rootm2=rmsd(orinpdb['xyz'],npdb['xyz'])
+                                                    rootm2=rmsd(orinpdb['xyz'],npdbshort['xyz'])
     
                                                     try:
     
-                                                        tms=tmscore(orinpdb['xyz'],npdb['xyz'])
+                                                        tms=tmscore(orinpdb['xyz'],npdbshort['xyz'])
                                                     except:
                                                         tms=0
                                                         #print l,x,i
@@ -2265,6 +2275,11 @@ class SpiderAnalyse2(PyTool):
                                                     bestrmsdnhli.append(result[lonam][0])
                                                     bestfragnoh=result[lonam][0]
                                                     tmsnhli.append(result[lonam][3])
+                                                    if result[lonam][3] >0.5:
+                                                        tmscounterho.append(1)
+                                                    else:
+                                                        tmscounterho.append(0)
+                                                    
                                                     meancc75.append(result[lonam][4])
                                                     diffh75= abs(float(ccdic[int(no)])-float(oriccval))
                                                     diffh75full=float(ccdic[int(no)])-float(oriccval)
@@ -2315,6 +2330,10 @@ class SpiderAnalyse2(PyTool):
                                                 suflag=0
                                             linkitfirst.append(result['001_bb.pdb'][0])
                                             fragfitfirst.append(ccsortbest)
+                                            if result['001_bb.pdb'][3] >0.5:
+                                                tmscounter.append(1)
+                                            else:
+                                                tmscounter.append(0)
                                             if result['001_bb.pdb'][0]> 5:
                                                 linkitfirstbad.append(result['001_bb.pdb'][0])
                                                 fragfitfirstbad.append(ccsortbest)
@@ -2403,13 +2422,13 @@ class SpiderAnalyse2(PyTool):
                                             #helix_sheet_by header
                                             for key in helix:
                                                         if helix[key] [0] >=l and helix[key] [2]==g and helix[key] [3] in range (y1-2,y1+2):
-                                                            print key, helix[key], g, y1
+                                                          #  print key, helix[key], g, y1
                                                             helixlinkit.append(result['001_bb.pdb'][0])
                                                             helixfragfit.append(ccsortbest)
                                                             
                                             for key in sheet:
                                                 if sheet[key] [0] >=l and sheet[key] [2]==g and sheet[key] [3] in range (y1-2,y1+2):
-                                                    print key, sheet[key], g, y1
+                                                   # print key, sheet[key], g, y1
                                                     sheetlinkit.append(result['001_bb.pdb'][0])
                                                     sheetfragfit.append(ccsortbest)
                                             for key in fullsheet:
@@ -2458,7 +2477,7 @@ class SpiderAnalyse2(PyTool):
                 if len (or_diffcc)==0:
                     or_diffcc.append(0)
                 if len (ordiff75)==0:
-                    print loopfolder
+                  #  print loopfolder
                     ordiff75.append(0)
                 if len ( ordiffh75full)==0:
                      ordiffh75full.append(0)
@@ -2511,13 +2530,30 @@ class SpiderAnalyse2(PyTool):
                     fullsheetlinkit.append(0)
                 if len(fullsheetfragfit)==0:
                     fullsheetfragfit.append(0)
+                if len (tmscounter)==0:
+                    tmscounter.append(0)
+                if len (tmscounterho)==0:
+                    tmscounterho.append(0)
+                with open (t_test, 'w') as tfile:
+                    st,sp = scipy.stats.ttest_rel(wodensnh,bestrmsdsnh)
+                    t_value="%s:%s%s" % ("t-value",st,'\n')
+                    p_value= "%s:%s" % ('p-value',sp)
+                    tfile.write (t_value)
+                    tfile.write(p_value)
+                    print l,st,sp
+                    xyz=0
+                    if sp <0.05:
+                        print 'yeeha'
+                        xyz+=1
+                    
+            
                 #print fragfitonlybetter,linkitonlybetter
                 #break
                # print 'looplaenge:' ,l
                # print 'summe ordiff75:', sum(ordiff75)
                # print 'length ordiff75:', len(ordiff75)
                # print 'geteilt:',sum(ordiff75)/len(ordiff75)
-                loopline= "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % (l,sum(bestrmsds)/len(bestrmsds),np.std(bestrmsds),
+                loopline= "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % (l,sum(bestrmsds)/len(bestrmsds),np.std(bestrmsds),
                                                          sum(wodens)/len(wodens),np.std(wodens),
                                                          sum(bestrmsdsnh)/len(bestrmsdsnh),np.std(bestrmsdsnh),
                                                          sum(wodensnh)/len(wodensnh),np.std(wodensnh),
@@ -2536,7 +2572,7 @@ class SpiderAnalyse2(PyTool):
                                                          sum(fragfitonlybetter)/len(fragfitonlybetter),sum(linkitfirst)/len(linkitfirst),sum(fragfitfirst)/len(fragfitfirst),
                                                          sum (linkitfirstbad)/len(linkitfirstbad),sum(fragfitfirstbad)/len(fragfitfirstbad),sum (linkitfirstbadf)/len(linkitfirstbadf),sum(fragfitfirstbadf)/len(fragfitfirstbadf),badf,
                                                          sum(helixlinkit)/len(helixlinkit),sum(helixfragfit)/len(helixfragfit),len(helixfragfit),sum(sheetlinkit)/len(sheetlinkit),sum(sheetfragfit)/len(sheetfragfit),len(sheetfragfit),
-                                                         sum(fullsheetlinkit)/len(fullsheetlinkit),sum(fullsheetfragfit)/len(fullsheetfragfit),len(fullsheetfragfit),'\n')
+                                                         sum(fullsheetlinkit)/len(fullsheetlinkit),sum(fullsheetfragfit)/len(fullsheetfragfit),len(fullsheetfragfit),sum(tmscounter)/len(tmscounter),sum(tmscounterho)/len(tmscounterho),'\n')
                 #print np.std(bestrmsdsnh) 
                 analyse.write(loopline)
                 diffile.write('\n')
@@ -2547,6 +2583,7 @@ class SpiderAnalyse2(PyTool):
                     valu.write(str(j))
                     valu.write(',')
                     valu.write('\n')
+        print xyz
 class Analyse_DSSP (PyTool):
     args= [
         _( "pdb_file", type="file" )
@@ -3367,8 +3404,9 @@ class MultiSpiderAnalyse2(PyTool):
      _( "res_file", file="overall.txt" )
     ]
     def func (self):
+        print "HHAAAAAAAAAAAAAAAALLLLLLLLLLOOOOOOOOOOOO"
         for cor in range(1,7,1):
-            print 'runde', cor
+            #print 'runde', cor
             helix={}
             sheet={}
             fullsheet={}
@@ -3419,8 +3457,9 @@ class MultiSpiderAnalyse2(PyTool):
                         fullsheet[identfull].append(max(sheetlist))
                         fullsheet[identfull].append(max(sheetlist)-min(sheetlist))
             for key in sorted(fullsheet):
-                print key, fullsheet[key]
-            ananame="%s_%s.%s" % ('loopana',cor,'csv')
+                #print key, fullsheet[key]
+                continue
+            ananame="%s_%s.%s" % ('g',cor,'csv')
             with  open (ananame,'w') as analyse,open ('values2.csv', 'w') as valu, open ('cases.txt', 'w') as cases, open ('bettercc.txt', 'w') as bettercc, open ('diff.csv','w') as diffile:
                 title="%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % ("looplength","fragfit","std rmsd with density",
                                                                        "rmsd linkit","std rmsd without density",
@@ -3620,11 +3659,11 @@ class MultiSpiderAnalyse2(PyTool):
                                        # print loops
                                         
                                         ccsort=os.path.join(loopfolder,x,loopcorrel_name,'crosscorrelation/ccsort.cpv')
-                                        print cor, ccsort
+                                        #print cor, ccsort
                                         linkertxt=os.path.join(loopfolder,x,'link_it/edited_linker.txt')
                                         oricc=os.path.join(loopfolder,x,loopcorrel_name,'oricrosscorrelation.cpv')
                                         if os.path.isfile(ccsort):
-                                            print cor
+                                            #print cor
                                             Dssp(ori,output_dir=folo)
                                             oridssp='%s%s' % (ori[:-3],'dssp')
                                             orirec=parse_dssp(oridssp)
@@ -3655,7 +3694,7 @@ class MultiSpiderAnalyse2(PyTool):
                                             h=os.listdir(loops)
                                             res1=int(x.split('_')[0])
                                             res2=int(x.split('_')[1])
-                                            print res1,res2
+                                           # print res1,res2
                                             for i in h:
                                                 if i.endswith('.pdb'):
                                                     #print cor, i
@@ -3996,13 +4035,13 @@ class MultiSpiderAnalyse2(PyTool):
                                             #helix_sheet_by header
                                             for key in helix:
                                                         if helix[key] [0] >=l and helix[key] [2]==g and helix[key] [3] in range (y1-2,y1+2):
-                                                            print key, helix[key], g, y1
+                                                            #print key, helix[key], g, y1
                                                             helixlinkit.append(result['001_bb.pdb'][0])
                                                             helixfragfit.append(ccsortbest)
                                                             
                                             for key in sheet:
                                                 if sheet[key] [0] >=l and sheet[key] [2]==g and sheet[key] [3] in range (y1-2,y1+2):
-                                                    print key, sheet[key], g, y1
+                                                    #print key, sheet[key], g, y1
                                                     sheetlinkit.append(result['001_bb.pdb'][0])
                                                     sheetfragfit.append(ccsortbest)
                                             for key in fullsheet:
@@ -4105,6 +4144,9 @@ class MultiSpiderAnalyse2(PyTool):
                         fullsheetlinkit.append(0)
                     if len(fullsheetfragfit)==0:
                         fullsheetfragfit.append(0)
+                    st,sp = scipy.stats.ttest_rel(wodensnh,bestrmsdsnh)
+                    print st,sp
+                    break
                     #print fragfitonlybetter,linkitonlybetter
                     #break
                    # print 'looplaenge:' ,l

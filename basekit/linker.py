@@ -109,6 +109,8 @@ class LinkIt( CmdTool, ProviMixin ):
                 if line.startswith("MODEL"):
                     atom_i = 1
                     fp_out.write( line )
+                if line.startswith("ENDMDL"):
+                    fp_out.write( line )
                 if line.startswith("ATOM"):
                     line = line[0:6] + ( "% 5i" % atom_i ) + line[11:]
                     if line[22] == "X":
@@ -132,9 +134,12 @@ class LinkIt( CmdTool, ProviMixin ):
                         line = line = line[0:21] + chain + resnewp + line[26:]
                     atom_i += 1
                     fp_out.write( line )
+                
                     continue
                 if not atoms_only:
-                    fp_out.write( line )
+                    if not line.startswith ("MODEL") and not line.startswith ("ENDMDL"): 
+                        fp_out.write( line )
+            fp_out.write ("END")
 
     def _split_loop_file( self ):
         PdbSplit(
@@ -427,42 +432,100 @@ class CutPDB (PyTool):
         for z, numa in enumerate (npdb.iter_chain()):
             cha=numa.get('chain')[0]
             rel=numa.get('resno')[-1]
-            print rel
-            print cha
-            os.mkdir(cha)
-            for x in range (2,35,1):
-                #ch=numa.get('chain')[0]
-                gum= "%s/%s" % (cha,x)
-                os.mkdir(gum)
-                for i,numa in enumerate (npdb.iter_resno(chain=cha)):
-                   
-                    
-                   
-                    res1=numa.get('resno')[0]
-                    res2=res1+x-1
-                    print res1
-                    test=npdb.copy(resno=[res1,res2],chain=cha)
-                    oripdb=npdb.sele(resno=[res1,res2],chain=cha, invert=True)
-                    if rel-x+1>=res1:
-                        di="%s/%s_%s" % (gum,res1,res2)
-                        os.mkdir(di)
-                        name= "%s/%s_%s.%s" % (di,res1,res2,'pdb')
-                        name2= "%s/%s_%s_%s.%s" % (di,'ganz',res1,res2,'pdb')
-                        print name2
-                        test.write(name)
-                        npdb.write(name2,sele=oripdb)
-                        seq=test.sequence()
-                        ires1="%s:%s" % (res1-1,cha)
-                        ires2="%s:%s" % (res2+1,cha)
-                        print ires1, ires2
-                        print 'sequence',seq
-                        #print 'richtige?',numa.sequence()
-                        try:
-                            LinkItDensity (name2,self.mrc_file,ires1,ires2,seq,self.resolution, self.cutoff,output_dir=di)
-                        except:
-                            print 'linikt error'
-                        #    neuen loop suchen
+            #cha='P'
+            if cha=='P':
+                print rel
+                print cha
+                os.mkdir(cha)
+                for x in range (18,35,1):
+                    #ch=numa.get('chain')[0]
+                    gum= "%s/%s" % (cha,x)
+                    os.mkdir(gum)
+                    for i,numa in enumerate (npdb.iter_resno(chain=cha)):
+                       
                         
+                       
+                        res1=numa.get('resno')[0]
+                        res2=res1+x-1
+                        if res1 % 7 == 0:
+                            print res1
+                            test=npdb.copy(resno=[res1,res2],chain=cha)
+                            oripdb=npdb.sele(resno=[res1,res2],chain=cha, invert=True)
+                            if rel-x+1>=res1:
+                                di="%s/%s_%s" % (gum,res1,res2)
+                                os.mkdir(di)
+                                name= "%s/%s_%s.%s" % (di,res1,res2,'pdb')
+                                name2= "%s/%s_%s_%s.%s" % (di,'ganz',res1,res2,'pdb')
+                                print name2
+                                test.write(name)
+                                npdb.write(name2,sele=oripdb)
+                                seq=test.sequence()
+                                ires1="%s:%s" % (res1-1,cha)
+                                ires2="%s:%s" % (res2+1,cha)
+                                print ires1, ires2
+                                print 'sequence',seq
+                                #print 'richtige?',numa.sequence()
+                                try:
+                                    LinkItDensity (name2,self.mrc_file,ires1,ires2,seq,self.resolution, self.cutoff,output_dir=di)
+                                except:
+                                    print 'linikt error'
+                                #    neuen loop suchen
+                else:
+                    continue
+class CutPDB2 (PyTool):
+    args = [
+    _( "pdb_file", type="file"),
+    _( "mrc_file", type="file"),
+    _( "resolution", type="float", range=[1, 10], step=0.1 ),
+    _( "cutoff", type="float" )
+        ]
+    def func( self, *args, **kwargs ):
+        
+        npdb=numpdb.NumPdb( self.pdb_file)
+
+        for z, numa in enumerate (npdb.iter_chain()):
+            cha=numa.get('chain')[0]
+            rel=numa.get('resno')[-1]
+            #cha='P'
+            if cha=='A':
+                print rel
+                print cha
+                os.mkdir(cha)
+                for x in range (5,35,1):
+                    #ch=numa.get('chain')[0]
+                    gum= "%s/%s" % (cha,x)
+                    os.mkdir(gum)
+                    for i,numa in enumerate (npdb.iter_resno(chain=cha)):
+                       
+                        
+                       
+                        res1=numa.get('resno')[0]
+                        res2=res1+x-1
+                        if res1 % 3 == 0:
+                            print res1
+                            test=npdb.copy(resno=[res1,res2],chain=cha)
+                            oripdb=npdb.sele(resno=[res1,res2],chain=cha, invert=True)
+                            if rel-x+1>=res1:
+                                di="%s/%s_%s" % (gum,res1,res2)
+                                os.mkdir(di)
+                                name= "%s/%s_%s.%s" % (di,res1,res2,'pdb')
+                                name2= "%s/%s_%s_%s.%s" % (di,'ganz',res1,res2,'pdb')
+                                print name2
+                                test.write(name)
+                                npdb.write(name2,sele=oripdb)
+                                seq=test.sequence()
+                                ires1="%s:%s" % (res1-1,cha)
+                                ires2="%s:%s" % (res2+1,cha)
+                                print ires1, ires2
+                                print 'sequence',seq
+                                #print 'richtige?',numa.sequence()
+                                try:
+                                    LinkItDensity (name2,self.mrc_file,ires1,ires2,seq,self.resolution, self.cutoff,output_dir=di)
+                                except:
+                                    print 'linikt error'
+                                #    neuen loop suchen
+                else:
+                    continue
 
 class AnalyseLiniktRun( PyTool , ProviMixin):
     args = [
