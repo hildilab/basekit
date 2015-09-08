@@ -108,7 +108,14 @@ class LinkIt( CmdTool, ProviMixin ):
             for i, line in enumerate( fp ):
                 if line.startswith("MODEL"):
                     atom_i = 1
-                    fp_out.write( line )
+                    if int(line.split () [1])==self.max_loops+1:
+                            #fp_out.write( "END" )
+                            break
+                    else:
+                        fp_out.write( line )
+                    
+                        
+                        
                 if line.startswith("ENDMDL"):
                     fp_out.write( line )
                 if line.startswith("ATOM"):

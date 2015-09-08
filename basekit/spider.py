@@ -1020,11 +1020,11 @@ class LoopCrosscorrel( PyTool ):
 
                 for line in lf:
                     
-                    if line.startswith("MODEL"):
-                        
-                        if int(line.split () [1])==self.max_loops+1:
-                            fp_out.write( "END" )
-                            break
+                    #if line.startswith("MODEL"):
+                    #    
+                    #    if int(line.split () [1])==self.max_loops+1:
+                    #        fp_out.write( "END" )
+                    #        break
 
                     if line.startswith("ATOM"):
                         x = "%4.3f" % (float(line[30:37]) + shxb)
