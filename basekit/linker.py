@@ -37,7 +37,7 @@ class LinkIt( CmdTool, ProviMixin ):
         _( "res1", type="sele",help="resno:chain, i.e. 10:A" ),
         _( "res2", type="sele" ),
         _( "seq", type="str" ),
-        _( "max_loops", type="int", range=[0, 500], default=100 )
+        _( "max_loops", type="int", range=[0, 500], default=100 , step=100)
     ]
     out = [
         _( "bin_file", file="{pdb_file.stem}_linker.bin" ),
@@ -254,7 +254,7 @@ class MultiLinkIt( PyTool, ProviMixin ):
         )
 
 
-class LinkItDensity( PyTool, ProviMixin ):
+class LinkItDensity( PyTool ):
     """Please choose a cutoff  and denote the resolution of your map. Then define the stem-residues (e.g.: 10:A, 16:A) and provide the missing sequence in 1-letter code (ACDEF). """
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
@@ -262,16 +262,15 @@ class LinkItDensity( PyTool, ProviMixin ):
         _( "res1", type="sele" ),
         _( "res2", type="sele" ),
         _( "seq", type="str" ),
-        _( "resolution", type="float", fixed=True ),
-        _( "cutoff", type="float" ),
-        _( "max_loops", type="int", range=[0, 500], default=100 )
+        _( "resolution", type="float", fixed=True , range=[0.5,20], default=5, precision =1),
+       # _( "cutoff", type="float" ),
+        _( "max_loops", type="int", range=[0, 500], default=100 , step =100)
     ]
     out = [
         _( "linker_correl_file", file="linker_correl.json" ),
         _( "edited_pdb_file", file="edited.pdb" )
     ]
     tmpl_dir = TMPL_DIR
-    provi_tmpl = "link_it_density.provi"
     #start=timeit.timeit()
     def _init( self, *args, **kwargs ):
         if self.res1['resno'] > self.res2['resno']:
@@ -325,22 +324,6 @@ class LinkItDensity( PyTool, ProviMixin ):
         print len(self.seq)
     def _post_exec( self ):
         self._make_correl_json()
-        self._make_provi_file(
-            pdb_file=self.relpath( self.pdb_file ),
-            # pdb_file=self.relpath( self.loop_correl.spider_shift.edited_pdb_file ),
-            mrc_file=self.relpath( self.mrc_file ),
-            # mrc_file=self.relpath( self.loop_correl.spider_shift.map_shift ),
-            cutoff=self.cutoff,
-            # box_mrc_file=self.relpath(
-            #     self.loop_correl.spider_reconvert.mrc_file
-            # ),
-            # box_ori_mrc_file=self.relpath(
-            #     self.loop_correl.spider_reconvert.mrc_ori_file
-            # ),
-            pdb_linker_file3=self.relpath(
-                self.loop_correl.ori_pdb_linker_file3 ),
-            linker_correl_file=self.relpath( self.linker_correl_file )
-        )
         #self._make_fixed_linker()
 
     def _make_correl_json( self, compact=False ):
@@ -369,7 +352,7 @@ class LinkItDensity( PyTool, ProviMixin ):
 class LnkItVali(PyTool, ProviMixin):
     args = [
         _( "dataset_dir", type="dir" ),
-        _( "cutoff", type="float", default=5 ),
+       # _( "cutoff", type="float", default=5 ),
         _( "max_loops", type="int", range=[0, 200], default=100 )
     ]
     out = [
@@ -430,7 +413,7 @@ class CutPDB (PyTool):
     _( "pdb_file", type="file"),
     _( "mrc_file", type="file"),
     _( "resolution", type="float", range=[1, 10], step=0.1 ),
-    _( "cutoff", type="float" )
+   #_( "cutoff", type="float" )
         ]
     def func( self, *args, **kwargs ):
         
@@ -473,7 +456,7 @@ class CutPDB (PyTool):
                                 print 'sequence',seq
                                 #print 'richtige?',numa.sequence()
                                 try:
-                                    LinkItDensity (name2,self.mrc_file,ires1,ires2,seq,self.resolution, self.cutoff,output_dir=di)
+                                    LinkItDensity (name2,self.mrc_file,ires1,ires2,seq,self.resolution, output_dir=di)#self.cutoff,
                                 except:
                                     print 'linikt error'
                                 #    neuen loop suchen
@@ -484,7 +467,7 @@ class CutPDB2 (PyTool):
     _( "pdb_file", type="file"),
     _( "mrc_file", type="file"),
     _( "resolution", type="float", range=[1, 10], step=0.1 ),
-    _( "cutoff", type="float" )
+    #_( "cutoff", type="float" )
         ]
     def func( self, *args, **kwargs ):
         
@@ -527,7 +510,7 @@ class CutPDB2 (PyTool):
                                 print 'sequence',seq
                                 #print 'richtige?',numa.sequence()
                                 try:
-                                    LinkItDensity (name2,self.mrc_file,ires1,ires2,seq,self.resolution, self.cutoff,output_dir=di)
+                                    LinkItDensity (name2,self.mrc_file,ires1,ires2,seq,self.resolution, output_dir=di)#self.cutoff,
                                 except:
                                     print 'linikt error'
                                 #    neuen loop suchen
