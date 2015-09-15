@@ -156,12 +156,19 @@ class LinkIt( CmdTool, ProviMixin ):
 
     def _find_clashes( self ):
         npdb = NumPdb( self.pdb_file, { "backbone_only": True } )
-        protein_tree = get_tree(npdb['xyz'])
-        atom_resno_list = npdb.get('resno')
+
+        oripdb=npdb.sele(chain=self.res1['chain'],resno=[self.res1['resno']-2,self.res2['resno']+2] ,invert=True)
+        noloop= npdb.copy(sele=oripdb)
+        nowater=noloop.sele(resname=['HOH','WAT','SOL'],invert=True)
+        rest=noloop.copy(sele=nowater)
+        rest.write('hurz.pdb')
+        protein_tree = get_tree(rest['xyz'])
+        atom_resno_list = rest.get('resno')
 
         model_clash_count = {}
 
         for m, file_path in dir_walker( self.loop_dir, ".*\.pdb" ):
+            #oripdb=npdb.sele(resno=[res1,res2],chain=cha, invert=True)
             npdb2 = NumPdb( file_path, {"backbone_only": True} )
             loop_tree = get_tree( npdb2['xyz'] )
             k = loop_tree.query_ball_tree( protein_tree, 3 )
@@ -176,7 +183,7 @@ class LinkIt( CmdTool, ProviMixin ):
 
             for i in clashatoms:
                 e = atom_resno_list[i]
-                if e not in (self.res1['resno'], self.res2['resno']):
+                if e not in (self.res1['resno']-1, self.res2['resno']+1):
                     clashes.append(e)
 
             model_no = int(
