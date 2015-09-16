@@ -23,7 +23,7 @@ def tmp( *dir_name ):
 @unittest.skipUnless(
     utils.path.which( 'wine' ), 'wine cmd not found' )
 @unittest.skipUnless(
-    utils.path.which( 'LINKIT_DIR' ), 'LINDIT_DIR not set' )
+    os.environ.get("LINKIT_DIR", False), 'LINDIT_DIR not set' )
 class LinkItTestCase( unittest.TestCase ):
     def setUp( self ):
         shutil.rmtree( tmp( "ssfe_p2y12" ), True )
@@ -44,7 +44,7 @@ class LinkItTestCase( unittest.TestCase ):
 @unittest.skipUnless(
     utils.path.which( 'wine' ), 'wine cmd not found' )
 @unittest.skipUnless(
-    utils.path.which( 'LINKIT_DIR' ), 'LINDIT_DIR not set' )
+    os.environ.get("LINKIT_DIR", False), 'LINDIT_DIR not set' )
 class p2y12NeuTestCase( unittest.TestCase ):
     def setUp( self ):
         shutil.rmtree( tmp( "ssfe_p2y12_neu" ), True )
@@ -74,7 +74,7 @@ class p2y12NeuTestCase( unittest.TestCase ):
 @unittest.skipUnless(
     utils.path.which( 'wine' ), 'wine cmd not found' )
 @unittest.skipUnless(
-    utils.path.which( 'LINKIT_DIR' ), 'LINDIT_DIR not set' )
+    os.environ.get("LINKIT_DIR", False), 'LINDIT_DIR not set' )
 class p2y12AltTestCase( unittest.TestCase ):
     def setUp( self ):
         shutil.rmtree( tmp( "ssfe_p2y12_alt" ), True )
@@ -104,7 +104,7 @@ class p2y12AltTestCase( unittest.TestCase ):
 @unittest.skipUnless(
     utils.path.which( 'wine' ), 'wine cmd not found' )
 @unittest.skipUnless(
-    utils.path.which( 'LINKIT_DIR' ), 'LINDIT_DIR not set' )
+    os.environ.get("LINKIT_DIR", False), 'LINDIT_DIR not set' )
 class tshrAltTestCase( unittest.TestCase ):
     def setUp( self ):
         shutil.rmtree( tmp( "ssfe_tshr_alt" ), True )
@@ -134,7 +134,7 @@ class tshrAltTestCase( unittest.TestCase ):
 @unittest.skipUnless(
     utils.path.which( 'wine' ), 'wine cmd not found' )
 @unittest.skipUnless(
-    utils.path.which( 'LINKIT_DIR' ), 'LINDIT_DIR not set' )
+    os.environ.get("LINKIT_DIR", False), 'LINDIT_DIR not set' )
 class tshrNeuTestCase( unittest.TestCase ):
     def setUp( self ):
         shutil.rmtree( tmp( "ssfe_tshr_neu" ), True )
@@ -164,7 +164,7 @@ class tshrNeuTestCase( unittest.TestCase ):
 @unittest.skipUnless(
     utils.path.which( 'wine' ), 'wine cmd not found' )
 @unittest.skipUnless(
-    utils.path.which( 'LINKIT_DIR' ), 'LINDIT_DIR not set' )
+    os.environ.get("LINKIT_DIR", False), 'LINDIT_DIR not set' )
 class LinkitDensTestCase( unittest.TestCase ):
     def setUp( self ):
         shutil.rmtree( tmp( "ribosomexample" ), True )

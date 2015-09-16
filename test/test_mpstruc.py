@@ -15,7 +15,7 @@ TMP_DIR = os.path.join( DIR, "tmp" )
 # python -m unittest discover
 
 @unittest.skipUnless(
-    utils.path.which( 'MPSTRUC_ALPHAHELICAL_PATH' ), 'MPSTRUC_ALPHAHELICAL_PATH not set' )
+    os.environ.get("MPSTRUC_ALPHAHELICAL_PATH", False), 'MPSTRUC_ALPHAHELICAL_PATH not set' )
 class MpstrucDbTestCase( unittest.TestCase ):
     def setUp( self ):
         self.mpstruc = MpstrucDb()
