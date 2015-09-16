@@ -113,9 +113,9 @@ class LinkIt( CmdTool, ProviMixin ):
                             break
                     else:
                         fp_out.write( line )
-                    
-                        
-                        
+
+
+
                 if line.startswith("ENDMDL"):
                     fp_out.write( line )
                 if line.startswith("ATOM"):
@@ -141,10 +141,10 @@ class LinkIt( CmdTool, ProviMixin ):
                         line = line = line[0:21] + chain + resnewp + line[26:]
                     atom_i += 1
                     fp_out.write( line )
-                
+
                     continue
                 if not atoms_only:
-                    if not line.startswith ("MODEL") and not line.startswith ("ENDMDL"): 
+                    if not line.startswith ("MODEL") and not line.startswith ("ENDMDL"):
                         fp_out.write( line )
             fp_out.write ("END")
 
@@ -262,7 +262,7 @@ class MultiLinkIt( PyTool, ProviMixin ):
 
 
 class LinkItDensity( PyTool ):
-    """Please choose a cutoff  and denote the resolution of your map. Then define the stem-residues (e.g.: 10:A, 16:A) and provide the missing sequence in 1-letter code (ACDEF). """
+    """Please denote the resolution of your map. Then define the stem-residues (e.g.: 10:A, 16:A) and provide the missing sequence in 1-letter code (ACDEF). """
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
         _( "mrc_file", type="file", ext="mrc" ),
@@ -270,7 +270,6 @@ class LinkItDensity( PyTool ):
         _( "res2", type="sele" ),
         _( "seq", type="str" ),
         _( "resolution", type="float", fixed=True , range=[0.5,20], default=5, precision =1),
-       # _( "cutoff", type="float" ),
         _( "max_loops", type="int", range=[0, 500], default=100 , step =100)
     ]
     out = [
@@ -352,14 +351,13 @@ class LinkItDensity( PyTool ):
                 json.dump( linker_correl_dict, fp, separators=(',', ':') )
             else:
                 json.dump( linker_correl_dict, fp, indent=4 )
-    
+
     #end = timeit.timeit()
     #print "zEdIT", end - start
-    
+
 class LnkItVali(PyTool, ProviMixin):
     args = [
         _( "dataset_dir", type="dir" ),
-       # _( "cutoff", type="float", default=5 ),
         _( "max_loops", type="int", range=[0, 200], default=100 )
     ]
     out = [
@@ -405,25 +403,24 @@ class LnkItVali(PyTool, ProviMixin):
                     if (len(seq)>2) and(len(seq)<20):
                         try:
                             LinkItDensity (
-                                self.dataset_dir+"/"+fn+"/pieces/"+files[:-5]+"/noloop.pdb", emmap,stem1 ,stem2, seq ,resu,  output_dir=self.dataset_dir+"/"+fn+"/pieces/"+files[:-5]                   
+                                self.dataset_dir+"/"+fn+"/pieces/"+files[:-5]+"/noloop.pdb", emmap,stem1 ,stem2, seq ,resu,  output_dir=self.dataset_dir+"/"+fn+"/pieces/"+files[:-5]
                             )
                         except:
                             print "linikt error"
                             continue
                     else:
-                        print "length"                        
+                        print "length"
                         continue
-#   Analyse 
+#   Analyse
 #found the original fragment?
 class CutPDB (PyTool):
     args = [
     _( "pdb_file", type="file"),
     _( "mrc_file", type="file"),
     _( "resolution", type="float", range=[1, 10], step=0.1 ),
-   #_( "cutoff", type="float" )
         ]
     def func( self, *args, **kwargs ):
-        
+
         npdb=numpdb.NumPdb( self.pdb_file)
 
         for z, numa in enumerate (npdb.iter_chain()):
@@ -439,9 +436,9 @@ class CutPDB (PyTool):
                     gum= "%s/%s" % (cha,x)
                     os.mkdir(gum)
                     for i,numa in enumerate (npdb.iter_resno(chain=cha)):
-                       
-                        
-                       
+
+
+
                         res1=numa.get('resno')[0]
                         res2=res1+x-1
                         if res1 % 7 == 0:
@@ -463,7 +460,7 @@ class CutPDB (PyTool):
                                 print 'sequence',seq
                                 #print 'richtige?',numa.sequence()
                                 try:
-                                    LinkItDensity (name2,self.mrc_file,ires1,ires2,seq,self.resolution, output_dir=di)#self.cutoff,
+                                    LinkItDensity (name2,self.mrc_file,ires1,ires2,seq,self.resolution, output_dir=di)
                                 except:
                                     print 'linikt error'
                                 #    neuen loop suchen
@@ -473,11 +470,10 @@ class CutPDB2 (PyTool):
     args = [
     _( "pdb_file", type="file"),
     _( "mrc_file", type="file"),
-    _( "resolution", type="float", range=[1, 10], step=0.1 ),
-    #_( "cutoff", type="float" )
+    _( "resolution", type="float", range=[1, 10], step=0.1 )
         ]
     def func( self, *args, **kwargs ):
-        
+
         npdb=numpdb.NumPdb( self.pdb_file)
 
         for z, numa in enumerate (npdb.iter_chain()):
@@ -493,9 +489,9 @@ class CutPDB2 (PyTool):
                     gum= "%s/%s" % (cha,x)
                     os.mkdir(gum)
                     for i,numa in enumerate (npdb.iter_resno(chain=cha)):
-                       
-                        
-                       
+
+
+
                         res1=numa.get('resno')[0]
                         res2=res1+x-1
                         if res1 % 3 == 0:
@@ -517,7 +513,7 @@ class CutPDB2 (PyTool):
                                 print 'sequence',seq
                                 #print 'richtige?',numa.sequence()
                                 try:
-                                    LinkItDensity (name2,self.mrc_file,ires1,ires2,seq,self.resolution, output_dir=di)#self.cutoff,
+                                    LinkItDensity (name2,self.mrc_file,ires1,ires2,seq,self.resolution, output_dir=di)
                                 except:
                                     print 'linikt error'
                                 #    neuen loop suchen
@@ -535,7 +531,7 @@ class AnalyseLiniktRun( PyTool , ProviMixin):
         for fn in os.listdir(self.dataset_dir):
             #print fn
             for pn in os.listdir(self.dataset_dir+"/"+fn+"/pieces"):
-                
+
                 if os.path.isdir(os.path.join(self.dataset_dir,fn,'pieces',pn)):
                     try:
                         #print pn
@@ -559,5 +555,5 @@ class AnalyseLiniktRun( PyTool , ProviMixin):
                 else:
                     continue
                     #print "%s:%s" % (pn, 'is no directory')
-                    
+
 #/home/jochen/work/fragfit/validation/dataset/EMD-5249/pieces/3IZM_B_705-708/loop_correl/crosscorrelation

@@ -24,7 +24,7 @@ def tmp( *dir_name ):
     utils.path.which( 'wine' ), 'wine cmd not found' )
 @unittest.skipUnless(
     os.environ.get("LINKIT_DIR", False), 'LINDIT_DIR not set' )
-class LinkItTestCase( unittest.TestCase ):
+class p2y12TestCase( unittest.TestCase ):
     def setUp( self ):
         shutil.rmtree( tmp( "ssfe_p2y12" ), True )
         self.link_it = LinkIt(
@@ -171,12 +171,35 @@ class LinkitDensTestCase( unittest.TestCase ):
         self.linkitdens = LinkItDensity(
             data( "ribosomexample.pdb"),
             data(  "ribocut4a.mrc"),
-            "154:C", "164:C", "EDKVEGYKK", 4.2, 9200,
+            "154:C", "164:C", "EDKVEGYKK", 4.2,
+            max_loops=100,
             output_dir=tmp( "ribosomexample" ),
             run=False,
-            verbose=False
+            verbose=True
         )
 
     def test_check( self ):
         self.linkitdens()
         self.assertEquals( self.linkitdens.check( full=True ), "Ok" )
+
+
+@unittest.skipUnless(
+    utils.path.which( 'wine' ), 'wine cmd not found' )
+@unittest.skipUnless(
+    os.environ.get("LINKIT_DIR", False), 'LINDIT_DIR not set' )
+class LinkItTestCase( unittest.TestCase ):
+    def setUp( self ):
+        shutil.rmtree( tmp( "3dqb_ICL3" ), True )
+        self.link_it = LinkIt(
+            data( "3DQB.pdb" ),
+            "231:A", "248:A", "EAAAQQQESATTQKAE",
+            max_loops=100,
+            output_dir=tmp( "3dqb_ICL3" ),
+            run=False,
+            verbose=True
+        )
+
+    @unittest.skipIf( '-quick' in sys.argv, 'Long running' )
+    def test_check( self ):
+        self.link_it()
+        self.assertEquals( self.link_it.check( full=True ), "Ok" )
