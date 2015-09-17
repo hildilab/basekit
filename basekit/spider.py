@@ -91,7 +91,7 @@ class SpiderShift( Spider ):
             shx = ((xorg  / pixelsize)-(boxsizex/2))*pixelsize
             shy = ((yorg/ pixelsize)-(boxsizey/2))*pixelsize
             shz = ((zorg / pixelsize)-(boxsizez/2))*pixelsize
-        self._make_script_file(
+        self._make_script_file(    
             mrc_file=self.relpath( self.mrc_file ),
             order=order,
             pixelsize=pixelsize,
@@ -106,11 +106,11 @@ class SpiderShift( Spider ):
             shz=shz
         )
 
-
+        
         print shx
         print shy
         print shz
-        PdbEdit(
+        PdbEdit( 
             self.pdb_file, shift= [shx, shy, shz]
         )
 
@@ -131,8 +131,8 @@ class SpiderConvert( Spider ):
     def _pre_exec( self ):
         #
         order=getMrc(self.mrc_file,'mapc' )
-        print "order", order
-        self._make_script_file(
+        print "order", order          
+        self._make_script_file( 
             mrc_file=self.relpath( self.mrc_file ),order=order
         )
 
@@ -163,12 +163,12 @@ class SpiderPdbBox( PyTool ):
             ol2 = float (rs [4])
             ol3 = float (rs [5])
             ps = float (rs [7])
-
+            
             bbsx=getMrc(self.mrc_file, 'nx')#mrc_dic["nx"]
             bbsy=getMrc(self.mrc_file, 'ny')#mrc_dic["nx"]
             bbsz=getMrc(self.mrc_file, 'nz')
             obs = bs*ps
-            x =  (ol1 - (bbsx/2)) * ps - 1
+            x =  (ol1 - (bbsx/2)) * ps - 1 
             y =  (ol2 - (bbsy/2)) * ps - 1
             z =  (ol3 - (bbsz/2)) * ps - 1
             print [x,y,z, bs,bbsx]
@@ -200,8 +200,8 @@ class SpiderDeleteFilledDensities( Spider ):
         pixelsize=(size/boxsizex)
         print self.res1
         LoopDelete(self.pdb_file,self.res1['chain'],self.res1['resno']+1,self.res2['resno']-1)
-        self._make_script_file(
-            map_name=self.relpath( self.map_file, no_ext=True ),
+        self._make_script_file( 
+            map_name=self.relpath( self.map_file, no_ext=True ), 
             pdb_file=self.relpath( 'noloop.pdb' ),
             result_file=self.relpath( self.result_file, no_ext=True ),
             pixelsize=pixelsize,
@@ -237,20 +237,20 @@ class SpiderBox( Spider ):
         boxsize=getMrc(self.mrc_file,'nx' )
         size=getMrc(self.mrc_file,'xlen' )
         pixelsize=(size/boxsize)
-        coords1, coords2 = self._get_coords(
-            self.pdb_file, self.res1, self.res2
+        coords1, coords2 = self._get_coords( 
+            self.pdb_file, self.res1, self.res2 
         )
         self._make_variables_file(
             coords1, coords2, self.length, pixelsize, self.resolution
         )
-        self._make_script_file(
-            map_name=self.relpath( self.map_file, no_ext=True ),
+        self._make_script_file( 
+            map_name=self.relpath( self.map_file, no_ext=True ), 
             var_name=self.relpath( self.var_file, no_ext=True )
         )
     def _get_coords( self, pdb_file, res1, res2 ):
         npdb = NumPdb( pdb_file )
         return npdb.center( **res1 ), npdb.center( **res2 )
-    def _make_variables_file( self, coords1, coords2, length,
+    def _make_variables_file( self, coords1, coords2, length, 
                               pixelsize, resolution ):
         variables = "1 9 %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %i %4.2f %4.2f" % (
             coords1[0], coords1[1], coords1[2],
@@ -273,7 +273,7 @@ class SpiderCropMap ( Spider ):
     ]
     script_tmpl = "crop2.spi"
     def _init( self, *args, **kwargs ):
-        super(SpiderCropMap, self)._init( "__tmpl__" )
+        super(SpiderCropMap, self)._init( "__tmpl__" )    
     def _pre_exec (self):
         npdb = NumPdb( self.pdb_file )
         psf=1/self.pixelsize
@@ -428,8 +428,8 @@ class SpiderSidechainCorrelation ( Spider ):
     #def _make_rota ( self, pdb_file,chain,residue,zfill) :
     #    print "hallo"
     #    MakeAllRotameres(self.pdb_file, self.chain,self.residue,self.residue,zfill=2)
-    #
-        #pass
+    #    
+        #pass  
 
 
 class SpiderDeleteBackbone (Spider):
@@ -437,17 +437,17 @@ class SpiderDeleteBackbone (Spider):
      _( "map_file", type="file", ext="cpv" ),
      _( "pdb_file", type="file", ext="pdb" ),
      _( "pixelsize", type="float", range=[0, 10] )
-
-
+        
+            
      ]
     out = [
         _( "edited_pdb_file", file="nobb.pdb" ),
         _( "delete_map_file", file="deletebb.cpv" )
-
+                
     ]
     script_tmpl = "delete_backbone.spi"
     def _init( self, *args, **kwargs ):
-        super(SpiderDeleteBackbone, self)._init( "__tmpl__" )
+        super(SpiderDeleteBackbone, self)._init( "__tmpl__" )    
     def _pre_exec( self ):
         backbone = ( ' N  ',' C  ', ' CA ',' O  ' )
         npdb=NumPdb( self.pdb_file )
@@ -465,15 +465,15 @@ class LoopSidechainCorrelation (PyTool):
      _( "map_file", type="file", ext="cpv" ),
      _( "pdb_file", type="file", ext="pdb" ),
      _( "pixelsize", type="float", range=[0, 10] ),
-     _( "resolution", type="float", range=[0, 10] ),
-
+     _( "resolution", type="float", range=[0, 10] ),    
+            
      ]
     out = [
-        _( "sidechain_dir", dir="sidechains" )
+        _( "sidechain_dir", dir="sidechains" )           
     ]
     tmpl_dir = TMPL_DIR
     def _init( self, *args, **kwargs ):
-
+        
         self.delete_backbone= SpiderDeleteBackbone(
             self.map_file,
             self.pdb_file,
@@ -482,7 +482,7 @@ class LoopSidechainCorrelation (PyTool):
         )
     def func( self ):
         self.delete_backbone()
-
+                
         npdb=NumPdb( self.pdb_file )
         for i, numa in enumerate( npdb.iter_resno() ):
             sele={'resno':i+1}
@@ -490,12 +490,12 @@ class LoopSidechainCorrelation (PyTool):
             resno1=numa.get('resno') [0]
             chain1=numa.get('chain') [0]
             dirg="%s_%s_%i" %(chain1,resname1,resno1)
-
+            
             print resname1, resno1, chain1
             if   numa.get('resname') [0] not in ('ALA', 'GLY'):
                 if resname1 in  ('SER','CYS','PRO','ASP','THR','ASN','VAL','GLU','GLN'):
                     SpiderSidechainCorrelation(self.map_file, self.pdb_file, self.pixelsize,self.resolution, resno1, chain1,output_dir=self.subdir(dirg))
-                else:
+                else:            
                     SpiderSidechainCorrelation('deletebb.cpv', self.pdb_file, self.pixelsize,self.resolution, resno1, chain1,output_dir=self.subdir(dirg))
                 aaname="%s.%s" %(dirg,'pdb')
                 print aaname
@@ -514,7 +514,7 @@ class LoopSidechainCorrelation (PyTool):
 
 class OriSidechainCorrel ( Spider ):
     args = [
-    _( "map_file", type="file", ext="cpv" ),
+    _( "map_file", type="file", ext="cpv" ),  
      _( "pdb_file", type="file", ext="pdb" ),
      _( "pixelsize", type="slider", range=[0, 10], fixed=True ),
      _( "resolution", type="slider", range=[0, 10], fixed=True )  ,
@@ -522,11 +522,11 @@ class OriSidechainCorrel ( Spider ):
     _( "chain", type="str")
      ]
     out = [
-        _( "sidechain_dir", dir="sidechains" )
+        _( "sidechain_dir", dir="sidechains" )           
     ]
     script_tmpl = "orisidechain.spi"
     def _init( self, *args, **kwargs ):
-        super(OriSidechainCorrel, self)._init( "__tmpl__" )
+        super(OriSidechainCorrel, self)._init( "__tmpl__" )    
     def _pre_exec( self ):
         npdb=NumPdb( self.pdb_file )
         sele={"resno": self.residue, "chain": self.chain}
@@ -566,13 +566,13 @@ class OptimizeRotamer ( PyTool ):
     out = [
         _( "verybestrotamers", file="verybestrotamers.pdb" )
     ]
-
+        
     def  _init( self , *args, **kwargs ):
         self.bestbuild=BuildBest(self.result_direc)
     def func (self):
         self.bestbuild()
         npdb=NumPdb( "bestrotamers.pdb" )
-
+        
         a=True
         z=2
         #while a==True:
@@ -581,7 +581,7 @@ class OptimizeRotamer ( PyTool ):
         print clashes
         for i in clashes:
             localresi=[]
-            #hole CA atom vom ersten clashpartner
+            #hole CA atom vom ersten clashpartner 
             r=npdb.sele(resno=i[0],atomname='CA')
             p=npdb.get('xyz',sele=r)
             #indices im 6 A umkreis um den clash
@@ -602,7 +602,7 @@ class OptimizeRotamer ( PyTool ):
                     ccsortpath=os.path.join(self.result_direc,rotadir)
                     ccsort="%s/%s" % (ccsortpath,'ccsort.cpv')
                     print ccsortpath
-
+                    
             break
 
 #class SpiderMinMap ( Spider ):
@@ -612,14 +612,14 @@ class OptimizeRotamer ( PyTool ):
 
 class LoopRotamerOptimize ( PyTool ):
     args = [
-    _("pdb_file", type="file"),
+    _("pdb_file", type="file"),  
     _("result_direc",type="str"),
     _("residue_1",type="int"),
     _("residue_2",type="int")
     ]
     out=[
     _( "verybestrotamers", file="verybestrotamers.pdb" )
-
+    
     ]
    # clashes fuer das ganze Protein bestimmen
     def func (self):
@@ -637,8 +637,8 @@ class LoopRotamerOptimize ( PyTool ):
             else:
                 continue
         for x in lclashes:
-            print x
-
+            print x 
+        
             as1=x[0]
             as2=x[1]
             resname100=npdb.get('resname',resno=as1)[0]
@@ -664,7 +664,7 @@ class LoopRotamerOptimize ( PyTool ):
                         rotadir="%s_%s_%i" % (chain101,resname101,as2)
                         ccsortpath=os.path.join(self.result_direc,rotadir)
                         ccsort="%s/%s" % (ccsortpath,'ccsort.cpv')
-            #
+            #        
             #        with open (ccsort,"r") as fil:
             #            file_lines=fil.readlines()
             #            loc_file = file_lines[z].split()
@@ -692,7 +692,7 @@ class BuildBest ( PyTool ):
         ]
     out=[
         _( "bestrotamers", file="bestrotamers.pdb" )
-
+        
     ]
     def func (self):
         b=open(self.bestrotamers, "w")
@@ -709,7 +709,7 @@ class BuildBest ( PyTool ):
                     rota="%s/%s/%s_%s.%s" % (path,'rotamere',fn[2:],nbr,'pdb')
                 with open (rota, "r") as pd:
                     pdb_lines=pd.readlines()
-
+                    
                     for lines in pdb_lines:
                         if lines.startswith ("END"):
                             continue
@@ -719,14 +719,14 @@ class BuildBest ( PyTool ):
                 norota="%s/%s.%s" % (path,fn,'pdb')
                 with open (norota, "r") as pd:
                     pdb_lines=pd.readlines()
-
+                    
                     for lines in pdb_lines:
                         if lines.startswith ("END"):
                             continue
                         else:
-                            gesamt.append(lines)
-        gesamt.sort(key=lambda x: x[7:11])
-
+                            gesamt.append(lines)   
+        gesamt.sort(key=lambda x: x[7:11])              
+        
         b.writelines(gesamt)
 
 
@@ -762,26 +762,26 @@ class SideChainStatistics ( PyTool ):
                     a+=1
                     ccsort=  os.path.join(self.dataset_dir,pn,"ccsort.cpv")
                     ori=os.path.join(self.dataset_dir,pn,"oricrosscorrelation.cpv")
-
+                    
                     #print ori
-
+                    
                     with open (ccsort, 'r') as hu:
                         lines=hu.readlines()
                         hurz=','.join(lines[1].split())
                         #hurz2=hurz+"\n"
                         ncor=lines[1].split()[-1]
-
+                        
                     with open (ori,'r') as bu:
                         line2=bu.readlines()
                         #hurz.append(line2)
-
+    
                         corr=line2[1].split()[-1]
                         #print ncor
                         if float(ncor)>float(corr):
                             z=1
-
+                        
                     oripdb=os.path.join(self.dataset_dir,pn,pn+".pdb")
-
+                    
                     best=(lines[1].split()[0]).zfill(2)
                     #print best
                     bestrota="%s_%s.%s" % (pn[2:],best,'pdb')
@@ -816,7 +816,7 @@ class SideChainStatistics ( PyTool ):
                     rootm=rmsd(npdb['xyz'],npdb2['xyz'])
                     bestrmsd=[]
                     for file in os.listdir(rotadir):
-
+                        
                         if file.endswith(".pdb"):
                             #print file, "hallo"
                             npdb3 = numpdb.NumPdb(os.path.join(rotadir,file), {
@@ -840,11 +840,11 @@ class SideChainStatistics ( PyTool ):
                     if rootm <1.2 and not test100[0]==rootm:
                         m+=1
                         y=2
-
+                        
                     if rootm >=1.2 and not test100[0]==rootm:
                         y=0
                         b+=1
-
+                        
                     hurz2="%s,%s,%s,%s,%s,%s%s" %  (pn,hurz,corr,rootm,z,y,"\n")
                     rf.write(hurz2)
             with open (self.res_file, 'w') as gh:
@@ -855,11 +855,11 @@ class SideChainStatistics ( PyTool ):
 
 class SpiderCropMrc ( PyTool ):
     args = [
-
+   
     _( "map_file", type="file", ext="mrc" ),
     _( "pdb_file", type="file", ext="pdb" ),
     _( "pixelsize", type="float", range=[1, 10], fixed=True )
-
+    
     ]
     out = [
         _( "cropped_mrc", file="cropped.mrc" )
@@ -886,7 +886,7 @@ class SpiderCropMrc ( PyTool ):
                                     **copy_dict(
                                     kwargs, run=False, output_dir=self.subdir("mrc")
                                 )
-
+                                    
         )
     def func( self ):
         self.spider_convert()
@@ -976,11 +976,6 @@ class LoopCrosscorrel( PyTool ):
             self.spider_reconvert.output_files,
             self.spider_crosscorrelation.output_files
         )))
-        self.sub_tool_list.extend( [
-            self.spider_shift, self.spider_convert, self.spider_box,
-            self.pdb_box, self.spider_delete_filled_densities,
-            self.spider_reconvert, self.spider_crosscorrelation
-        ] )
 
     def func( self ):
         self._crop_pdb()
@@ -994,9 +989,9 @@ class LoopCrosscorrel( PyTool ):
 
     def _post_exec( self ):
         self.backshift_linker()
-        # os.remove(self.spider_shift.map_shift)
-        # os.remove(self.spider_convert.map_file)
-
+       # os.remove(self.spider_shift.map_shift)
+       # os.remove(self.spider_convert.map_file)
+        
     def _crop_pdb( self ):
         npdb = NumPdb( self.pdb_file )
         npdb.write(
@@ -1024,9 +1019,9 @@ class LoopCrosscorrel( PyTool ):
             with open( self.ori_pdb_linker_file3, 'w' ) as fp_out:
 
                 for line in lf:
-
+                    
                     #if line.startswith("MODEL"):
-                    #
+                    #    
                     #    if int(line.split () [1])==self.max_loops+1:
                     #        fp_out.write( "END" )
                     #        break
@@ -1045,9 +1040,9 @@ class LoopCrosscorrel( PyTool ):
                         line = line = line[0:46] + c + line[54:]
 
                         fp_out.write( line )
-
+                    
                     else:
-
+                        
                         fp_out.write(line)
 
         for i in os.listdir(loop_dir):
