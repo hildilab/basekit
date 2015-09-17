@@ -264,13 +264,21 @@ class MultiLinkIt( PyTool, ProviMixin ):
 class LinkItDensity( PyTool ):
     """Please denote the resolution of your map. Then define the stem-residues (e.g.: 10:A, 16:A) and provide the missing sequence in 1-letter code (ACDEF). """
     args = [
-        _( "pdb_file", type="file", ext="pdb" ),
-        _( "mrc_file", type="file", ext="mrc" ),
-        _( "res1", type="sele" ),
-        _( "res2", type="sele" ),
-        _( "seq", type="str" ),
-        _( "resolution", type="float", fixed=True , range=[0.5,20], default=5, precision =1),
-        _( "max_loops", type="int", range=[0, 500], default=100 , step =100)
+        _( "pdb_file", type="file", ext="pdb", label="PDB File",
+            help="The input structure." ),
+        _( "mrc_file", type="file", ext="mrc", label="MRC File",
+            help="The input density." ),
+        _( "res1", type="sele", label="Stem residue 1",
+            help="N-terminal stem residue and chain, '123:A'." ),
+        _( "res2", type="sele", label="Stem residue 2",
+            help="C-terminal stem residue." ),
+        _( "seq", type="str", label="Sequence",
+            help="One-letter code of the linker amino acids." ),
+        _( "resolution", type="float", fixed=True , range=[0.5,20], default=5,
+            precision=1, label="Map resolution",
+            help="Used for filtering the map." ),
+        _( "max_loops", type="int", range=[0, 500], default=100 , step=100,
+            advanced=True )
     ]
     out = [
         _( "linker_correl_file", file="linker_correl.json" ),
@@ -300,6 +308,9 @@ class LinkItDensity( PyTool ):
             self.link_it.output_files,
             self.loop_correl.output_files,
         ))
+        self.sub_tool_list.extend( [
+            self.link_it, self.loop_correl
+        ] )
 
     def func( self ):
         boxsizex = getMrc(self.mrc_file, 'nx' )
