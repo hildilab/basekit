@@ -33,11 +33,16 @@ def LINKIT_CMD():
 class LinkIt( CmdTool, ProviMixin ):
     """Please upload the PDB file, define the N- and C-terminal stem-residues (e.g.: 10:A, 16:A) and provide the missing sequence in 1-letter code (ACDEF)."""
     args = [
-        _( "pdb_file", type="file", ext="pdb" ),
-        _( "res1", type="sele",help="resno:chain, i.e. 10:A" ),
-        _( "res2", type="sele" ),
-        _( "seq", type="str" ),
-        _( "max_loops", type="int", range=[0, 500], default=100 , step=100)
+        _( "pdb_file", type="file", ext="pdb", label="PDB File",
+            help="The input structure." ),
+        _( "res1", type="sele", label="Stem residue 1",
+            help="N-terminal stem residue and chain, '123:A'." ),
+        _( "res2", type="sele", label="Stem residue 2",
+            help="C-terminal stem residue." ),
+        _( "seq", type="str", label="Sequence",
+            help="One-letter code of the linker amino acids." ),
+        _( "max_loops", type="int", range=[0, 500], default=100 , step=100,
+            advanced=True )
     ]
     out = [
         _( "bin_file", file="{pdb_file.stem}_linker.bin" ),
