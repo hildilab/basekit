@@ -208,7 +208,7 @@ class LinkIt( CmdTool, ProviMixin ):
      
         linker_dict = {}
         model_clash_count = self._find_clashes()
-        parameter={'pdb_file':os.path.basename(self.pdb_file),'res1':self.res1,'res2':self.res2,'sequence':self.seq}
+        parameter={'res1':self.res1,'res2':self.res2,'sequence':self.seq}
         with open( self.txt_file, "r" ) as fp:
             fp.next()
             fp.next()
@@ -377,7 +377,7 @@ class LinkItDensity( PyTool ):
         li_dict_li={}   
         li_dict_li=li_dict["linker"]
         linker_correl_dict = {}
-        parameter={'pdb_file':os.path.basename(self.pdb_file),'mrc_file':os.path.basename(self.mrc_file),'res1':self.res1,'res2':self.res2,'sequence':self.seq,'resolution':self.resolution}
+        parameter={'res1':self.res1,'res2':self.res2,'sequence':self.seq,'resolution':self.resolution}
         for k, v in cc_dict.iteritems():
             linker_correl_dict[k] = [ v ] + li_dict_li[k]
         top_level={
