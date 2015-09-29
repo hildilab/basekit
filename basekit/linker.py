@@ -60,7 +60,7 @@ class LinkIt( CmdTool, ProviMixin ):
     def _init( self, *args, **kwargs ):
         if self.res1['resno'] > self.res2['resno']:
             self.res1, self.res2 = self.res2, self.res1
-        self.cmd = [ "wine", LINKIT_CMD(), self.kos_file, self.bin_file, "t" ]
+        self.cmd = [ "wine", LINKIT_CMD(), self.kos_file, self.bin_file, "tp" ]
 
     def _pre_exec( self ):
         self._make_kos_file()
@@ -197,11 +197,18 @@ class LinkIt( CmdTool, ProviMixin ):
             model_clash_count[ model_no ] = len( clashes )
 
         return model_clash_count
-
+    def seq_id ( self,seq1,seq2 ):
+        si=0
+        for sf in range(0, len(seq1),1):
+            if seq1[sf]==seq2[sf+1]:
+                si+=1
+        sqi=(si/len(seq1))*100
+        return sqi
     def _make_linker_json( self, compact=False ):
+     
         linker_dict = {}
         model_clash_count = self._find_clashes()
-
+        parameter={'pdb_file':os.path.basename(self.pdb_file),'res1':self.res1,'res2':self.res2,'sequence':self.seq}
         with open( self.txt_file, "r" ) as fp:
             fp.next()
             fp.next()
@@ -210,15 +217,23 @@ class LinkIt( CmdTool, ProviMixin ):
                     linker_dict[ i ] = [
                         float(d[0]), float(d[1]),
                         str(d[2].strip()),
-                        str(d[3].strip()),
-                        model_clash_count[ i ]
+                        str(d[3].strip().split() [0]),
+                        model_clash_count[ i ],
+                        str(d[3].strip().split() [1]),
+                        str(d[3].strip().split() [2]),
+                        self.seq_id(self.seq, str(d[2].strip()))                   
+                        
                     ]
-
+        top_level={
+            "params": parameter,
+            "linker": linker_dict
+        }
         with open( self.json_file, "w" ) as fp:
             if compact:
-                json.dump( linker_dict, fp, separators=(',', ':') )
+                
+                json.dump(top_level, fp, separators=(',', ':') )
             else:
-                json.dump( linker_dict, fp, indent=4 )
+                json.dump( top_level, fp, indent=4 )
 
 
 class MultiLinkIt( PyTool, ProviMixin ):
@@ -359,14 +374,21 @@ class LinkItDensity( PyTool ):
             cc_dict = json.load(
                 fp, object_pairs_hook=collections.OrderedDict
             )
+        li_dict_li={}   
+        li_dict_li=li_dict["linker"]
         linker_correl_dict = {}
+        parameter={'pdb_file':os.path.basename(self.pdb_file),'mrc_file':os.path.basename(self.mrc_file),'res1':self.res1,'res2':self.res2,'sequence':self.seq,'resolution':self.resolution}
         for k, v in cc_dict.iteritems():
-            linker_correl_dict[k] = [ v ] + li_dict[k]
+            linker_correl_dict[k] = [ v ] + li_dict_li[k]
+        top_level={
+            "params": parameter,
+            "linker": linker_correl_dict
+        }
         with open( self.linker_correl_file, "w" ) as fp:
             if compact:
-                json.dump( linker_correl_dict, fp, separators=(',', ':') )
+                json.dump( top_level, fp, separators=(',', ':') )
             else:
-                json.dump( linker_correl_dict, fp, indent=4 )
+                json.dump( top_level, fp, indent=4 )
 
     #end = timeit.timeit()
     #print "zEdIT", end - start
