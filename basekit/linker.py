@@ -214,13 +214,13 @@ class LinkIt( CmdTool, ProviMixin ):
             fp.next()
             for i, d in enumerate( iter_stride( fp, 4 ), start=1 ):
                 if i<=self.max_loops:
-                    linker_dict[ i ] = [
+                        linker_dict[ i ] = [
                         float(d[0]), float(d[1]),
                         str(d[2].strip()),
                         str(d[3].strip().split() [0]),
                         model_clash_count[ i ],
-                        str(d[3].strip().split() [1]),
-                        str(d[3].strip().split() [2]),
+                        str(d[3].strip()[-5]),
+                        (str(d[3].strip())[-4:]).strip(),
                         self.seq_id(self.seq, str(d[2].strip()))                   
                         
                     ]
