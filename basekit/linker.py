@@ -33,11 +33,16 @@ def LINKIT_CMD():
 class LinkIt( CmdTool, ProviMixin ):
     """Please upload the PDB file, define the N- and C-terminal stem-residues (e.g.: 10:A, 16:A) and provide the missing sequence in 1-letter code (ACDEF)."""
     args = [
-        _( "pdb_file", type="file", ext="pdb" ),
-        _( "res1", type="sele",help="resno:chain, i.e. 10:A" ),
-        _( "res2", type="sele" ),
-        _( "seq", type="str" ),
-        _( "max_loops", type="int", range=[0, 500], default=100 , step=100)
+        _( "pdb_file", type="file", ext="pdb", label="PDB File",
+            help="The input structure." ),
+        _( "res1", type="sele", label="Stem residue 1",
+            help="N-terminal stem residue and chain, '123:A'." ),
+        _( "res2", type="sele", label="Stem residue 2",
+            help="C-terminal stem residue." ),
+        _( "seq", type="str", label="Sequence",
+            help="One-letter code of the linker amino acids." ),
+        _( "max_loops", type="int", range=[0, 500], default=100 , step=100,
+            advanced=True )
     ]
     out = [
         _( "bin_file", file="{pdb_file.stem}_linker.bin" ),
@@ -55,7 +60,7 @@ class LinkIt( CmdTool, ProviMixin ):
     def _init( self, *args, **kwargs ):
         if self.res1['resno'] > self.res2['resno']:
             self.res1, self.res2 = self.res2, self.res1
-        self.cmd = [ "wine", LINKIT_CMD(), self.kos_file, self.bin_file, "t" ]
+        self.cmd = [ "wine", LINKIT_CMD(), self.kos_file, self.bin_file, "tp" ]
 
     def _pre_exec( self ):
         self._make_kos_file()
@@ -192,28 +197,43 @@ class LinkIt( CmdTool, ProviMixin ):
             model_clash_count[ model_no ] = len( clashes )
 
         return model_clash_count
-
+    def seq_id ( self,seq1,seq2 ):
+        si=0
+        for sf in range(0, len(seq1),1):
+            if seq1[sf]==seq2[sf+1]:
+                si+=1
+        sqi=(si/len(seq1))*100
+        return sqi
     def _make_linker_json( self, compact=False ):
+     
         linker_dict = {}
         model_clash_count = self._find_clashes()
-
+        parameter={'res1':self.res1,'res2':self.res2,'sequence':self.seq}
         with open( self.txt_file, "r" ) as fp:
             fp.next()
             fp.next()
             for i, d in enumerate( iter_stride( fp, 4 ), start=1 ):
                 if i<=self.max_loops:
-                    linker_dict[ i ] = [
+                        linker_dict[ i ] = [
                         float(d[0]), float(d[1]),
                         str(d[2].strip()),
-                        str(d[3].strip()),
-                        model_clash_count[ i ]
+                        str(d[3].strip().split() [0]),
+                        model_clash_count[ i ],
+                        str(d[3].strip()[-5]),
+                        (str(d[3].strip())[-4:]).strip(),
+                        self.seq_id(self.seq, str(d[2].strip()))                   
+                        
                     ]
-
+        top_level={
+            "params": parameter,
+            "linker": linker_dict
+        }
         with open( self.json_file, "w" ) as fp:
             if compact:
-                json.dump( linker_dict, fp, separators=(',', ':') )
+                
+                json.dump(top_level, fp, separators=(',', ':') )
             else:
-                json.dump( linker_dict, fp, indent=4 )
+                json.dump( top_level, fp, indent=4 )
 
 
 class MultiLinkIt( PyTool, ProviMixin ):
@@ -354,14 +374,21 @@ class LinkItDensity( PyTool ):
             cc_dict = json.load(
                 fp, object_pairs_hook=collections.OrderedDict
             )
+        li_dict_li={}   
+        li_dict_li=li_dict["linker"]
         linker_correl_dict = {}
+        parameter={'res1':self.res1,'res2':self.res2,'sequence':self.seq,'resolution':self.resolution}
         for k, v in cc_dict.iteritems():
-            linker_correl_dict[k] = [ v ] + li_dict[k]
+            linker_correl_dict[k] = [ v ] + li_dict_li[k]
+        top_level={
+            "params": parameter,
+            "linker": linker_correl_dict
+        }
         with open( self.linker_correl_file, "w" ) as fp:
             if compact:
-                json.dump( linker_correl_dict, fp, separators=(',', ':') )
+                json.dump( top_level, fp, separators=(',', ':') )
             else:
-                json.dump( linker_correl_dict, fp, indent=4 )
+                json.dump( top_level, fp, indent=4 )
 
     #end = timeit.timeit()
     #print "zEdIT", end - start
