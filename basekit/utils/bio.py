@@ -31,7 +31,11 @@ AA1 = {
     'TYR': 'Y',
     'ASP': 'D',
     'GLU': 'E',
-    'THR': 'T'
+    'THR': 'T',
+
+    'ASH': 'N',
+    'GLH': 'E',
+    'YPL': 'C'
 }
 AA3 = dict((v,k) for k, v in AA1.iteritems())
 
