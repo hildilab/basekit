@@ -1829,8 +1829,8 @@ class SpiderAnalyse2(PyTool):
         for key in sorted(fullsheet):
           #  print key, fullsheet[key]
           continue
-        with open ('loopana_A.csv','w') as analyse, open ('values2.csv', 'w') as valu, open ('cases.txt', 'w') as cases, open ('bettercc.txt', 'w') as bettercc, open ('diff.csv','w') as diffile:
-            title="%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % ("looplength","fragfit","std rmsd with density",
+        with open ('loopana_B.csv','w') as analyse, open ('values2.csv', 'w') as valu, open ('cases.txt', 'w') as cases, open ('bettercc.txt', 'w') as bettercc, open ('diff.csv','w') as diffile:
+            title="%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % ("looplength","fragfit","std rmsd with density",
                                                                    "rmsd linkit","std rmsd without density",
                                                                    "rmsd fragfit no homologues","std fragfit no homologues",
                                                                    "rmsd linkit no homologs","std rmsd linkit no homologs",
@@ -1840,7 +1840,7 @@ class SpiderAnalyse2(PyTool):
                                                                    "linkit_other","mean rank","median fragfit","tms scrore","Fragfit 50","Fragfit 20",
                                                                    'ori cc mean','Diff to oricc','diff to oricc homo75','diff 75','ccbestfive','meanccbest','fragfitheli','fragfitother','fragfitbeta','sequenceidentity no homo','sequence identity full','fragfithel ori','fragfitbeta ori','fragfitother ori','anteil perfekt','anteilperfekt nh','linkitbetter','fragfitbetter','linkitfirst','fragfitfirst',
                                                                    'linkit>5','fragfitof>5','linkitbad','fragfitbad','conuter bad',
-                                                                   "helix_link_it","helix_fragfit",'anzahl helix',"sheet_linkit",'Sheet_fragfit','anzahl sheet','fullsheetlinkit','fullsheetfragfit','anzahl fullsheet','tmdo.5','tmdo_homo.5','\n')
+                                                                   "helix_link_it","helix_fragfit",'anzahl helix',"sheet_linkit",'Sheet_fragfit','anzahl sheet','fullsheetlinkit','fullsheetfragfit','anzahl fullsheet','tmdo.5','tmdo_homo.5','seqidff','seqIDFsNh','seqIDoptimal','cc75','\n')
             analyse.write(title)
             rmsdval={
             '5': 1.7857142857,
@@ -1957,6 +1957,7 @@ class SpiderAnalyse2(PyTool):
                     fragfitbeta=[]
                     sequenceidentity=[]
                     seqidentfull=[]
+                    seqidfffull=[]
                     fragfithelior=[]
                     fragfitbetaor=[]
                     fragitotheror=[]
@@ -1976,6 +1977,9 @@ class SpiderAnalyse2(PyTool):
                     fullsheetfragfit=[]
                     tmscounter=[]
                     tmscounterho=[]
+                    fsnohomoid=[]
+                    seqidoptimal=[]
+                    cc75=[]
                     badf=0
 
                     for g in chainfolders:
@@ -2110,7 +2114,7 @@ class SpiderAnalyse2(PyTool):
                                                             si+=1
                                                     sqi=(si/len(seq1))*100
                                                     #print seq1,"and",seq2[1:-1]
-                                                    #print sqi
+                                                    print sqi
                                                         
                                                     
                                                         
@@ -2173,8 +2177,11 @@ class SpiderAnalyse2(PyTool):
                                             rline="%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % (x,result['001_bb.pdb'][0],pdbkey,result[pdbkey][0],min(result, key=result.get),best[0],z-1,best[-1],opti,better,'\n')
                                             bestrmsds.append(result[pdbkey][0])
                                             seqidentfull.append(result[pdbkey][2])
+                                            seqidfffull.append(result['001_bb.pdb'][2])
                                             wodens.append(result['001_bb.pdb'][0])
                                             optimalrmsd.append(best[0])
+                                            seqidoptimal.append(result[nr_opt][2])
+                                            
                                             ###nur extragute
                                             if corrband2<float(corr) <corrband1 and result[pdbkey][2]<75:
                                                 extragut.append(result[pdbkey][0])
@@ -2218,6 +2225,7 @@ class SpiderAnalyse2(PyTool):
                                                 if loop in resultnhli:
                                                     bestlinkitnohomo=loop
                                                     wodensnhli.append(result[loop][0])
+                                                    fsnohomoid.append(result[loop][2])
                                                     #print loop
                                                     hfj=os.path.join(loops,loop)
                                                     hjd='%s%s' % (hfj[:-3],'dssp')
@@ -2275,6 +2283,7 @@ class SpiderAnalyse2(PyTool):
                                                     bestrmsdnhli.append(result[lonam][0])
                                                     bestfragnoh=result[lonam][0]
                                                     tmsnhli.append(result[lonam][3])
+                                                    cc75.append(result[lonam][4])
                                                     if result[lonam][3] >0.5:
                                                         tmscounterho.append(1)
                                                     else:
@@ -2534,6 +2543,14 @@ class SpiderAnalyse2(PyTool):
                     tmscounter.append(0)
                 if len (tmscounterho)==0:
                     tmscounterho.append(0)
+                if len (seqidfffull)==0:
+                    seqidfffull.append(0)
+                if len (fsnohomoid)==0:
+                    fsnohomoid.append(0)
+                if len(seqidoptimal)==0:
+                    seqidoptimal.append(0)
+                if len(cc75)==0:
+                    cc75.append(0)
                 with open (t_test, 'w') as tfile:
                     st,sp = scipy.stats.ttest_rel(wodensnh,bestrmsdsnh)
                     t_value="%s:%s%s" % ("t-value",st,'\n')
@@ -2553,7 +2570,7 @@ class SpiderAnalyse2(PyTool):
                # print 'summe ordiff75:', sum(ordiff75)
                # print 'length ordiff75:', len(ordiff75)
                # print 'geteilt:',sum(ordiff75)/len(ordiff75)
-                loopline= "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % (l,sum(bestrmsds)/len(bestrmsds),np.std(bestrmsds),
+                loopline= "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s%s" % (l,sum(bestrmsds)/len(bestrmsds),np.std(bestrmsds),
                                                          sum(wodens)/len(wodens),np.std(wodens),
                                                          sum(bestrmsdsnh)/len(bestrmsdsnh),np.std(bestrmsdsnh),
                                                          sum(wodensnh)/len(wodensnh),np.std(wodensnh),
@@ -2572,7 +2589,7 @@ class SpiderAnalyse2(PyTool):
                                                          sum(fragfitonlybetter)/len(fragfitonlybetter),sum(linkitfirst)/len(linkitfirst),sum(fragfitfirst)/len(fragfitfirst),
                                                          sum (linkitfirstbad)/len(linkitfirstbad),sum(fragfitfirstbad)/len(fragfitfirstbad),sum (linkitfirstbadf)/len(linkitfirstbadf),sum(fragfitfirstbadf)/len(fragfitfirstbadf),badf,
                                                          sum(helixlinkit)/len(helixlinkit),sum(helixfragfit)/len(helixfragfit),len(helixfragfit),sum(sheetlinkit)/len(sheetlinkit),sum(sheetfragfit)/len(sheetfragfit),len(sheetfragfit),
-                                                         sum(fullsheetlinkit)/len(fullsheetlinkit),sum(fullsheetfragfit)/len(fullsheetfragfit),len(fullsheetfragfit),sum(tmscounter)/len(tmscounter),sum(tmscounterho)/len(tmscounterho),'\n')
+                                                         sum(fullsheetlinkit)/len(fullsheetlinkit),sum(fullsheetfragfit)/len(fullsheetfragfit),len(fullsheetfragfit),sum(tmscounter)/len(tmscounter),sum(tmscounterho)/len(tmscounterho),sum(seqidfffull)/len(seqidfffull),sum(fsnohomoid)/len(fsnohomoid),sum(seqidoptimal)/len(seqidoptimal),sum(cc75)/len(cc75),'\n')
                 #print np.std(bestrmsdsnh) 
                 analyse.write(loopline)
                 diffile.write('\n')

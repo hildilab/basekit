@@ -25,10 +25,14 @@ DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "linker" )
 def LINKIT_DIR():
     return os.environ.get("LINKIT_DIR", "")
 
+def LINKIT_DIR2():
+    return os.environ.get("LINKIT_DIR2", "")
 
 def LINKIT_CMD():
     return os.path.join( LINKIT_DIR(), "Link_It_dos2n.exe" )
 
+def LINKIT_CMD_mem():
+    return os.path.join( LINKIT_DIR2(), "Link_It_dos2n.exe" )
 
 class LinkIt( CmdTool, ProviMixin ):
     """Please upload the PDB file, define the N- and C-terminal stem-residues (e.g.: 10:A, 16:A) and provide the missing sequence in 1-letter code (ACDEF)."""
@@ -41,6 +45,8 @@ class LinkIt( CmdTool, ProviMixin ):
             help="C-terminal stem residue." ),
         _( "seq", type="str", label="Sequence",
             help="One-letter code of the linker amino acids." ),
+        _( "memdb", type="bool", label="MembraneDB",
+            help="Show only results from membrane proteins.", default=False ),
         _( "max_loops", type="int", range=[0, 500], default=100 , step=100,
             advanced=True )
     ]
@@ -60,7 +66,10 @@ class LinkIt( CmdTool, ProviMixin ):
     def _init( self, *args, **kwargs ):
         if self.res1['resno'] > self.res2['resno']:
             self.res1, self.res2 = self.res2, self.res1
-        self.cmd = [ "wine", LINKIT_CMD(), self.kos_file, self.bin_file, "tp" ]
+        if self.memdb:
+            self.cmd = [ "wine", LINKIT_CMD_mem(), self.kos_file, self.bin_file, "tp" ]
+        else:
+            self.cmd = [ "wine", LINKIT_CMD(), self.kos_file, self.bin_file, "tp" ]
 
     def _pre_exec( self ):
         self._make_kos_file()
