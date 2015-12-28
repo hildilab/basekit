@@ -64,6 +64,8 @@ class LinkIt( CmdTool, ProviMixin ):
     provi_tmpl = "link_it.provi"
 
     def _init( self, *args, **kwargs ):
+        self.res1['chain'] = self.res1['chain'].upper()
+        self.res2['chain'] = self.res2['chain'].upper()
         if self.res1['resno'] > self.res2['resno']:
             self.res1, self.res2 = self.res2, self.res1
         if self.memdb:
