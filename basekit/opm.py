@@ -275,7 +275,29 @@ class Ppm( PpmMixin, PyTool, ProviMixin ):
     ]
     def func( self ):
         self.ppm( self.pdb_file )
-    
+        with open(self.mplane_file, 'r') as fp, open(self.output_dir + self.pdb_file.split('.')[0].split('/')[-1]+'_opm.ply', 'w') as fp2:
+            fp2.write(  "ply\n"+\
+                        "format ascii 1.0\n"+\
+                        "element vertex 6\n"+\
+                        "property float x\n"+\
+                        "property float y\n"+\
+                        "property float z\n"+\
+                        "property uchar red\n"+\
+                        "property uchar green\n"+\
+                        "property uchar blue\n"+\
+                        "element face 2\n"+\
+                        "property list uchar int vertex_indices\n"+\
+                        "property uchar red\n"+\
+                        "property uchar green\n"+\
+                        "property uchar blue\n"+\
+                        "end_header\n")
+            lines = fp.read()
+            lines = ast.literal_eval(lines)
+            for ebene in lines:
+                for point in ebene:
+                    fp2.write( str(point[0])+" "+str(point[1])+" "+str(point[2])+" 255\t0\t0\n")
+            fp2.write("3 0 1 2 255\t0\t0\n")
+            fp2.write("3 3 4 5 255\t0\t0")
 
 
 class Ppm2( PpmMixin, PyTool, ProviMixin ):

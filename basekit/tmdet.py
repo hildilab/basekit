@@ -17,7 +17,8 @@ from utils import memoize_m, try_float
 from utils.math import norm
 from utils.tool import _, _dir_init, PyTool, ProviMixin
 from utils.listing import ListRecord, ListIO
-
+import utils.numpdb as numpdb
+from utils.numpdb import NumPdb, numsele
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "tmdet" )
 PDBTM_LOCAL_PATH = os.environ.get("PDBTM_LOCAL_PATH", "")
@@ -157,7 +158,7 @@ class Tmdet( TmdetMixin, PyTool, ProviMixin ):
     ]
     out = [
         _( "tmdet_file", file="{pdb_file.stem}.xml" ),
-        _( "mplane_file", file="{pdb_file.stem}.mplane" ),
+        #_( "mplane_file", file="{pdb_file.stem}.mplane" ),
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "tmdet.provi"
@@ -165,8 +166,93 @@ class Tmdet( TmdetMixin, PyTool, ProviMixin ):
         pass
     def func( self ):
         tmdet_xml = tmdet( self.pdb_file )
+        if not tmdet_xml:
+            tmdet_xml=" "
         with open( self.tmdet_file, "w" ) as fp:
             fp.write( tmdet_xml )
+        with open(self.tmdet_file, 'r') as fp:
+            text = fp.read()
+            if text != " ":
+                O = []
+                N = []
+                s = text
+                s = s.replace("\n", " ")
+                result = re.findall('<CHAIN(.*?)TYPE="alpha"', s)
+                if result:
+                    chain = re.findall('CHAINID="(.*?)"', result[0])
+                    regiontext = re.findall('TYPE="alpha"(.*?)</CHAIN>',s)
+                    regions = re.findall('<REGION (.*?)type="H"/>', regiontext[0])
+                    found = []
+                    for reg in regions:
+                        regio = reg.split("REGION")[-1]
+                        pdb_beg = re.findall('pdb_beg="(.*?)"', regio)
+                        pdb_end = re.findall('pdb_end="(.*?)"', regio)
+                        found.append([ int(pdb_beg[0])-1, int(pdb_end[0])+1 ])
+                    for index, elem in enumerate(found):
+                        N.append(elem[index%2])
+                        O.append(elem[(index+1)%2])
+                    npdb = NumPdb( self.pdb_file, features={
+                        "phi_psi": False, "sstruc": False, "backbone_only": True
+                    })
+                    sele = {}
+                    
+                    
+                    with open(self.output_dir + self.pdb_file.split('.')[0].split('/')[-1]+'_tmdet.ply', 'w') as fp2:
+                        fp2.write(  "ply\n"+\
+                                    "format ascii 1.0\n"+\
+                                    "element vertex 8\n"+\
+                                    "property float x\n"+\
+                                    "property float y\n"+\
+                                    "property float z\n"+\
+                                    "property uchar red\n"+\
+                                    "property uchar green\n"+\
+                                    "property uchar blue\n"+\
+                                    "element face 4\n"+\
+                                    "property list uchar int vertex_indices\n"+\
+                                    "property uchar red\n"+\
+                                    "property uchar green\n"+\
+                                    "property uchar blue\n"+\
+                                    "end_header\n")
+                        oldx = []
+                        oldy = []
+                        oldz = []
+                        for val in [N, O]:
+                            alln = []
+                            if val == N:
+                                sele["atomname"] = "C"
+                            elif val == O:
+                                sele["atomname"] = "N"
+                            else:
+                                print 'error'
+                            for elem in val:
+                                sele["resno"] = elem
+                                coords = npdb.get( 'xyz', **sele )
+                                alln.append(coords[0].tolist())
+                            x = [j[0] for j in alln]
+                            y = [j[1] for j in alln]
+                            z = [j[2] for j in alln]
+                            if val == N:
+                                oldx = x
+                                oldy = y
+                                oldz = z
+                            if val == O:
+                                #x = oldx
+                                y = oldy
+                                z = oldz
+                            print np.std(x)
+                            fp2.write( str(np.mean(x))+" "+str( (np.mean(y)+np.std(y))*1.0)+" "+str( (np.mean(z)+np.std(z))*1.0)+" 255\t0\t0\n")
+                            fp2.write( str(np.mean(x))+" "+str( (np.mean(y)-np.std(y))*1.0)+" "+str( (np.mean(z)+np.std(z))*1.0)+" 255\t0\t0\n")
+                            fp2.write( str(np.mean(x))+" "+str( (np.mean(y)+np.std(y))*1.0)+" "+str( (np.mean(z)-np.std(z))*1.0)+" 255\t0\t0\n")
+                            fp2.write( str(np.mean(x))+" "+str( (np.mean(y)-np.std(y))*1.0)+" "+str( (np.mean(z)-np.std(z))*1.0)+" 255\t0\t0\n")
+                        fp2.write("3 0 1 2 255\t0\t0\n")
+                        # fp2.write("3 0 1 3 255\t0\t0\n")
+                        # fp2.write("3 0 2 3 255\t0\t0\n")
+                        fp2.write("3 1 2 3 255\t0\t0\n")
+                        fp2.write("3 4 5 6 255\t0\t0\n")
+                        # fp2.write("3 4 5 7 255\t0\t0\n")
+                        # fp2.write("3 4 6 7 255\t0\t0\n")
+                        fp2.write("3 5 6 7 255\t0\t0\n")
+
 
 
 
