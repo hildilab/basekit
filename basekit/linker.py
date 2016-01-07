@@ -226,8 +226,8 @@ class LinkIt( CmdTool, ProviMixin ):
             for i, d in enumerate( iter_stride( fp, 4 ), start=1 ):
                 if i<=self.max_loops:
                         chain=str(d[3].strip()[-5])
-                        posres1=int((str(d[3].strip())[-4:]).strip())+1
-                        posres2=int((str(d[3].strip())[-4:]).strip())+len(self.seq)
+                        posres1=int((str(d[3].strip())[-4:]).strip())
+                        posres2=int((str(d[3].strip())[-4:]).strip())+len(self.seq)-1
                         posfield="%s-%s:%s" % (posres1,posres2,chain)
                         linker_dict[ i ] = [
                         float(d[0]), float(d[1]),
