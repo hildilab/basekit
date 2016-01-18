@@ -12,6 +12,7 @@ from poster.encode import multipart_encode
 from poster.streaminghttp import register_openers
 
 import numpy as np
+from numpy.linalg import svd
 
 from utils import memoize_m, try_float
 from utils.math import norm
@@ -62,7 +63,22 @@ def pdbtm( pdbid, db_path=PDBTM_LOCAL_PATH ):
         else:
             raise Exception('No results in tmdet db found.')
 
+def planeFit(points):
+    """
+    p, n = planeFit(points)
 
+    Given an array, points, of shape (d,...)
+    representing points in d-dimensional space,
+    fit an d-dimensional plane to the points.
+    Return a point, p, on the plane (the point-cloud centroid),
+    and the normal, n.
+    """
+    points = np.reshape(points, (np.shape(points)[0], -1)) # Collapse trialing dimensions
+    assert points.shape[0] <= points.shape[1], "There are only {} points in {} dimensions.".format(points.shape[1], points.shape[0])
+    ctr = points.mean(axis=1)
+    x = points - ctr[:,np.newaxis]
+    M = np.dot(x, x.T) # Could also use np.cov(x) here.
+    return ctr, svd(M)[0][:,-1]
 
 
 def tmdet( pdb_file ):
@@ -194,9 +210,7 @@ class Tmdet( TmdetMixin, PyTool, ProviMixin ):
                     npdb = NumPdb( self.pdb_file, features={
                         "phi_psi": False, "sstruc": False, "backbone_only": True
                     })
-                    sele = {}
-                    
-                    
+                    sele = {"chain": chain[-1]}
                     with open(self.output_dir + self.pdb_file.split('.')[0].split('/')[-1]+'_tmdet.ply', 'w') as fp2:
                         fp2.write(  "ply\n"+\
                                     "format ascii 1.0\n"+\
@@ -216,7 +230,9 @@ class Tmdet( TmdetMixin, PyTool, ProviMixin ):
                         oldx = []
                         oldy = []
                         oldz = []
+                        alli = []
                         for val in [N, O]:
+                            print val
                             alln = []
                             if val == N:
                                 sele["atomname"] = "C"
@@ -227,30 +243,81 @@ class Tmdet( TmdetMixin, PyTool, ProviMixin ):
                             for elem in val:
                                 sele["resno"] = elem
                                 coords = npdb.get( 'xyz', **sele )
-                                alln.append(coords[0].tolist())
-                            x = [j[0] for j in alln]
-                            y = [j[1] for j in alln]
-                            z = [j[2] for j in alln]
-                            if val == N:
-                                oldx = x
-                                oldy = y
-                                oldz = z
-                            if val == O:
-                                #x = oldx
-                                y = oldy
-                                z = oldz
-                            print np.std(x)
-                            fp2.write( str(np.mean(x))+" "+str( (np.mean(y)+np.std(y))*1.0)+" "+str( (np.mean(z)+np.std(z))*1.0)+" 255\t0\t0\n")
-                            fp2.write( str(np.mean(x))+" "+str( (np.mean(y)-np.std(y))*1.0)+" "+str( (np.mean(z)+np.std(z))*1.0)+" 255\t0\t0\n")
-                            fp2.write( str(np.mean(x))+" "+str( (np.mean(y)+np.std(y))*1.0)+" "+str( (np.mean(z)-np.std(z))*1.0)+" 255\t0\t0\n")
-                            fp2.write( str(np.mean(x))+" "+str( (np.mean(y)-np.std(y))*1.0)+" "+str( (np.mean(z)-np.std(z))*1.0)+" 255\t0\t0\n")
+                                if coords.size != 0:
+                                    alln.append(coords[0].tolist())
+                            alli.append(alln)
+                        xN = [j[0] for j in alli[0]]
+                        yN = [j[1] for j in alli[0]]
+                        zN = [j[2] for j in alli[0]]
+                        xO = [j[0] for j in alli[1]]
+                        yO = [j[1] for j in alli[1]]
+                        zO = [j[2] for j in alli[1]]
+                        ztrue = False
+                        xtrue = False
+                        ytrue = False
+                        if ((np.std(zN)+np.std(zO)) < (np.std(yN)+np.std(yO))) & ((np.std(zN)+np.std(zO)) < (np.std(xN)+np.std(xO))):
+                            ztrue=True
+                        if ((np.std(yN)+np.std(yO)) < (np.std(zN)+np.std(zO))) & ((np.std(yN)+np.std(yO)) < (np.std(xN)+np.std(xO))):
+                            ytrue=True
+                        if ((np.std(xN)+np.std(xO)) < (np.std(yN)+np.std(yO))) & ((np.std(xN)+np.std(xO)) < (np.std(zN)+np.std(zO))):
+                            xtrue=True
+                        for index, val in enumerate([N, O]):
+                            alln = alli[index]
+                            print 'alln', alln
+                            point, normal = planeFit(np.array(alln).transpose())
+                            print'point norm', point, normal
+                            d = -point.dot(normal)
+                            if ztrue :#passt
+                                print 'ztrue'
+                                xx = np.array([point[0]+20, point[0]+20, point[0]-20, point[0]-20])
+                                yy = np.array([point[1]+20, point[1]-20, point[1]+20, point[1]-20 ])
+                                z = (-normal[0] * xx - normal[1] * yy - d) * 1. /normal[2]
+                                print 'xx, yyy,z',xx, yy, z
+                                x1 = oldx if oldx!=[] else xx
+                                y1 = oldy if oldy!=[] else yy
+                                z1 = z#oldz if oldz!=[] else z;
+                                fp2.write( str( x1[0] )+" "+str( y1[0] )+" "+str( z1[0] )+" 255\t0\t0\n")
+                                fp2.write( str( x1[1] )+" "+str( y1[1] )+" "+str( z1[1] )+" 255\t0\t0\n")
+                                fp2.write( str( x1[2] )+" "+str( y1[2] )+" "+str( z1[2] )+" 255\t0\t0\n")
+                                fp2.write( str( x1[3] )+" "+str( y1[3] )+" "+str( z1[3] )+" 255\t0\t0\n")
+                                oldx = x1
+                                oldy = y1
+                                oldz = z1
+                            if xtrue:
+                                print 'xtrue'
+                                xx = np.array([point[0]+20, point[0]+20, point[0]-20, point[0]-20])
+                                yy = np.array([point[1]+20, point[1]-20, point[1]+20, point[1]-20 ])
+                                z = (-normal[0] * xx - normal[1] * yy - d) * 1. /normal[2]
+                                print 'xx, yyy,z',xx, yy, z
+                                x1 = xx#oldx if oldx!=[] else xx
+                                y1 = oldy if oldy!=[] else yy
+                                z1 = oldz if oldz!=[] else z;
+                                fp2.write( str( x1[0] )+" "+str( y1[0] )+" "+str( z1[0] )+" 255\t0\t0\n")
+                                fp2.write( str( x1[1] )+" "+str( y1[1] )+" "+str( z1[1] )+" 255\t0\t0\n")
+                                fp2.write( str( x1[2] )+" "+str( y1[2] )+" "+str( z1[2] )+" 255\t0\t0\n")
+                                fp2.write( str( x1[3] )+" "+str( y1[3] )+" "+str( z1[3] )+" 255\t0\t0\n")
+                                oldx = x1
+                                oldy = y1
+                                oldz = z1
+                            if ytrue:#ok
+                                print 'ytrue'
+                                xx = np.array([point[0]+20, point[0]+20, point[0]-20, point[0]-20])
+                                yy = np.array([point[1]+20, point[1]-20, point[1]+20, point[1]-20 ])
+                                z = (-normal[0] * xx - normal[1] * yy - d) * 1. /normal[2]
+                                print 'xx, yyy,z',xx, yy, z
+                                x1 = xx#oldx if oldx!=[] else xx
+                                y1 = oldy if oldy!=[] else yy
+                                z1 = oldz if oldz!=[] else z;
+                                fp2.write( str( x1[0] )+" "+str( y1[0] )+" "+str( z1[0] )+" 255\t0\t0\n")
+                                fp2.write( str( x1[1] )+" "+str( y1[1] )+" "+str( z1[1] )+" 255\t0\t0\n")
+                                fp2.write( str( x1[2] )+" "+str( y1[2] )+" "+str( z1[2] )+" 255\t0\t0\n")
+                                fp2.write( str( x1[3] )+" "+str( y1[3] )+" "+str( z1[3] )+" 255\t0\t0\n")
+                                oldx = x1
+                                oldy = y1
+                                oldz = z1
                         fp2.write("3 0 1 2 255\t0\t0\n")
-                        # fp2.write("3 0 1 3 255\t0\t0\n")
-                        # fp2.write("3 0 2 3 255\t0\t0\n")
                         fp2.write("3 1 2 3 255\t0\t0\n")
                         fp2.write("3 4 5 6 255\t0\t0\n")
-                        # fp2.write("3 4 5 7 255\t0\t0\n")
-                        # fp2.write("3 4 6 7 255\t0\t0\n")
                         fp2.write("3 5 6 7 255\t0\t0\n")
 
 
