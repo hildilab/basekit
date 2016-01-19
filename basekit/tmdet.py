@@ -13,6 +13,7 @@ from poster.streaminghttp import register_openers
 
 import numpy as np
 from numpy.linalg import svd
+import scipy
 
 from utils import memoize_m, try_float
 from utils.math import norm
@@ -227,12 +228,7 @@ class Tmdet( TmdetMixin, PyTool, ProviMixin ):
                                     "property uchar green\n"+\
                                     "property uchar blue\n"+\
                                     "end_header\n")
-                        oldx = []
-                        oldy = []
-                        oldz = []
-                        alli = []
                         for val in [N, O]:
-                            print val
                             alln = []
                             if val == N:
                                 sele["atomname"] = "C"
@@ -245,76 +241,20 @@ class Tmdet( TmdetMixin, PyTool, ProviMixin ):
                                 coords = npdb.get( 'xyz', **sele )
                                 if coords.size != 0:
                                     alln.append(coords[0].tolist())
-                            alli.append(alln)
-                        xN = [j[0] for j in alli[0]]
-                        yN = [j[1] for j in alli[0]]
-                        zN = [j[2] for j in alli[0]]
-                        xO = [j[0] for j in alli[1]]
-                        yO = [j[1] for j in alli[1]]
-                        zO = [j[2] for j in alli[1]]
-                        ztrue = False
-                        xtrue = False
-                        ytrue = False
-                        if ((np.std(zN)+np.std(zO)) < (np.std(yN)+np.std(yO))) & ((np.std(zN)+np.std(zO)) < (np.std(xN)+np.std(xO))):
-                            ztrue=True
-                        if ((np.std(yN)+np.std(yO)) < (np.std(zN)+np.std(zO))) & ((np.std(yN)+np.std(yO)) < (np.std(xN)+np.std(xO))):
-                            ytrue=True
-                        if ((np.std(xN)+np.std(xO)) < (np.std(yN)+np.std(yO))) & ((np.std(xN)+np.std(xO)) < (np.std(zN)+np.std(zO))):
-                            xtrue=True
-                        for index, val in enumerate([N, O]):
-                            alln = alli[index]
-                            print 'alln', alln
-                            point, normal = planeFit(np.array(alln).transpose())
-                            print'point norm', point, normal
+                            point, normall = planeFit(np.array(alln).transpose())
+                            distance = scipy.spatial.distance.cdist(alln, [point])
+                            if val == N:
+                                normal = normall
+                                distances = distance
                             d = -point.dot(normal)
-                            if ztrue :#passt
-                                print 'ztrue'
-                                xx = np.array([point[0]+20, point[0]+20, point[0]-20, point[0]-20])
-                                yy = np.array([point[1]+20, point[1]-20, point[1]+20, point[1]-20 ])
-                                z = (-normal[0] * xx - normal[1] * yy - d) * 1. /normal[2]
-                                print 'xx, yyy,z',xx, yy, z
-                                x1 = oldx if oldx!=[] else xx
-                                y1 = oldy if oldy!=[] else yy
-                                z1 = z#oldz if oldz!=[] else z;
-                                fp2.write( str( x1[0] )+" "+str( y1[0] )+" "+str( z1[0] )+" 255\t0\t0\n")
-                                fp2.write( str( x1[1] )+" "+str( y1[1] )+" "+str( z1[1] )+" 255\t0\t0\n")
-                                fp2.write( str( x1[2] )+" "+str( y1[2] )+" "+str( z1[2] )+" 255\t0\t0\n")
-                                fp2.write( str( x1[3] )+" "+str( y1[3] )+" "+str( z1[3] )+" 255\t0\t0\n")
-                                oldx = x1
-                                oldy = y1
-                                oldz = z1
-                            if xtrue:
-                                print 'xtrue'
-                                xx = np.array([point[0]+20, point[0]+20, point[0]-20, point[0]-20])
-                                yy = np.array([point[1]+20, point[1]-20, point[1]+20, point[1]-20 ])
-                                z = (-normal[0] * xx - normal[1] * yy - d) * 1. /normal[2]
-                                print 'xx, yyy,z',xx, yy, z
-                                x1 = xx#oldx if oldx!=[] else xx
-                                y1 = oldy if oldy!=[] else yy
-                                z1 = oldz if oldz!=[] else z;
-                                fp2.write( str( x1[0] )+" "+str( y1[0] )+" "+str( z1[0] )+" 255\t0\t0\n")
-                                fp2.write( str( x1[1] )+" "+str( y1[1] )+" "+str( z1[1] )+" 255\t0\t0\n")
-                                fp2.write( str( x1[2] )+" "+str( y1[2] )+" "+str( z1[2] )+" 255\t0\t0\n")
-                                fp2.write( str( x1[3] )+" "+str( y1[3] )+" "+str( z1[3] )+" 255\t0\t0\n")
-                                oldx = x1
-                                oldy = y1
-                                oldz = z1
-                            if ytrue:#ok
-                                print 'ytrue'
-                                xx = np.array([point[0]+20, point[0]+20, point[0]-20, point[0]-20])
-                                yy = np.array([point[1]+20, point[1]-20, point[1]+20, point[1]-20 ])
-                                z = (-normal[0] * xx - normal[1] * yy - d) * 1. /normal[2]
-                                print 'xx, yyy,z',xx, yy, z
-                                x1 = xx#oldx if oldx!=[] else xx
-                                y1 = oldy if oldy!=[] else yy
-                                z1 = oldz if oldz!=[] else z;
-                                fp2.write( str( x1[0] )+" "+str( y1[0] )+" "+str( z1[0] )+" 255\t0\t0\n")
-                                fp2.write( str( x1[1] )+" "+str( y1[1] )+" "+str( z1[1] )+" 255\t0\t0\n")
-                                fp2.write( str( x1[2] )+" "+str( y1[2] )+" "+str( z1[2] )+" 255\t0\t0\n")
-                                fp2.write( str( x1[3] )+" "+str( y1[3] )+" "+str( z1[3] )+" 255\t0\t0\n")
-                                oldx = x1
-                                oldy = y1
-                                oldz = z1
+                            maxdist = max(distances)[0]+2
+                            xx = np.array([point[0]+maxdist, point[0]+maxdist, point[0]-maxdist, point[0]-maxdist])
+                            yy = np.array([point[1]+maxdist, point[1]-maxdist, point[1]+maxdist, point[1]-maxdist])
+                            z = (-normal[0] * xx - normal[1] * yy - d) * 1. /normal[2]
+                            fp2.write( str( xx[0] )+" "+str( yy[0] )+" "+str( z[0] )+" 255\t0\t0\n")
+                            fp2.write( str( xx[1] )+" "+str( yy[1] )+" "+str( z[1] )+" 255\t0\t0\n")
+                            fp2.write( str( xx[2] )+" "+str( yy[2] )+" "+str( z[2] )+" 255\t0\t0\n")
+                            fp2.write( str( xx[3] )+" "+str( yy[3] )+" "+str( z[3] )+" 255\t0\t0\n")
                         fp2.write("3 0 1 2 255\t0\t0\n")
                         fp2.write("3 1 2 3 255\t0\t0\n")
                         fp2.write("3 4 5 6 255\t0\t0\n")
