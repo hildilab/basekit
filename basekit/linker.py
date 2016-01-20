@@ -78,6 +78,8 @@ class LinkIt( CmdTool, ProviMixin ):
 
     def _post_exec( self ):
         self._fix_linker_pdb( self.pdb_linker_file2 )
+        if os.path.getsize(self.pdb_linker_file2) <= 3:
+            return
         self._fix_linker_pdb( self.pdb_linker_file3, atoms_only=True )
         self._split_loop_file()
         self._make_linker_json( compact=True )
@@ -230,14 +232,14 @@ class LinkIt( CmdTool, ProviMixin ):
                         posres2=int((str(d[3].strip())[-4:]).strip())+len(self.seq)-1
                         posfield="%s-%s:%s" % (posres1,posres2,chain)
                         linker_dict[ i ] = [
-                        float(d[0]), float(d[1]),
-                        str(d[2].strip())[1:-1],
-                        str(d[3].strip().split() [0]),
-                        model_clash_count[ i ],
-                        posfield,
-                        self.seq_id(self.seq, str(d[2].strip()))                   
-                        
-                    ]
+                            float(d[0]), float(d[1]),
+                            str(d[2].strip())[1:-1],
+                            str(d[3].strip().split() [0]),
+                            model_clash_count[ i ],
+                            posfield,
+                            self.seq_id(self.seq, str(d[2].strip()))                   
+                            
+                        ]
         top_level={
             "params": parameter,
             "linker": linker_dict
