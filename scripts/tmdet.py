@@ -1,11 +1,11 @@
 #! /usr/bin/env python
 
+"""A collection of wrappers around the tmdet program."""
+
 from basekit.utils.tool import parse_subargs
 from basekit.tmdet import (
 	Tmdet, PdbtmInfo, Pdbtm, PdbtmList, PdbtmDownload
 )
-
-
 
 
 def main():
