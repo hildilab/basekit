@@ -43,7 +43,7 @@ class LinkIt( CmdTool, ProviMixin ):
             help="N-terminal stem residue and chain, '123:A'." ),
         _( "res2", type="sele", label="Stem residue 2",
             help="C-terminal stem residue." ),
-        _( "seq", type="str", label="Sequence",
+        _( "seq", type="str", label="Loop sequence",
             help="One-letter code of the linker amino acids." ),
         _( "memdb", type="bool", label="MembraneDB",
             help="Show only results from membrane proteins.", default=False ),
