@@ -175,6 +175,7 @@ class Tmdet( TmdetMixin, PyTool, ProviMixin ):
     ]
     out = [
         _( "tmdet_file", file="{pdb_file.stem}.xml" ),
+        _( "ply_file", file="{pdb_file.stem}_tmdet.ply" ),
         #_( "mplane_file", file="{pdb_file.stem}.mplane" ),
     ]
     tmpl_dir = TMPL_DIR
@@ -212,7 +213,7 @@ class Tmdet( TmdetMixin, PyTool, ProviMixin ):
                         "phi_psi": False, "sstruc": False, "backbone_only": True
                     })
                     sele = {"chain": chain[-1]}
-                    with open(self.output_dir + self.pdb_file.split('.')[0].split('/')[-1]+'_tmdet.ply', 'w') as fp2:
+                    with open(self.ply_file, 'w') as fp2:
                         fp2.write(  "ply\n"+\
                                     "format ascii 1.0\n"+\
                                     "element vertex 8\n"+\
