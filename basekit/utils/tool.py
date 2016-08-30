@@ -154,7 +154,7 @@ def parse_args( Tool, kwargs=None ):
     if not kwargs:
         parser = make_parser( Tool )
         kwargs = vars( parser.parse_args() )
-    args = []
+    args = []   
     for name, params in Tool.args.iteritems():
         if "default" not in params:
             args.append( kwargs.pop( name ) )
@@ -689,6 +689,8 @@ class Tool( object ):
         # status = "ok" if self.check( full=False ) else "failed"
         status = self.check( full=True )
         return "%s status: %s" % ( self.name, status )
+    
+        
 
     def relpath( self, path, no_ext=False ):
         if no_ext:

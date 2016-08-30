@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>NGL - SSFE</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+</head>
+
+<body>
+    <script src="ngl.embedded.min.js"></script>
+    <script>
+
+        NGL.mainScriptFilePath = "ngl.embedded.min.js";
+
+        document.addEventListener( "DOMContentLoaded", function(){{
+
+            // create the viewer
+            var stage = new NGL.Stage( "viewport" );
+            stage.viewer.container.addEventListener( "dblclick", function(){{
+                stage.toggleFullscreen();
+            }} );
+
+            // files to load
+            var modelList = [
+                {namepdbfiles}
+            ];
+
+            // helper functions
+            function getModelURL( model ){{
+                var href = window.location.href;
+                return href.substr( 0, href.lastIndexOf( "/" ) + 1 ) + model;
+            }}
+
+            function addToModelDropdown( model ){{
+                var option = document.createElement( 'option' );
+                option.value = model;
+                option.innerHTML = model;
+                document.getElementById( "selectModel" ).appendChild( option );
+            }}
+
+            // create color scheme
+            var schemeId = NGL.ColorMakerRegistry.addSelectionScheme( [
+                [ "orange", ":J" ],
+                [ "blue", ":I" ],
+                [ "green", ":E" ],
+                [ "yellow", ":D" ],
+                [ "red", ":T" ],
+                [ "white", "*" ]  // color remaining atoms in white
+            ], "ssfe" );
+
+            // process all models
+            modelList.forEach( function( model ){{
+                stage.loadFile( getModelURL( model ) ).then( function( o ){{
+                    o.addRepresentation( "cartoon", {{ color: schemeId }} );
+                    o.addRepresentation( "licorice", {{
+                        color: schemeId, visible: false,
+                        sele: "sidechainAttached"
+                    }} );
+                    o.centerView();
+                    // initially hide all but the first model
+                    o.setVisibility( o.name === modelList[ 0 ] );
+                }} );
+                addToModelDropdown( model );
+            }} );
+
+            // init selectModel drop down
+            var selectModel = document.getElementById( "selectModel" );
+            selectModel.addEventListener( "change", function(){{
+                stage.eachComponent( function( comp ){{
+                    // show only the selected model
+                    comp.setVisibility( comp.name === selectModel.value ? true : false );
+                }} )
+            }} );
+
+            // init toggleSidechain button
+            var toggleSidechain = document.getElementById( "toggleSidechain" );
+            toggleSidechain.addEventListener( "click", function(){{
+                stage.eachRepresentation( function( repr ){{
+                    if( repr.name === "licorice" ){{
+                        repr.setVisibility( !repr.visible );
+                    }}
+                }} );
+            }} );
+
+            // init toggleSpin button
+            var toggleSpin = document.getElementById( "toggleSpin" );
+            var isSpinning = false;
+            toggleSpin.addEventListener( "click", function(){{
+                if( !isSpinning ){{
+                    stage.setSpin( [ 0, 1, 0 ], 0.01 );
+                    isSpinning = true;
+                }}else{{
+                    stage.setSpin( null, null );
+                    isSpinning = false;
+                }}
+            }} );
+	}} );
+    </script>
+
+    <div id="viewport" style="width:800px; height:800px;"></div>
+
+    <div style="width:800px;">
+        <select id="selectModel"></select>
+        <button id="toggleSidechain">sidechain on/off</button>
+        <button id="toggleSpin">spin on/off</button>
+    </div>
+
+</body>
+</html>

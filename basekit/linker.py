@@ -2,10 +2,13 @@ from __future__ import with_statement
 from __future__ import division
 
 import os
+import shutil
 import itertools
 import json
 import collections
 import xml.etree.ElementTree as ET
+import re
+import zipfile
 
 from utils import copy_dict, iter_stride, dir_walker
 import utils.path
@@ -73,6 +76,7 @@ class LinkIt( CmdTool, ProviMixin ):
         else:
             self.cmd = [ "wine", LINKIT_CMD(), self.kos_file, self.bin_file, "tp" ]
 
+
     def _pre_exec( self ):
         self._make_kos_file()
 
@@ -87,12 +91,13 @@ class LinkIt( CmdTool, ProviMixin ):
             pdb_file=self.relpath( self.pdb_file ),
             pdb_linker_file3=self.relpath( self.pdb_linker_file3 ),
             json_file=self.relpath( self.json_file )
-        )
-
+             )
+        
     def _make_kos_file( self ):
         npdb = NumPdb( self.pdb_file, features={
             "phi_psi": False, "sstruc": False, "backbone_only": True
         })
+
         with open( self.kos_file, "w" ) as fp:
             d = [
                 (self.res1, " CA "), (self.res1, " C  "),
@@ -131,7 +136,6 @@ class LinkIt( CmdTool, ProviMixin ):
                             break
                     else:
                         fp_out.write( line )
-
 
 
                 if line.startswith("ENDMDL"):
@@ -175,11 +179,14 @@ class LinkIt( CmdTool, ProviMixin ):
     def _find_clashes( self ):
         npdb = NumPdb( self.pdb_file, { "backbone_only": True } )
 
-        oripdb=npdb.sele(chain=self.res1['chain'],resno=[self.res1['resno']-2,self.res2['resno']+2] ,invert=True)
+        oripdb=npdb.sele(chain=self.res1['chain'],resno=[self.res1['resno'],self.res2['resno']] ,invert=True)
         noloop= npdb.copy(sele=oripdb)
         nowater=noloop.sele(resname=['HOH','WAT','SOL'],invert=True)
         rest=noloop.copy(sele=nowater)
         rest.write('hurz.pdb')
+        
+
+
         protein_tree = get_tree(rest['xyz'])
         atom_resno_list = rest.get('resno')
 
@@ -209,7 +216,10 @@ class LinkIt( CmdTool, ProviMixin ):
             )
             model_clash_count[ model_no ] = len( clashes )
 
+
         return model_clash_count
+    
+         
     def seq_id ( self,seq1,seq2 ):
         si=0
         for sf in range(0, len(seq1),1):
@@ -228,8 +238,14 @@ class LinkIt( CmdTool, ProviMixin ):
             for i, d in enumerate( iter_stride( fp, 4 ), start=1 ):
                 if i<=self.max_loops:
                         chain=str(d[3].strip()[-5])
-                        posres1=int((str(d[3].strip())[-4:]).strip())
-                        posres2=int((str(d[3].strip())[-4:]).strip())+len(self.seq)-1
+                        stri=re.match(r"([0-9]+)([A-Z]+)", (str(d[3].strip())[-4:]).strip(), re.I)
+                        if stri:
+                            print stri.group(1)
+                            posres1=int(stri.group(1))
+                            posres2=int(stri.group(1))+len(self.seq)-1
+                        else:
+                            posres1=int((str(d[3].strip())[-4:]).strip())
+                            posres2=int((str(d[3].strip())[-4:]).strip())+len(self.seq)-1
                         posfield="%s-%s:%s" % (posres1,posres2,chain)
                         linker_dict[ i ] = [
                             float(d[0]), float(d[1]),
@@ -237,9 +253,11 @@ class LinkIt( CmdTool, ProviMixin ):
                             str(d[3].strip().split() [0]),
                             model_clash_count[ i ],
                             posfield,
-                            self.seq_id(self.seq, str(d[2].strip()))                   
-                            
+                            self.seq_id(self.seq, str(d[2].strip()))     
                         ]
+                        
+                        
+                        
         top_level={
             "params": parameter,
             "linker": linker_dict
@@ -251,22 +269,413 @@ class LinkIt( CmdTool, ProviMixin ):
             else:
                 json.dump( top_level, fp, indent=4 )
 
+# erstellt eine Statistik zu einem fertig berechneten Datensatz  
+# classe SSFEStatistik ( PyTool, ProviMixin ):
+#     args = [
+#         _("out_datensatz", type="dir")
+#     ]
+#     
+#     def func ( self ) :
+        
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+# fuert SSFE fuer einen Datensatz aus 
+class SSFEMultiLinkIt( PyTool, ProviMixin ):
+    args = [
+        _("loop_jobs", type="dir")
+    ]   
+           
+    def func ( self ) :
+        
+        os.chdir(self.output_dir) 
+        
+        self.loop_jobs = os.path.abspath(self.loop_jobs)
+        
+        #enthaelt Liste mit allen Dateien in denen die Proteinen + ihr Loops stehen
+        jobDirs = os.listdir (self.loop_jobs)
+    
+        for jobDir in jobDirs :
+            jobDirPath = os.path.join(self.loop_jobs, jobDir)
+            inputFiles = os.listdir(jobDirPath)
+            jobFile = ''
+            pdbFileList = []
+           
+            for inputFile in inputFiles :
+                if  os.path.splitext(inputFile)[1] == '.pdb' :
+                    pdbFileList.append(inputFile)
+                else :
+                    jobFile = inputFile
+                    
+            # print pdbFileList
+            # print jobFile
+               
+            outJobDir = self.subdir(jobDir + '_Result')
+            
+            os.chdir(outJobDir)
+            
+            for pdbFile in pdbFileList : 
+                outJobFileDir = self.subdir(os.path.join(outJobDir, os.path.splitext(pdbFile)[0]))
+                
+                os.chdir(outJobFileDir)
+                
+                # print '|',pdbFileList, '|',jobFile,'|'
+                
+                SSFELinkIt(os.path.join(jobDirPath, pdbFile), os.path.join(jobDirPath, jobFile), verbose=self.verbose, debug=True)
+        
+                os.chdir('..')
+                
+            os.chdir('..')
+        
+        #shutil.make_archive(self.output_dir, 'zip' , '.')
+        # zipf = zipfile.ZipFile( self.output_dir, 'w', zipfile.ZIP_DEFLATED)
+        # for root, dirs, files in os.walk(path) :
+        #     for file in files :
+        #         ziph.write(os.path.join(root, file))
+        # zipf.close()
 
+class SSFELinkIt( PyTool, ProviMixin ):
+    args = [
+        _( "pdb_file", type="file", ext="pdb" ),
+        _( "loop_file", type="file", ext="txt" ),
+        _( "extension", type="list", nargs=2, action="append",
+           help="int,int", default=[0,0] )
+  
+    ]
+    out = [
+        _( "ori_file", file="{pdb_file.stem}_input.pdb" )
+    ]
+    tmpl_dir = TMPL_DIR
+    provi_tmpl = "multi_link_it.provi"
+    
+    AminoDict = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K','ILE': 'I', 'PRO': 'P', 'THR': 'T', 'PHE': 'F', 'ASN': 'N', 'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W', 
+     'ALA': 'A','VAL':'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M'}
+    
+    def _init( self, *args, **kwargs ):
+        
+        #falls kein Chain vorhanden in pdb, fuegt 'A' in original_pdb ein
+        with open( self.pdb_file, 'r' ) as fp, open( self.ori_file, 'w' ) as fp2:
+            for line in fp:
+                if line.startswith("ATOM"): #and line[21]==" ":
+                    newline = line[:21]+"A"+line[22:]
+                    fp2.write(newline)
+                else:
+                    fp2.write(line)
+                 
+        #speichert in c den Chain fuer Aufruf       
+        c = ''   
+        with open( self.ori_file, 'r' ) as fp:
+            for line in fp:
+                if line.startswith("ATOM") :
+                    c = line[21]
+                    break
+         
+        self.multiLinkIts = []
+        
+        #speichert Loopstart, -ende und Sequenz und Stellen der zu erweiterten Loops
+        self.loopTasks = []
+        self.loopPosList = []
+        #
+        loopBrackets = []
+        #loopBracketAminos : Stuktur Dict. --> Position:Amino
+        loopBracketAminos = {}
+        #zaehlt die Uebergebene Loops --> benutzt fuer loopDict
+        self.loopCount = 0
+        with open( self.loop_file ) as loopTasksInput:
+            for line in loopTasksInput:
+                if line[0] == '#':
+                    continue
+                match = re.search("start=(\d*):\s*end=(\d*):\s*(\w*)",line)
+                if match:
+                    start, end, seq = match.groups()
+                    # Wenn Sequenz zu lang, berechne gar nichts
+                    if len(seq) > 100 :
+                        # self.loopTasks = []
+                        # self.loopPosList.append([0, 0])
+                        # continue
+                        loopBrackets = []
+                        loopBracketAminos = {}
+                        with open(os.path.join( self.output_dir, "ERROR_LoopSequenzToLong.txt"), 'w') :
+                            pass
+                        return
+                    # fehlerausgabe fuer falsche eingaben
+                    if start > end and len(seq) != 0 or start < end and len(seq) == 0 :
+                        self.loopTasks = []
+                        loopBrackets = []
+                        loopBracketAminos = {}
+                        with open(os.path.join( self.output_dir, "ERROR_InvalidInput.txt"), 'w') :
+                            pass
+                        return
+                    
+                    # loop muss nicht berechnet werden, existiert schon
+                    if start > end and len(seq) == 0 :
+                        self.loopPosList.append([0, 0])
+                        continue
+                        
+                    self.loopCount += 1        
+                
+                    #Eingabeliste aller zu bearbeitenden Loops aus Eingabedatei       
+                    self.loopTasks.append([int(start)-1 , int(end)+1 , seq])
+                    self.loopPosList.append([start, end])
+                    
+                    #List von Start- und Endwertern der erweiterten Loops
+                    startInt = int(start)-1
+                    endInt = int(end)+1              
+                    loopBrackets.append(([startInt-2,startInt-1,startInt], [endInt, endInt+1, endInt+2]))
+                    loopBracketAminos.update(dict.fromkeys(loopBrackets[-1][0]))
+                    loopBracketAminos.update(dict.fromkeys(loopBrackets[-1][1]))
+        
+        self.loopPosList += (7 * [[0, 0]])
+        
+        #bestimmt Listen mit N und C Terminus der einzelnen Loops
+        with open( self.pdb_file, 'r' ) as fp :
+            for line in fp :
+                if line.startswith("ATOM") :
+                    position = int(line[22:26])
+                    if position in loopBracketAminos :
+                        loopBracketAminos[position] = line[17:20]
+        
+        #ersetzt 3-Buchstabencode durch 1-Buchstabencode
+        for position, aminoTriplet in loopBracketAminos.iteritems() :
+            #print position,aminoTriplet
+            loopBracketAminos[position] = SSFELinkIt.AminoDict[aminoTriplet]
+            
+        #print loopBracketAminos                      
+        
+        for i in range (4) :
+            loopTasksList = []
+            for start,end,seq in self.loopTasks :
+                for j in range(i) :
+                    seq = loopBracketAminos[start - j ] + seq + loopBracketAminos[end + j]    
+                loopTasksList.append([str(start - i) + ':' + c, str(end + i) + ':' + c, seq])
+             
+            #print loopTasksList
+               
+            self.multiLinkIts.append(MultiLinkIt(self.ori_file, input = loopTasksList,
+                    **copy_dict( kwargs, run=False,
+                                output_dir=self.subdir("link_it_%i,%i" % (i,i) ), verbose=True, debug=True )))
+            
+                     
+    def func( self ):
+        if len(self.multiLinkIts) == 0 :
+            return
+        
+        for m in self.multiLinkIts : 
+            m()
+        
+        #loopDict enthaelt fuer jeden Loop die 3 besten berechneten Loops pro Erweiterung:(0,0);(1,1);(2,2);(3,3)
+        loopDict = {}
+        #zum Laden der einzelnen Loop-json zur Auswahl der 3 besten Loops nach Score und Anzahl Clashes
+        singleLoopDict = {}
+        
+        # print self.loopCount
+        
+        #erstellt Dict mit den 3 besten berechneten Loops pro Loop 
+        for i in range(4) :
+            for j in range(self.loopCount) :
+                jsonPfad = os.path.join( self.output_dir,"link_it_%i,%i/link_it_%i" % (i,i,j) )+ "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker.json"
+                if os.path.isfile(jsonPfad) :
+                    with open(os.path.join( self.output_dir,"link_it_%i,%i/link_it_%i" % (i,i,j) )+ "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker.json", 'r') as fp :
+                        singleLoopDict = json.load(fp)
+                        loop = loopDict.get(j, [])
+                        #print type(loopDict)
+                        #print (os.path.join( self.output_dir,"link_it_%i,%i/link_it_%i" % (i,i,j) )+ "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker.json")
+                    for resultIndex in range(1, 4) :
+                        result = singleLoopDict["linker"][str(resultIndex)]
+                        loop.append(["%i,%i;%i;%i" % (i,i,j,resultIndex), result[1], result[4], result[2], result[3], result[5]])
+                        loopDict[j] = loop
+                        
+        #Ergebnis wird in BestResultsDict.json ausgegeben                
+        with open(os.path.join(self.output_dir, "BestResultsDict.json"), 'w') as fp :
+            json.dump(loopDict, fp)
+        # print loopDict
+        
+        #topTenResult entaelt die Loopinformationen der 10 besten gesamt Ergebnisse
+        # --> benutzt fuer zusammenbauen der 10 besten pdb-files
+        self.topTenResult = {}
+        
+        #sortiert nach hoestem Score die Liste der 3 besten berechneten Loops pro Loop (12 Ergebnisse pro Loop) und dreht sie um, d.h bester Score zu erst
+        for key in loopDict :
+            loopDict[key].sort(key=lambda loop: (loop[1], loop[2]))
+            loopDict[key].reverse()
+        
+        #erzeugt TopTen Liste von 1-10
+        minNumResults = min(10, min(map(len, loopDict.values())))
+        for i in range(1,minNumResults + 1) :
+            resultList = []
+            for key, loopList in loopDict.iteritems() :
+                resultList.append(loopList[i-1])
+             
+            self.topTenResult[i] = resultList
+            
+        #Ergebnis wird in TopTenResult.json ausgegeben
+        with open(os.path.join(self.output_dir, "TopTenResult.json"), 'w') as fp :
+            json.dump(self.topTenResult, fp)
+            
+        self.insertLoop()
+                   
+                                          
+    #fuegt Loops in pdb-file ein
+    #--> Ergebnis sind die 10 besten pdb-files
+    def insertLoop( self ):
+        
+        #shutil.copyfile('../../../index.html', os.path.join(self.output_dir, "index.html" ))
+        
+        templateHtmlString = ''
+        
+        for key in self.topTenResult :
+            loopLineList = []
+            for loop in self.topTenResult[key] :
+                extension, loopName, numLoop = loop[0].split(';')
+                
+                loopName = int(loopName)
+                numLoop = int(numLoop)
+                #da extension ein Doupel ist (z.B. 0,0), wird es aufgeteilt 
+                extensionSingle1, extensionSingle2 = extension.split(',')
+                extensionSingle1 = int(extensionSingle1)
+                extensionSingle2 = int(extensionSingle2)
+                
+                loopFile = []
+                with open(self.subdir("link_it_%i,%i/link_it_%i" % (extensionSingle1,extensionSingle2,loopName)) + "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker2.pdb", 'r') as fp :
+                    loopFile = fp.readlines()
+                
+                modelBegin = -1
+                modelEnd = -1
+                for i, line in enumerate(loopFile) :
+                    if line[0:5] == 'MODEL' and line.split()[1] == str(numLoop) :
+                        modelBegin = i
+                    if line[0:6] == 'ENDMDL' and modelBegin != -1 :
+                        modelEnd = i
+                        break
+                        
+                loopLineList.append(loopFile[modelBegin + 5 : modelEnd - 5])
+                
+                #print modelBegin
+                #print modelEnd
+                #print loopLineList 
+        
+                       
+            new_pdb_file = (os.path.splitext(self.ori_file)[0] + '_out_%i.pdb' %key)
+            with open( self.ori_file, 'r') as fp, open (new_pdb_file, 'w') as fp2 :
+                for line in fp :
+                    #Filter ANISOU-Zeilen raus, falls vorhanden und kopiert alle anderen Zeilen
+                    if line[0:6] != 'ANISOU' :
+                        fp2.write(line)
+            for loop in loopLineList :
+                    
+                startPos = int(loop[0].split()[5])
+                endPos = int(loop[-1].split()[5])
+                # print startPos
+                # print endPos
+                # print loop
+
+                #Fuegt Loop an richtiger Stelle in Datei ein
+                rawPdbFile = []
+                with open( new_pdb_file, 'r') as fp :
+                    rawPdbFile = fp.read().splitlines(True)
+                with open (new_pdb_file + '.tmp', 'w') as fp2 :
+                        
+                    for i, line in enumerate(rawPdbFile) :
+                        #print i, line[0:4], line[22:26]
+                        if ((line[0:3]) == 'TER' and int(line[22:26]) == startPos -1 ) or \
+                           ((line[0:4]) == 'ATOM' and (int(line[22:26]) in range(startPos,endPos+1))) or \
+                           ((line[0:3]) == 'TER' and (int(line[22:26]) in range(startPos,endPos+1))) :
+                            for loopLine in loop :
+                                fp2.write(loopLine)
+                            loop = []
+                        elif (((line[0:4]) == 'ATOM' and int(line[22:26]) == endPos +1) and \
+                             ((rawPdbFile[i-1][0:4]) == 'ATOM' and int(rawPdbFile[i-1][22:26]) == startPos -1)) :
+                            for loopLine in loop :
+                                fp2.write(loopLine)
+                            loop = []
+                            fp2.write(line)
+                        else :
+                            fp2.write(line)
+                
+                shutil.move(new_pdb_file + '.tmp', new_pdb_file)
+                    
+                    
+                #Neu-Nummerierung von out_pdb             
+                i = 0
+                with open( new_pdb_file, 'r') as fp, open (new_pdb_file + '.tmp', 'w') as fp2 :
+                    for line in fp:
+                        if line.startswith("ATOM"):
+                            i= i+1
+                            newline = line[:6] + " "*(5-len(str(i))) + str(i) + line[11:]
+                            fp2.write(newline)
+                        else:
+                            fp2.write(line)
+                            
+                shutil.move(new_pdb_file + '.tmp', new_pdb_file)
+            
+            
+            
+            #html.index erstellen            
+            shutil.copyfile('../../../ngl.embedded.min.js', os.path.join(self.output_dir, "ngl.embedded.min.js" ))
+            # tmpl_name="ngl.embedded.min.js"
+            # tmpl_file = os.path.join( tmpl_dir, tmpl_name )
+            templateHtmlString += '"' + os.path.basename(new_pdb_file) + '",\n'
+            # print templateHtmlString
+            
+            templateHtml = ''
+            with open ('../../../index.html', 'r') as fp :
+                templateHtml = fp.read()
+            
+            #print self.loopPosList
+            templateHtml = templateHtml.format(namepdbfiles = templateHtmlString, loopPos1 = '"'+ str(self.loopPosList[0][0]) + '-' + str(self.loopPosList[0][1])+'"',
+                                               loopPos2 = '"'+ str(self.loopPosList[1][0]) + '-' + str(self.loopPosList[1][1])+'"',
+                                               loopPos3 = '"'+ str(self.loopPosList[2][0]) + '-' + str(self.loopPosList[2][1])+'"',
+                                               loopPos4 = '"'+ str(self.loopPosList[3][0]) + '-' + str(self.loopPosList[3][1])+'"',
+                                               loopPos5 = '"'+ str(self.loopPosList[4][0]) + '-' + str(self.loopPosList[4][1])+'"',
+                                               loopPos6 = '"'+ str(self.loopPosList[5][0]) + '-' + str(self.loopPosList[5][1])+'"',
+                                               loopPos7 = '"'+ str(self.loopPosList[6][0]) + '-' + str(self.loopPosList[6][1])+'"')
+            # print templateHtml
+            
+            
+            with open (os.path.join(self.output_dir, "index.html" ), 'w') as fp :
+                fp.write(templateHtml)
+   
+                      
 class MultiLinkIt( PyTool, ProviMixin ):
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
         _( "input", type="list", nargs=3, action="append",
-           help="sele,sele,str" ),
+           help="sele,sele,str", default=None ),
         _( "names", type="list", nargs="*", default=None )
     ]
-    out = []
+    out = [
+        _( "ori_file", file="{pdb_file.stem}_out.pdb" )
+    ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "multi_link_it.provi"
 
     def _init( self, *args, **kwargs ):
+        shutil.copyfile(self.pdb_file, self.ori_file)
+        self.pdb_file = self.ori_file
         self.link_it_list = []
         for i, linker_args in enumerate( self.input ):
+            #print linker_args
             res1, res2, seq = linker_args
+            #print 'res1:  ' , res1
+            #print 'res2:  ' , res2
+            #print 'seq:  ' , seq
             link_it = LinkIt(
                 self.pdb_file, res1, res2, seq,
                 **copy_dict( kwargs, run=False,
@@ -275,12 +684,20 @@ class MultiLinkIt( PyTool, ProviMixin ):
             self.output_files += link_it.output_files
             self.sub_tool_list.append( link_it )
             self.link_it_list.append( link_it )
+            
 
     def func( self ):
-        self.log( "%i linkit runs" % len( self.input ) )
-        for link_it in self.link_it_list:
+        self.log( "%i linkit runs" % len( self.input ) ) 
+        for i, link_it in enumerate ( self.link_it_list ):
             link_it()
-
+            
+            #print link_it.res1["resno" ] +1
+            #print link_it.res2["resno" ] -1
+            
+            #print self.subdir("link_it_%i" % i + "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_linker2.pdb")
+            #self.insertLoop(i)
+            
+            
     def _post_exec( self ):
         linker_list = []
         for i, link_it in enumerate( self.link_it_list ):
@@ -290,12 +707,12 @@ class MultiLinkIt( PyTool, ProviMixin ):
                 "json_file": self.relpath( link_it.json_file ),
                 "pdb_linker_file3": self.relpath( link_it.pdb_linker_file3 )
             })
-        self._make_provi_file(
-            use_jinja2=True,
-            pdb_file=self.relpath( self.pdb_file ),
-            linker_list=linker_list
-        )
-
+        
+        # self._make_provi_file(
+        #     use_jinja2=True,
+        #     pdb_file=self.relpath( self.pdb_file ),
+        #     linker_list=linker_list
+        # )
 
 class LinkItDensity( PyTool ):
     """Please denote the resolution of your map. Then define the stem-residues (e.g.: 10:A, 16:A) and provide the missing sequence in 1-letter code (ACDEF). """
@@ -329,6 +746,7 @@ class LinkItDensity( PyTool ):
             self.edited_pdb_file, self.res1, self.res2, self.seq,
             **copy_dict( kwargs, run=False, output_dir=self.subdir("link_it") )
         )
+        
         self.loop_correl = LoopCrosscorrel(
             self.mrc_file, self.pdb_file,
             self.link_it.pdb_linker_file2,
@@ -347,6 +765,7 @@ class LinkItDensity( PyTool ):
         self.sub_tool_list.extend( [
             self.link_it, self.loop_correl
         ] )
+        
 
     def func( self ):
         boxsizex = getMrc(self.mrc_file, 'nx' )
@@ -374,7 +793,7 @@ class LinkItDensity( PyTool ):
 
         self.link_it()
         self.loop_correl()
-        print len(self.seq)
+        #print len(self.seq)
     def _post_exec( self ):
         self._make_correl_json()
         #self._make_fixed_linker()
@@ -609,5 +1028,8 @@ class AnalyseLiniktRun( PyTool , ProviMixin):
                 else:
                     continue
                     #print "%s:%s" % (pn, 'is no directory')
+
+
+
 
 #/home/jochen/work/fragfit/validation/dataset/EMD-5249/pieces/3IZM_B_705-708/loop_correl/crosscorrelation
