@@ -5,7 +5,7 @@
 from basekit.utils.tool import parse_subargs
 from basekit.linker import(
     LinkIt, LinkItDensity, LnkItVali, AnalyseLiniktRun,CutPDB,
-    MultiLinkIt,CutPDB2,SSFELinkIt, SSFEMultiLinkIt
+    MultiLinkIt,CutPDB2,SSFELinkIt, SSFEMultiLinkIt, SSFEStatistic
 )
 
 
@@ -20,6 +20,7 @@ def main():
         "multi-linkit": MultiLinkIt,
         "ssfe": SSFELinkIt,
         "ssfemulti" : SSFEMultiLinkIt,
+        "ssfestat" : SSFEStatistic,
         "cut":CutPDB,
         "cut2":CutPDB2
     }

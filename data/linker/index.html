@@ -3,27 +3,115 @@
 <head>
     <title>NGL - SSFE</title>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <meta 
+    name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+        <style>
+            table {{
+                border-collapse: collapse;
+                border: 2px black solid;
+                font: 12px sans-serif;
+				display: block;
+        		overflow-x: auto;
+				overflow-y: auto;
+            }}
+
+            td {{
+                border: 1px black solid;
+                padding: 5px;
+            }}
+
+			#menu {{
+			 	float: left;
+			 	width: 510px;
+			}}
+			.clear {{
+			clear:both;
+			}}
+        </style>
+
+
 </head>
 
 <body>
-    <script src="ngl.embedded.min.js"></script>
+    <script src="ngl.js"></script>
     <script>
 
-        NGL.mainScriptFilePath = "ngl.embedded.min.js";
+        NGL.mainScriptFilePath = "ngl.js";
 
         document.addEventListener( "DOMContentLoaded", function(){{
 
             // create the viewer
             var stage = new NGL.Stage( "viewport" );
+            //stage.setParameters( {{ theme: "light" }} );
             stage.viewer.container.addEventListener( "dblclick", function(){{
                 stage.toggleFullscreen();
             }} );
 
             // files to load
+            
             var modelList = [
-                {namepdbfiles}
+            	{namepdbfiles}
+                //"TMH_templates1_topmodel_renum_input.pdb"
             ];
+
+            var ECL1modelList = [
+                {ECL1_0},
+                {ECL1_1},
+                {ECL1_2},
+                {ECL1_3},
+                {ECL1_4}
+            ];
+            var ECL2modelList = [
+    			{ECL2_0},
+                {ECL2_1},
+                {ECL2_2},
+                {ECL2_3},
+                {ECL2_4}
+            ];
+            var ECL3modelList = [
+                {ECL3_0},
+                {ECL3_1},
+                {ECL3_2},
+                {ECL3_3},
+                {ECL3_4}
+            ];
+            var ICL1modelList = [
+                {ICL1_0},
+                {ICL1_1},
+                {ICL1_2},
+                {ICL1_3},
+                {ICL1_4}
+            ];
+            var ICL2modelList = [
+                {ICL2_0},
+                {ICL2_1},
+                {ICL2_2},
+                {ICL2_3},
+                {ICL2_4}
+            ];
+            var ICL3modelList = [
+                {ICL3_0},
+                {ICL3_1},
+                {ICL3_2},
+                {ICL3_3},
+                {ICL3_4}
+            ];
+            var Helix8modelList = [
+                {TM7_H8_0},
+                {TM7_H8_1},
+                {TM7_H8_2},
+                {TM7_H8_3},
+                {TM7_H8_4}
+            ];
+            
+			var txt = {resultTabel}
+			var txt2 = {result}
+			var txt3 = txt2.split(";")
+			var dictsf = {{}}
+			for ( var i = 0; i<txt3.length; i++ ) {{
+				dictsf[String(txt3[i].split(",")[1])] = txt3[i].split(",");
+			}}            
 
             // helper functions
             function getModelURL( model ){{
@@ -31,12 +119,48 @@
                 return href.substr( 0, href.lastIndexOf( "/" ) + 1 ) + model;
             }}
 
-            function addToModelDropdown( model ){{
+            function addToModelDropdownECL1( model ){{
                 var option = document.createElement( 'option' );
                 option.value = model;
                 option.innerHTML = model;
-                document.getElementById( "selectModel" ).appendChild( option );
+                document.getElementById( "selectModelECL1" ).appendChild( option );  
             }}
+            function addToModelDropdownECL2( model ){{
+                var option = document.createElement( 'option' );
+                option.value = model;
+                option.innerHTML = model;
+                document.getElementById( "selectModelECL2" ).appendChild( option );
+            }}
+            function addToModelDropdownECL3( model ){{
+                var option = document.createElement( 'option' );
+                option.value = model;
+                option.innerHTML = model;
+                document.getElementById( "selectModelECL3" ).appendChild( option );
+            }}
+            function addToModelDropdownICL1( model ){{
+                var option = document.createElement( 'option' );
+                option.value = model;
+                option.innerHTML = model;
+                document.getElementById( "selectModelICL1" ).appendChild( option );
+            }}
+            function addToModelDropdownICL2( model ){{
+                var option = document.createElement( 'option' );
+                option.value = model;
+                option.innerHTML = model;
+                document.getElementById( "selectModelICL2" ).appendChild( option );
+            }}
+            function addToModelDropdownICL3( model ){{
+                var option = document.createElement( 'option' );
+                option.value = model;
+                option.innerHTML = model;
+                document.getElementById( "selectModelICL3" ).appendChild( option );
+            }}
+            function addToModelDropdown8( model ){{
+                var option = document.createElement( 'option' );
+                option.value = model;
+                option.innerHTML = model;
+                document.getElementById( "selectModel8" ).appendChild( option );
+            }}            
 
             // create color scheme
             var schemeId = NGL.ColorMakerRegistry.addSelectionScheme( [
@@ -51,32 +175,222 @@
             // process all models
             modelList.forEach( function( model ){{
                 stage.loadFile( getModelURL( model ) ).then( function( o ){{
-                    o.addRepresentation( "cartoon", {{ color: schemeId }} );
-                    o.addRepresentation( "licorice", {{
-                        color: schemeId, visible: false,
-                        sele: "sidechainAttached"
-                    }} );
+	            o.addRepresentation( "cartoon", {{ color: "grey", sele: "*"  }} );
+				o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "grey", sele: "*", visible: false  }} );
+		        o.addRepresentation( "cartoon", {{ color: "#c8c5c5", sele: {loopPos1}   }} );
+				o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "#c8c5c5", sele: {loopPos1} , visible: false  }} );
+				o.addRepresentation( "cartoon", {{ color: "#c8c5c5", sele: {loopPos2}   }} );
+				o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "#c8c5c5", sele: {loopPos2} , visible: false  }} );
+		        o.addRepresentation( "cartoon", {{ color: "#c8c5c5", sele: {loopPos3}   }} );
+				o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "#c8c5c5", sele: {loopPos3} , visible: false  }} );
+		        o.addRepresentation( "cartoon", {{ color: "#c8c5c5", sele: {loopPos4}   }} );
+				o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "#c8c5c5", sele: {loopPos4} , visible: false  }} );
+		        o.addRepresentation( "cartoon", {{ color: "#c8c5c5", sele: {loopPos5}   }} );
+				o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "#c8c5c5", sele: {loopPos5} , visible: false  }} );
+		        o.addRepresentation( "cartoon", {{ color: "#c8c5c5", sele: {loopPos6}   }} );
+				o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "#c8c5c5", sele: {loopPos6} , visible: false  }} );
+		        o.addRepresentation( "cartoon", {{ color: "#c8c5c5", sele: {loopPos7}   }} );
+				o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "#c8c5c5", sele: {loopPos7} , visible: false  }} );
+				o.addRepresentation( "label",{{ sele: ".CA", visible: false  }} );
+
                     o.centerView();
                     // initially hide all but the first model
                     o.setVisibility( o.name === modelList[ 0 ] );
                 }} );
-                addToModelDropdown( model );
             }} );
+            ECL1modelList.forEach( function( model ){{
+                stage.loadFile( getModelURL( model ) ).then( function( o ){{
 
+                    o.addRepresentation( "cartoon", {{ color: "#FE9A2E", sele: "*"  }} );
+		    		o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "#FE9A2E", sele: "*", visible: false  }} );
+		    		o.addRepresentation( "label",{{ sele: ".CA", visible: false  }} );
+
+                    o.centerView();
+                    // initially hide all but the first model
+                    o.setVisibility( o.name === ECL1modelList[ 0 ] );
+                }} );
+                addToModelDropdownECL1( model );
+            }} );
+            ECL2modelList.forEach( function( model ){{
+                stage.loadFile( getModelURL( model ) ).then( function( o ){{
+
+                    o.addRepresentation( "cartoon", {{ color: "#0080FF", sele: "*"  }} );
+		    		o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "#0080FF", sele: "*", visible: false  }} );
+		    		o.addRepresentation( "label",{{ sele: ".CA", visible: false  }} );
+
+                    o.centerView();
+                    // initially hide all but the first model
+                    o.setVisibility( o.name === ECL2modelList[ 0 ] );
+                }} );
+                addToModelDropdownECL2( model );
+            }} );
+            ECL3modelList.forEach( function( model ){{
+                stage.loadFile( getModelURL( model ) ).then( function( o ){{
+
+                    o.addRepresentation( "cartoon", {{ color: "#FF0000", sele: "*"  }} );
+		    		o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "#FF0000", sele: "*", visible: false  }} );
+		    		o.addRepresentation( "label",{{ sele: ".CA", visible: false  }} );
+
+                    o.centerView();
+                    // initially hide all but the first model
+                    o.setVisibility( o.name === ECL3modelList[ 0 ] );
+                }} );
+                addToModelDropdownECL3( model );
+            }} );
+            ICL1modelList.forEach( function( model ){{
+                stage.loadFile( getModelURL( model ) ).then( function( o ){{
+
+                    o.addRepresentation( "cartoon", {{ color: "#01DF01", sele: "*"  }} );
+		    		o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "#01DF01", sele: "*", visible: false  }} );
+		    		o.addRepresentation( "label",{{ sele: ".CA", visible: false  }} );
+
+                    o.centerView();
+                    // initially hide all but the first model
+                    o.setVisibility( o.name === ICL1modelList[ 0 ] );
+                }} );
+                addToModelDropdownICL1( model );
+            }} );
+            ICL2modelList.forEach( function( model ){{
+                stage.loadFile( getModelURL( model ) ).then( function( o ){{
+
+                    o.addRepresentation( "cartoon", {{ color: "#DF01A5", sele: "*"  }} );
+		    		o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "#DF01A5", sele: "*", visible: false  }} );
+		    		o.addRepresentation( "label",{{ sele: ".CA", visible: false  }} );
+
+                    o.centerView();
+                    // initially hide all but the first model
+                    o.setVisibility( o.name === ICL2modelList[ 0 ] );
+                }} );
+                addToModelDropdownICL2( model );
+            }} );
+            ICL3modelList.forEach( function( model ){{
+                stage.loadFile( getModelURL( model ) ).then( function( o ){{
+
+                    o.addRepresentation( "cartoon", {{ color: "#FFFF00", sele: "*"  }} );
+		    		o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "#FFFF00", sele: "*", visible: false  }} );
+		    		o.addRepresentation( "label",{{ sele: ".CA", visible: false  }} );
+
+                    o.centerView();
+                    // initially hide all but the first model
+                    o.setVisibility( o.name === ICL3modelList[ 0 ] );
+                }} );
+                addToModelDropdownICL3( model );
+            }} );
+            Helix8modelList.forEach( function( model ){{
+                stage.loadFile( getModelURL( model ) ).then( function( o ){{
+
+                    o.addRepresentation( "cartoon", {{ color: "#FF0080", sele: "*"  }} );
+		    		o.addRepresentation( "licorice",{{ colorScheme: "element", colorValue: "#FF0080", sele: "*", visible: false  }} );
+		    		o.addRepresentation( "label",{{ sele: ".CA", visible: false  }} );
+
+                    o.centerView();
+                    // initially hide all but the first model
+                    o.setVisibility( o.name === Helix8modelList[ 0 ] );
+                }} );
+                addToModelDropdown8( model );
+            }} );            
             // init selectModel drop down
-            var selectModel = document.getElementById( "selectModel" );
-            selectModel.addEventListener( "change", function(){{
-                stage.eachComponent( function( comp ){{
-                    // show only the selected model
-                    comp.setVisibility( comp.name === selectModel.value ? true : false );
-                }} )
-            }} );
 
-            // init toggleSidechain button
+
+            var selectModelECL1 = document.getElementById( "selectModelECL1" );
+            selectModelECL1.addEventListener( "change", function(){{
+				for (elemid in ECL1modelList){{
+					var elem = ECL1modelList[elemid]
+					if (selectModelECL1.value === elem){{
+						var comp = stage.getComponentsByName(elem).list[0]
+						comp.setVisibility(true)
+					}}else{{
+						stage.getComponentsByName(elem).list[0].setVisibility(false)
+					}}
+				}}
+            }} );
+            var selectModelECL2 = document.getElementById( "selectModelECL2" );
+            selectModelECL2.addEventListener( "change", function(){{
+				for (elemid in ECL2modelList){{
+					var elem = ECL2modelList[elemid]
+					if (selectModelECL2.value === elem){{
+						var comp = stage.getComponentsByName(elem).list[0]
+						comp.setVisibility(true)
+					}}else{{
+						stage.getComponentsByName(elem).list[0].setVisibility(false)
+					}}
+				}}
+            }} );
+            var selectModelECL3 = document.getElementById( "selectModelECL3" );
+            selectModelECL3.addEventListener( "change", function(){{
+				for (elemid in ECL3modelList){{
+					var elem = ECL3modelList[elemid]
+					if (selectModelECL3.value === elem){{
+						var comp = stage.getComponentsByName(elem).list[0]
+						comp.setVisibility(true)
+					}}else{{
+						stage.getComponentsByName(elem).list[0].setVisibility(false)
+					}}
+				}}
+            }} );
+            var selectModelICL1 = document.getElementById( "selectModelICL1" );
+            selectModelICL1.addEventListener( "change", function(){{
+				for (elemid in ICL1modelList){{
+					var elem = ICL1modelList[elemid]
+					if (selectModelICL1.value === elem){{
+						var comp = stage.getComponentsByName(elem).list[0]
+						comp.setVisibility(true)
+					}}else{{
+						stage.getComponentsByName(elem).list[0].setVisibility(false)
+					}}
+				}}
+            }} );
+            var selectModelICL2 = document.getElementById( "selectModelICL2" );
+            selectModelICL2.addEventListener( "change", function(){{
+				for (elemid in ICL2modelList){{
+					var elem = ICL2modelList[elemid]
+					if (selectModelICL2.value === elem){{
+						var comp = stage.getComponentsByName(elem).list[0]
+						comp.setVisibility(true)
+					}}else{{
+						stage.getComponentsByName(elem).list[0].setVisibility(false)
+					}}
+				}}
+            }} );
+            var selectModelICL3 = document.getElementById( "selectModelICL3" );
+            selectModelICL3.addEventListener( "change", function(){{
+				for (elemid in ICL3modelList){{
+					var elem = ICL3modelList[elemid]
+					if (selectModelICL3.value === elem){{
+						var comp = stage.getComponentsByName(elem).list[0]
+						comp.setVisibility(true)
+					}}else{{
+						stage.getComponentsByName(elem).list[0].setVisibility(false)
+					}}
+				}}
+            }} );
+            var selectModel8 = document.getElementById( "selectModel8" );
+            selectModel8.addEventListener( "change", function(){{
+				for (elemid in Helix8modelList){{
+					var elem = Helix8modelList[elemid]
+					if (selectModel8.value === elem){{
+						var comp = stage.getComponentsByName(elem).list[0];
+						comp.setVisibility(true);
+					}}else{{
+						stage.getComponentsByName(elem).list[0].setVisibility(false);
+					}}
+				}}
+            }} );            
+
+			// init toggleSidechain button
             var toggleSidechain = document.getElementById( "toggleSidechain" );
             toggleSidechain.addEventListener( "click", function(){{
                 stage.eachRepresentation( function( repr ){{
                     if( repr.name === "licorice" ){{
+                        repr.setVisibility( !repr.visible );
+                    }}
+                }} );
+            }} );
+
+            var toggleLabel = document.getElementById( "toggleLabel" );
+            toggleLabel.addEventListener( "click", function(){{
+                stage.eachRepresentation( function( repr ){{
+                    if( repr.name === "label" ){{
                         repr.setVisibility( !repr.visible );
                     }}
                 }} );
@@ -94,16 +408,88 @@
                     isSpinning = false;
                 }}
             }} );
+            
+            var toggleTheme = document.getElementById( "toggleTheme" );
+            var isLight = false;
+            toggleTheme.addEventListener( "click", function(){{
+				if( !isLight ){{
+                    stage.setParameters( {{ backgroundColor: "white" }} );
+                    isLight = true;
+                }}else{{
+                    stage.setParameters( {{ backgroundColor: "black" }} );
+                    isLight = false;
+                }}
+            }} ); 
+            
+            var toggleDownload = document.getElementById( "toggleDownload" );
+            toggleDownload.addEventListener( "click", function(){{
+                var newStructure = stage.getComponentsByName({namepdbfiles2}).list[0].structure; //"TMH_templates1_topmodel_renum_input.pdb"
+                var remarks = [];
+				var models = [selectModelECL1.value, selectModelECL2.value, selectModelECL3.value, selectModelICL1.value, selectModelICL2.value, selectModelICL3.value, selectModel8.value];
+				for ( var i = 0; i<models.length; i++ ){{	
+					var elem = dictsf[models[i].substring(0, models[i].length-4)];
+					if (elem){{
+						remarks.push(elem[0]+": model="+elem[1]+"_"+elem[2]+", GPCRdb="+elem[3]+", score="+elem[4]+", sequence="+elem[5]+", Template="+elem[9]+"_"+elem[10]);
+					}}
+				}}		
+                var pdbWriter = new NGL.PdbWriter( newStructure, {{
+                    remarks: remarks
+                }} );
+                pdbWriter.download( "model" );
+            }} );
+
+          
+	
+    
+    var table = document.getElementById( "toggleTable" );
+			console.log(table)
+			var rows = txt.split(';'),
+    		tr = null;
+			td = null;
+			tds = null;
+			for ( var i = 0; i<rows.length; i++ ) {{
+				tr = document.createElement('tr');
+				tds = rows[i].split(',');
+				console.log(tds.length)
+				for ( var j = 0; j < tds.length; j++ ) {{
+				   td = document.createElement('td');
+				   td.innerHTML = tds[j];
+				   tr.appendChild(td);
+				}}
+				table.appendChild(tr);
+			//	console.log(tr)
+			}}
+            
 	}} );
     </script>
 
-    <div id="viewport" style="width:800px; height:800px;"></div>
-
-    <div style="width:800px;">
-        <select id="selectModel"></select>
+<div id="menu">
+    <div id="viewport" style="width:500px; height:450px;"></div>
+	    <div style="width:500px;">
+        <select id="selectModelECL1"></select>
+        <select id="selectModelECL2"></select>
+        <select id="selectModelECL3"></select>
+        <select id="selectModelICL1"></select>
+        <select id="selectModelICL2"></select>
+        <select id="selectModelICL3"></select>
+        <select id="selectModel8"></select>
         <button id="toggleSidechain">sidechain on/off</button>
+        <button id="toggleLabel">label on/off</button>
         <button id="toggleSpin">spin on/off</button>
+        <button id="toggleTheme">light/dark background</button>
+        <button id="toggleDownload">download model</button>
     </div>
+
+</div>
+<div id="inhalt">
+<table id="toggleTable"></table>
+</div>
+<div class="clear"></div>
+
+
+
+
 
 </body>
 </html>
+
