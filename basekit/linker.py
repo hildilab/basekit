@@ -960,8 +960,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
         for position, aminoTriplet in loopBracketAminos.iteritems() :
             #print position,aminoTriplet
             loopBracketAminos[position] = SSFELinkIt.AminoDict[aminoTriplet]
-            
-        #print loopBracketAminos    
+               
         
         #fuer loop helix8
         if not self.loopBracketAminosHelix8 == {} :
@@ -988,7 +987,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 
             loopTasksListHelix8 = [[str(startLoop) + ':' + c, str(endLoop) + ':' + c, seqLoop]]
             #print self.loopBracketAminosHelix8
-            #print loopTasksListHelix8
+            print c
+            print loopTasksListHelix8
+            print self.loopBracketAminosHelix8
             
             MultiLinkIt(self.ori_file, input = loopTasksListHelix8,
                     **copy_dict( kwargs, run=True,
@@ -1001,75 +1002,81 @@ class SSFELinkIt( PyTool, ProviMixin ):
             
             modelBegin = -1
             modelEnd = -1
+            breakout = False
             for i, line in enumerate(loopFile) :
-                if line[0:5] == 'MODEL' and line.split()[1] == '1' :
-                    modelBegin = i
-                if line[0:6] == 'ENDMDL' and modelBegin != -1 :
-                    modelEnd = i
-                    break
+                if i==0 and line.startswith("END"):
+                    with open ('FailedTH7_H8.txt' , 'a') as fp :
+                        fp.write( 'Luecke zwischen TH7 und Helix8 konnte fuer die Visualisierung nicht geschlossen werden.')
+                    breakout = True
+                else:
+                    if line[0:5] == 'MODEL' and line.split()[1] == '1' :
+                        modelBegin = i
+                    if line[0:6] == 'ENDMDL' and modelBegin != -1 :
+                        modelEnd = i
+                        break
+            if not breakout:
+            
+                loopLineList.append(loopFile[modelBegin + 5 : modelEnd - 4])
+            
+                # print modelBegin
+                # print modelEnd
+                # print loopLineList 
             
             
-            loopLineList.append(loopFile[modelBegin + 5 : modelEnd - 4])
-        
-            # print modelBegin
-            # print modelEnd
-            # print loopLineList 
-        
-        
-            new_pdb_file = (os.path.splitext(self.ori_file)[0] + 'Helix8.pdb')
-            with open( self.ori_file, 'r') as fp, open (new_pdb_file, 'w') as fp2 :
-                for line in fp :
-                    #Filter ANISOU-Zeilen raus, falls vorhanden und kopiert alle anderen Zeilen
-                    if line[0:6] != 'ANISOU' :
-                        fp2.write(line)
-            for loop in loopLineList :
-                #print loop    
-                startPos = int(loop[0].split()[5])
-                endPos = int(loop[-1].split()[5])
-                # print startPos
-                # print endPos
-                # print loop
-            
-                #Fuegt Loop an richtiger Stelle in Datei ein
-                rawPdbFile = []
-                with open( new_pdb_file, 'r') as fp :
-                    rawPdbFile = fp.read().splitlines(True)
-                with open (new_pdb_file + '.tmp', 'w') as fp2 :
-                        
-                    for i, line in enumerate(rawPdbFile) :
-                        #print i, line[0:4], line[22:26]
-                        if ((line[0:3]) == 'TER' and int(line[22:26]) == startPos -1 ) or \
-                           ((line[0:4]) == 'ATOM' and (int(line[22:26]) in range(startPos,endPos+1))) or \
-                           ((line[0:3]) == 'TER' and (int(line[22:26]) in range(startPos,endPos+1))) :
-                            for loopLine in loop :
-                                fp2.write(loopLine)
-                            loop = []
-                        elif (((line[0:4]) == 'ATOM' and int(line[22:26]) == endPos +1) and \
-                             ((rawPdbFile[i-1][0:4]) == 'ATOM' and int(rawPdbFile[i-1][22:26]) == startPos -1)) :
-                            for loopLine in loop :
-                                fp2.write(loopLine)
-                            loop = []
+                new_pdb_file = (os.path.splitext(self.ori_file)[0] + 'Helix8.pdb')
+                with open( self.ori_file, 'r') as fp, open (new_pdb_file, 'w') as fp2 :
+                    for line in fp :
+                        #Filter ANISOU-Zeilen raus, falls vorhanden und kopiert alle anderen Zeilen
+                        if line[0:6] != 'ANISOU' :
                             fp2.write(line)
-                        else :
-                            fp2.write(line)
+                for loop in loopLineList :
+                    #print loop
+                    startPos = int(loop[0].split()[5])
+                    endPos = int(loop[-1].split()[5])
+                    # print startPos
+                    # print endPos
+                    # print loop
                 
-                shutil.move(new_pdb_file + '.tmp', new_pdb_file)
-                    
-                    
-                #Neu-Nummerierung von out_pdb             
-                i = 0
-                with open( new_pdb_file, 'r') as fp, open (new_pdb_file + '.tmp', 'w') as fp2 :
-                    for line in fp:
-                        if line.startswith("ATOM"):
-                            i= i+1
-                            newline = line[:6] + " "*(5-len(str(i))) + str(i) + line[11:]
-                            fp2.write(newline)
-                        else:
-                            fp2.write(line)
+                    #Fuegt Loop an richtiger Stelle in Datei ein
+                    rawPdbFile = []
+                    with open( new_pdb_file, 'r') as fp :
+                        rawPdbFile = fp.read().splitlines(True)
+                    with open (new_pdb_file + '.tmp', 'w') as fp2 :
                             
-                
-                
-                shutil.move(new_pdb_file + '.tmp', self.ori_file)
+                        for i, line in enumerate(rawPdbFile) :
+                            #print i, line[0:4], line[22:26]
+                            if ((line[0:3]) == 'TER' and int(line[22:26]) == startPos -1 ) or \
+                               ((line[0:4]) == 'ATOM' and (int(line[22:26]) in range(startPos,endPos+1))) or \
+                               ((line[0:3]) == 'TER' and (int(line[22:26]) in range(startPos,endPos+1))) :
+                                for loopLine in loop :
+                                    fp2.write(loopLine)
+                                loop = []
+                            elif (((line[0:4]) == 'ATOM' and int(line[22:26]) == endPos +1) and \
+                                 ((rawPdbFile[i-1][0:4]) == 'ATOM' and int(rawPdbFile[i-1][22:26]) == startPos -1)) :
+                                for loopLine in loop :
+                                    fp2.write(loopLine)
+                                loop = []
+                                fp2.write(line)
+                            else :
+                                fp2.write(line)
+                    
+                    shutil.move(new_pdb_file + '.tmp', new_pdb_file)
+                        
+                        
+                    #Neu-Nummerierung von out_pdb             
+                    i = 0
+                    with open( new_pdb_file, 'r') as fp, open (new_pdb_file + '.tmp', 'w') as fp2 :
+                        for line in fp:
+                            if line.startswith("ATOM"):
+                                i= i+1
+                                newline = line[:6] + " "*(5-len(str(i))) + str(i) + line[11:]
+                                fp2.write(newline)
+                            else:
+                                fp2.write(line)
+                                
+                    
+                    
+                    shutil.move(new_pdb_file + '.tmp', self.ori_file)
         #     
         # fuer restliche loops
         self.oriSeqDict = {key: [] for key in ([0,1,2,3])}
