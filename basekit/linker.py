@@ -961,15 +961,16 @@ class SSFELinkIt( PyTool, ProviMixin ):
             #print position,aminoTriplet
             loopBracketAminos[position] = SSFELinkIt.AminoDict[aminoTriplet]
                
-        
+        last_res = 1
         #fuer loop helix8
         if not self.loopBracketAminosHelix8 == {} :
             with open( self.pdb_file, 'r' ) as fp :
                 for line in fp :
                     if line.startswith("ATOM") :
                         position = int(line[22:26])
+                        last_res=position
                         if position in self.loopBracketAminosHelix8 :
-                            self.loopBracketAminosHelix8[position] = line[17:20]    
+                            self.loopBracketAminosHelix8[position] = line[17:20]
                 
             for position, aminoTriplet in self.loopBracketAminosHelix8.iteritems() :
                 #print position,aminoTriplet
@@ -980,11 +981,18 @@ class SSFELinkIt( PyTool, ProviMixin ):
             #print loopBracketAminos
             #-1 und +1 fuer Gly/ wir spaeter wieder abgeschnitten
             startLoop = min(self.loopBracketAminosHelix8.keys()) -1
-            endLoop = max(self.loopBracketAminosHelix8.keys()) +1
+            print type(last_res)
             seqLoop = ''
             for key in sorted(self.loopBracketAminosHelix8) :
                 seqLoop += self.loopBracketAminosHelix8[key]
+            if max(self.loopBracketAminosHelix8.keys()) == last_res:
+                endLoop = max(self.loopBracketAminosHelix8.keys())
+                seqLoop = seqLoop[:-1]
+            else:
+                endLoop = max(self.loopBracketAminosHelix8.keys()) +1
+
                 
+            # c = chain 
             loopTasksListHelix8 = [[str(startLoop) + ':' + c, str(endLoop) + ':' + c, seqLoop]]
             #print self.loopBracketAminosHelix8
             print c
