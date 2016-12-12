@@ -306,13 +306,13 @@ class SSFEStatistic ( PyTool, ProviMixin ):
             for template_dir in [d for d in os.listdir(result_dir) if os.path.isdir(os.path.join(result_dir,d))]:
                 path = os.path.join(result_dir, template_dir)
                 if filename in os.listdir(path) :
-                    print filename
+                    #print filename
                     with open (os.path.join(path, filename), 'r') as fp :
                         resultLoopList = json.load(fp)
                     resultLoopList.insert(0,result_dir)
                     resultLoopList.insert(1,template_dir)
                     resultLoopFoundList.append(resultLoopList)
-                    print resultLoopFoundList
+                    #print resultLoopFoundList
                    
         with open(os.path.join(self.output_dir, "ResultLoopFoundList.json"), 'w') as fp :
             json.dump(resultLoopFoundList, fp)
@@ -348,9 +348,9 @@ class SSFEStatistic ( PyTool, ProviMixin ):
             
         countLoopFoundList = {'ICL1':[0,0], 'ICL2':[0,0], 'ICL3':[0,0], 'ECL1':[0,0], 'ECL2':[0,0], 'ECL3':[0,0], 'TM7_H8':[0,0]}    
         for loop in statResultLoopFoundList :
-            print loop
+            #print loop
             for res in loop[3:] :
-                print res
+                #print res
                 if res[1] :
                     countLoopFoundList[res[0]][0] +=1
                 else :
@@ -469,7 +469,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.xlabel('loop length')
         pyplot.ylabel('average score')
         pyplot.title('Average Score Per Loop Length')
-        pyplot.bar(self.lenX, self.scoreListY, color = 'grey', yerr = std)
+        pyplot.bar(self.lenX, self.scoreListY, color = '#BDBDBD', yerr = std)
         pyplot.savefig(os.path.join(stat1Dir, 'AvgScoreVsLooplenghtPerLenght.png'))
         
         #bestimmt wie oft eine Erweiterung genutzt wurde      
@@ -488,7 +488,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.ylabel('rate')
         pyplot.xticks(range(4))
         pyplot.title('Rate per Extension')
-        pyplot.bar(self.extensionX, self.rateY, color = 'grey', yerr = std)
+        pyplot.bar(self.extensionX, self.rateY, color = '#BDBDBD', yerr = std)
         pyplot.savefig(os.path.join(stat2Dir, 'RateVsExtension.png'))
         
         #bestimmt fuer jede Erweiterung einzelt das Verhaeltnis von Score zuer Looplaenge
@@ -515,7 +515,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.xlabel('looplenght')
         pyplot.ylabel('score')
         pyplot.title('Score per Loop Lenght for 0,0')
-        pyplot.bar(self.extensionList0X, self.extensionList0Y, color = 'grey', yerr = std0)
+        pyplot.bar(self.extensionList0X, self.extensionList0Y, color = '#BDBDBD', yerr = std0)
         pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLenghtFor0,0.png'))
         
         
@@ -542,7 +542,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.xlabel('looplenght')
         pyplot.ylabel('score')
         pyplot.title('Score per Loop Lenght for 1,1')
-        pyplot.bar(self.extensionList1X, self.extensionList1Y, color = 'grey', yerr = std1)
+        pyplot.bar(self.extensionList1X, self.extensionList1Y, color = '#BDBDBD', yerr = std1)
         pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLenghtFor1,1.png'))
         
         self.extensionList2X = []
@@ -568,7 +568,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.xlabel('looplenght')
         pyplot.ylabel('score')
         pyplot.title('Score per Loop Lenght for 2,2')
-        pyplot.bar(self.extensionList2X, self.extensionList2Y, color = 'grey', yerr = std2)
+        pyplot.bar(self.extensionList2X, self.extensionList2Y, color = '#BDBDBD', yerr = std2)
         pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLenghtFor2,2.png'))
                 
         self.extensionList3X = []
@@ -594,7 +594,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.xlabel('looplenght')
         pyplot.ylabel('score')
         pyplot.title('Score per Loop Lenght for 3,3')
-        pyplot.bar(self.extensionList3X, self.extensionList3Y, color = 'grey', yerr = std3)
+        pyplot.bar(self.extensionList3X, self.extensionList3Y, color = '#BDBDBD', yerr = std3)
         pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLenghtFor3,3.png'))
         
         
@@ -622,7 +622,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.xlabel('loop lenght')
         pyplot.ylabel('clash')
         pyplot.title('Score per Loop Lenght for 0,0')
-        pyplot.bar(self.extensionList0X, self.extensionList0Y, color = 'grey', yerr = std0)
+        pyplot.bar(self.extensionList0X, self.extensionList0Y, color = '#BDBDBD', yerr = std0)
         pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLooplenghtFor0,0.png'))
         
         self.extensionList1X = []
@@ -649,7 +649,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.xlabel('loop lenght')
         pyplot.ylabel('clash')
         pyplot.title('Score per Loop Lenght for 1,1')
-        pyplot.bar(self.extensionList1X, self.extensionList1Y, color = 'grey', yerr = std1)
+        pyplot.bar(self.extensionList1X, self.extensionList1Y, color = '#BDBDBD', yerr = std1)
         pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLenghtFor1,1.png'))
         
         self.extensionList2X = []
@@ -675,7 +675,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.xlabel('loop lenght')
         pyplot.ylabel('clash')
         pyplot.title('Score per Loop Lenght for 2,2')
-        pyplot.bar(self.extensionList2X, self.extensionList2Y, color = 'grey', yerr = std2)
+        pyplot.bar(self.extensionList2X, self.extensionList2Y, color = '#BDBDBD', yerr = std2)
         pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLenghtFor2,2.png'))
         
         self.extensionList3X = []
@@ -701,20 +701,21 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.xlabel('loop lenght')
         pyplot.ylabel('clash')
         pyplot.title('Score per Loop Lenght for 3,3')
-        pyplot.bar(self.extensionList3X, self.extensionList3Y, color = 'grey', yerr = std3)
+        pyplot.bar(self.extensionList3X, self.extensionList3Y, color = '#BDBDBD', yerr = std3)
         pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLenghtFor3,3.png'))
         
         pyplot.close()
         
         barWidth = 0.2
         _, ax = pyplot.subplots()
-        ex0 = ax.bar(np.array(self.extensionList0X) - 2*barWidth, self.extensionList0Y, barWidth, color='g', yerr = std0)
-        ex1 = ax.bar(np.array(self.extensionList1X) - barWidth, self.extensionList1Y, barWidth, color='r', yerr = std1)
-        ex2 = ax.bar(np.array(self.extensionList2X) + barWidth, self.extensionList2Y, barWidth, color='b', yerr = std2)
-        ex3 = ax.bar(np.array(self.extensionList3X) + 2*barWidth, self.extensionList3Y, barWidth, color='y', yerr = std3)
+        ex0 = ax.bar(np.array(self.extensionList0X) - 2*barWidth, self.extensionList0Y, barWidth, color='#BE81F7', yerr = std0, label = 'Extension_0')
+        ex1 = ax.bar(np.array(self.extensionList1X) - barWidth, self.extensionList1Y, barWidth, color='#F781F3', yerr = std1, label = 'Extension_1')
+        ex2 = ax.bar(np.array(self.extensionList2X) + barWidth, self.extensionList2Y, barWidth, color='#A9D0F5', yerr = std2, label = 'Extension_2')
+        ex3 = ax.bar(np.array(self.extensionList3X) + 2*barWidth, self.extensionList3Y, barWidth, color='#BDBDBD', yerr = std3, label = 'Extension_3')
         ax.set_xlabel('loop lenght')
         ax.set_ylabel('clash')
         ax.set_title('Score per Loop Lenght')
+        pyplot.legend()
         #ax.set_xticks([x + barWidth for x in range(41)])
         pyplot.tight_layout()
         pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLenght.png'))
@@ -740,7 +741,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.xlabel('model')
         pyplot.ylabel('avgScore')
         pyplot.title('AvgScore per Model')
-        pyplot.bar(self.modelNumX, self.avgScoreY, color = 'grey', yerr = std)
+        pyplot.bar(self.modelNumX, self.avgScoreY, color = '#BDBDBD', yerr = std)
         pyplot.savefig(os.path.join(stat5Dir, 'AvgScore per Model'))
         
         
@@ -964,6 +965,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
         last_res = 1
         #fuer loop helix8
         if not self.loopBracketAminosHelix8 == {} :
+            failed = False
             with open( self.pdb_file, 'r' ) as fp :
                 for line in fp :
                     if line.startswith("ATOM") :
@@ -974,117 +976,125 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 
             for position, aminoTriplet in self.loopBracketAminosHelix8.iteritems() :
                 #print position,aminoTriplet
-                self.loopBracketAminosHelix8[position] = SSFELinkIt.AminoDict[aminoTriplet]    
-            
-            #print self.loopBracketAminosHelix8    
+                #print self.loopBracketAminosHelix8
+                if last_res >= max(self.loopBracketAminosHelix8.keys()):
+                    self.loopBracketAminosHelix8[position] = SSFELinkIt.AminoDict[aminoTriplet]
+                else :
+                    with open ('FailedTH7_H8_1.txt' , 'a') as fp :
+                        fp.write( 'Luecke zwischen TH7 und Helix8 konnte fuer die Visualisierung nicht geschlossen werden. Sequenzpositionen nicht korrekt/verarbeitbar.')
+                    failed = True
+            if not failed :
                 
-            #print loopBracketAminos
-            #-1 und +1 fuer Gly/ wir spaeter wieder abgeschnitten
-            startLoop = min(self.loopBracketAminosHelix8.keys()) -1
-            print type(last_res)
-            seqLoop = ''
-            for key in sorted(self.loopBracketAminosHelix8) :
-                seqLoop += self.loopBracketAminosHelix8[key]
-            if max(self.loopBracketAminosHelix8.keys()) == last_res:
-                endLoop = max(self.loopBracketAminosHelix8.keys())
-                seqLoop = seqLoop[:-1]
-            else:
-                endLoop = max(self.loopBracketAminosHelix8.keys()) +1
-
-                
-            # c = chain 
-            loopTasksListHelix8 = [[str(startLoop) + ':' + c, str(endLoop) + ':' + c, seqLoop]]
-            #print self.loopBracketAminosHelix8
-            print c
-            print loopTasksListHelix8
-            print self.loopBracketAminosHelix8
             
-            MultiLinkIt(self.ori_file, input = loopTasksListHelix8,
-                    **copy_dict( kwargs, run=True,
-                                output_dir=self.subdir("Helix8" ), verbose=True, debug=True ))
-            
-            loopFile = []
-            loopLineList = []
-            with open(self.subdir("Helix8/link_it_0") + "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker2.pdb", 'r') as fp :
-                loopFile = fp.readlines()
-            
-            modelBegin = -1
-            modelEnd = -1
-            breakout = False
-            for i, line in enumerate(loopFile) :
-                if i==0 and line.startswith("END"):
-                    with open ('FailedTH7_H8.txt' , 'a') as fp :
-                        fp.write( 'Luecke zwischen TH7 und Helix8 konnte fuer die Visualisierung nicht geschlossen werden.')
-                    breakout = True
+                #print self.loopBracketAminosHelix8    
+                    
+                #print loopBracketAminos
+                #-1 und +1 fuer Gly/ wir spaeter wieder abgeschnitten
+                startLoop = min(self.loopBracketAminosHelix8.keys()) -1
+                #print type(last_res)
+                seqLoop = ''
+                for key in sorted(self.loopBracketAminosHelix8) :
+                    seqLoop += self.loopBracketAminosHelix8[key]
+                if max(self.loopBracketAminosHelix8.keys()) == last_res:
+                    endLoop = max(self.loopBracketAminosHelix8.keys())
+                    seqLoop = seqLoop[:-1]
                 else:
-                    if line[0:5] == 'MODEL' and line.split()[1] == '1' :
-                        modelBegin = i
-                    if line[0:6] == 'ENDMDL' and modelBegin != -1 :
-                        modelEnd = i
-                        break
-            if not breakout:
-            
-                loopLineList.append(loopFile[modelBegin + 5 : modelEnd - 4])
-            
-                # print modelBegin
-                # print modelEnd
-                # print loopLineList 
-            
-            
-                new_pdb_file = (os.path.splitext(self.ori_file)[0] + 'Helix8.pdb')
-                with open( self.ori_file, 'r') as fp, open (new_pdb_file, 'w') as fp2 :
-                    for line in fp :
-                        #Filter ANISOU-Zeilen raus, falls vorhanden und kopiert alle anderen Zeilen
-                        if line[0:6] != 'ANISOU' :
-                            fp2.write(line)
-                for loop in loopLineList :
-                    #print loop
-                    startPos = int(loop[0].split()[5])
-                    endPos = int(loop[-1].split()[5])
-                    # print startPos
-                    # print endPos
-                    # print loop
+                    endLoop = max(self.loopBracketAminosHelix8.keys()) +1
+    
+                    
+                # c = chain 
+                loopTasksListHelix8 = [[str(startLoop) + ':' + c, str(endLoop) + ':' + c, seqLoop]]
+                #print self.loopBracketAminosHelix8
+                # print c
+                # print loopTasksListHelix8
+                # print self.loopBracketAminosHelix8
                 
-                    #Fuegt Loop an richtiger Stelle in Datei ein
-                    rawPdbFile = []
-                    with open( new_pdb_file, 'r') as fp :
-                        rawPdbFile = fp.read().splitlines(True)
-                    with open (new_pdb_file + '.tmp', 'w') as fp2 :
-                            
-                        for i, line in enumerate(rawPdbFile) :
-                            #print i, line[0:4], line[22:26]
-                            if ((line[0:3]) == 'TER' and int(line[22:26]) == startPos -1 ) or \
-                               ((line[0:4]) == 'ATOM' and (int(line[22:26]) in range(startPos,endPos+1))) or \
-                               ((line[0:3]) == 'TER' and (int(line[22:26]) in range(startPos,endPos+1))) :
-                                for loopLine in loop :
-                                    fp2.write(loopLine)
-                                loop = []
-                            elif (((line[0:4]) == 'ATOM' and int(line[22:26]) == endPos +1) and \
-                                 ((rawPdbFile[i-1][0:4]) == 'ATOM' and int(rawPdbFile[i-1][22:26]) == startPos -1)) :
-                                for loopLine in loop :
-                                    fp2.write(loopLine)
-                                loop = []
+                MultiLinkIt(self.ori_file, input = loopTasksListHelix8,
+                        **copy_dict( kwargs, run=True,
+                                    output_dir=self.subdir("Helix8" ), verbose=True, debug=True ))
+                
+                loopFile = []
+                loopLineList = []
+                with open(self.subdir("Helix8/link_it_0") + "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker2.pdb", 'r') as fp :
+                    loopFile = fp.readlines()
+                
+                modelBegin = -1
+                modelEnd = -1
+                breakout = False
+                for i, line in enumerate(loopFile) :
+                    if i==0 and line.startswith("END"):
+                        with open ('FailedTH7_H8_2.txt' , 'a') as fp :
+                            fp.write( 'Luecke zwischen TH7 und Helix8 konnte fuer die Visualisierung nicht geschlossen werden.')
+                        breakout = True
+                    else:
+                        if line[0:5] == 'MODEL' and line.split()[1] == '1' :
+                            modelBegin = i
+                        if line[0:6] == 'ENDMDL' and modelBegin != -1 :
+                            modelEnd = i
+                            break
+                if not breakout:
+                
+                    loopLineList.append(loopFile[modelBegin + 5 : modelEnd - 4])
+                
+                    # print modelBegin
+                    # print modelEnd
+                    # print loopLineList 
+                
+                
+                    new_pdb_file = (os.path.splitext(self.ori_file)[0] + 'Helix8.pdb')
+                    with open( self.ori_file, 'r') as fp, open (new_pdb_file, 'w') as fp2 :
+                        for line in fp :
+                            #Filter ANISOU-Zeilen raus, falls vorhanden und kopiert alle anderen Zeilen
+                            if line[0:6] != 'ANISOU' :
                                 fp2.write(line)
-                            else :
-                                fp2.write(line)
+                    for loop in loopLineList :
+                        #print loop
+                        startPos = int(loop[0].split()[5])
+                        endPos = int(loop[-1].split()[5])
+                        # print startPos
+                        # print endPos
+                        # print loop
                     
-                    shutil.move(new_pdb_file + '.tmp', new_pdb_file)
-                        
-                        
-                    #Neu-Nummerierung von out_pdb             
-                    i = 0
-                    with open( new_pdb_file, 'r') as fp, open (new_pdb_file + '.tmp', 'w') as fp2 :
-                        for line in fp:
-                            if line.startswith("ATOM"):
-                                i= i+1
-                                newline = line[:6] + " "*(5-len(str(i))) + str(i) + line[11:]
-                                fp2.write(newline)
-                            else:
-                                fp2.write(line)
+                        #Fuegt Loop an richtiger Stelle in Datei ein
+                        rawPdbFile = []
+                        with open( new_pdb_file, 'r') as fp :
+                            rawPdbFile = fp.read().splitlines(True)
+                        with open (new_pdb_file + '.tmp', 'w') as fp2 :
                                 
-                    
-                    
-                    shutil.move(new_pdb_file + '.tmp', self.ori_file)
+                            for i, line in enumerate(rawPdbFile) :
+                                #print i, line[0:4], line[22:26]
+                                if ((line[0:3]) == 'TER' and int(line[22:26]) == startPos -1 ) or \
+                                   ((line[0:4]) == 'ATOM' and (int(line[22:26]) in range(startPos,endPos+1))) or \
+                                   ((line[0:3]) == 'TER' and (int(line[22:26]) in range(startPos,endPos+1))) :
+                                    for loopLine in loop :
+                                        fp2.write(loopLine)
+                                    loop = []
+                                elif (((line[0:4]) == 'ATOM' and int(line[22:26]) == endPos +1) and \
+                                     ((rawPdbFile[i-1][0:4]) == 'ATOM' and int(rawPdbFile[i-1][22:26]) == startPos -1)) :
+                                    for loopLine in loop :
+                                        fp2.write(loopLine)
+                                    loop = []
+                                    fp2.write(line)
+                                else :
+                                    fp2.write(line)
+                        
+                        shutil.move(new_pdb_file + '.tmp', new_pdb_file)
+                            
+                            
+                        #Neu-Nummerierung von out_pdb             
+                        i = 0
+                        with open( new_pdb_file, 'r') as fp, open (new_pdb_file + '.tmp', 'w') as fp2 :
+                            for line in fp:
+                                if line.startswith("ATOM"):
+                                    i= i+1
+                                    newline = line[:6] + " "*(5-len(str(i))) + str(i) + line[11:]
+                                    fp2.write(newline)
+                                else:
+                                    fp2.write(line)
+                                    
+                        
+                        
+                        shutil.move(new_pdb_file + '.tmp', self.ori_file)
         #     
         # fuer restliche loops
         self.oriSeqDict = {key: [] for key in ([0,1,2,3])}
@@ -1192,7 +1202,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         else :    
                             templateList.append(loopElement[4])
 
-                
+                    # GPCR Score bei genunden verdoppelt
                     for index, loopEntrie in enumerate(sortedSingleLoopDict) :
                         if loopEntrie[4].upper() in self.gpcrListe :
                             sortedSingleLoopDict[index][2] *= 2
@@ -1220,7 +1230,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
             with open(os.path.join(self.output_dir, "BestResultsDict.json"), 'w') as fp :
                 json.dump(loopDict, fp)
             
-            # wird spaeter sortiert fuer einzelne pdb-files in pdbLoop() 
+            # wird spaeter sortiert fuer einzelne pdb-files in pdbLoop()
+            # print loopDict
+            # print '======================='
             self.sortedPdbLoopDict = loopDict.copy()
             # print loopDict
             
@@ -1279,6 +1291,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
         
         if self.sortedPdbLoopDict == {} :
             return
+        
+        # print self.sortedPdbLoopDict
+        # print '==========================='
 
         numclashes = 5
         for key in self.sortedPdbLoopDict:
@@ -1399,12 +1414,12 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 else :
                     relResultLoopsList.append((name,False))
                     
-        print relResultLoopsList            
+        # print relResultLoopsList            
                     
         relResultLoopsList = [ ('TM7_H8',x[1]) if x[0] == '8' else x for x in relResultLoopsList ]
         
-        print '================='
-        print relResultLoopsList  
+        # print '================='
+        # print relResultLoopsList  
         
         with open(os.path.join(self.output_dir, "RelResultLoopsList.json"), 'w') as fp :
                 json.dump(relResultLoopsList, fp)
@@ -1413,6 +1428,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
         
         i = 0
         tableList = self.sortedPdbLoopDict.copy()
+        # print self.sortedPdbLoopDict
         nameList = []
                
         lastName = ''
@@ -1437,13 +1453,18 @@ class SSFELinkIt( PyTool, ProviMixin ):
          
         # print '===================================================='
         # print tableList
+   #     for i in range(7):
+  #          if i in tableList:
+ #               fixedTableList[]
+            
         
         with open ( 'Result_Table.csv', 'w' ) as fp1 :
             fp1.write('Loop ,# , Run, GPCRdb, Score, Sequence, Templ seq, Seq identity, Clashes, PDB-Id, Templ pos\n' )
             j = 0
             for name in (nameList) :
                 fp1.write(name)
-                while tableList[j] == [] :
+                #print tableList
+                while j not in tableList or tableList[j] == []:
                     j += 1                    
                 for i,  loop in enumerate(tableList[j]) :    
                     # print loop
@@ -1453,7 +1474,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
         with open ( 'Result.txt', 'w') as fp2 :
             j = 0
             for name in (nameList) :
-                while tableList[j] == [] :
+                while j not in tableList or tableList[j] == [] :
                     j += 1                    
                 for i,  loop in enumerate(tableList[j]) :    
                     # print loop
@@ -1463,7 +1484,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
         result = ""
         j = 0
         for name in (nameList) :
-            while tableList[j] == [] :
+            while j not in tableList or tableList[j] == [] :
                 j += 1                    
             for i,  loop in enumerate(tableList[j]) :    
                 # print loop
@@ -1473,7 +1494,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
         with open ( 'Result_Tabel.txt', 'w') as fp2 :
             j = 0
             for name in (nameList) :
-                while tableList[j] == [] :
+                while j not in tableList or tableList[j] == [] :
                     j += 1                    
                 for i,  loop in enumerate(tableList[j]) :    
                     # print loop
@@ -1483,7 +1504,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
         resultTabel = "Loop ,# , Run, GPCRdb, Score, Sequence, Templ seq, Seq identity, Clashes, PDB-Id, Templ pos,;"
         j = 0
         for name in (nameList) :
-            while tableList[j] == [] :
+            while j not in tableList or tableList[j] == [] :
                 j += 1                    
             for i,  loop in enumerate(tableList[j]) :    
                 # print loop
