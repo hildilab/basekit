@@ -745,7 +745,27 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.savefig(os.path.join(stat5Dir, 'AvgScore per Model'))
         
         
-# fuert SSFE fuer einen Datensatz aus 
+# fuert SSFE fuer einen Datensatz aus
+class SSFEZip (PyTool, ProviMixin ):
+    args = [
+        _("out_dataSet", type="dir")
+    ]
+    
+    def func ( self ) :
+        
+        # path = os.path.join(outJobDir)
+
+        os.chdir
+                                       
+        zipf = zipfile.ZipFile( os.path.join(self.output_dir, "results.zip"), 'w', zipfile.ZIP_DEFLATED)
+        exclude = ['link_it_0,0', 'link_it_1,1', 'link_it_2,2', 'link_it_3,3', 'Helix8']
+        for root, dirs, files in os.walk(self.out_dataSet, topdown=True) :
+            dirs[:] = [d for d in dirs if d not in exclude]
+            for file in files :
+                zipf.write(os.path.join(root, file))
+        zipf.close()
+        
+
 class SSFEMultiLinkIt( PyTool, ProviMixin ):
     args = [
         _("loop_jobs", type="dir")
@@ -815,8 +835,8 @@ class SSFEMultiLinkIt( PyTool, ProviMixin ):
                 
             os.chdir('..')
         
-
         path = os.path.join(outJobDir)
+
                                        
         zipf = zipfile.ZipFile( os.path.join(self.output_dir, "results.zip"), 'w', zipfile.ZIP_DEFLATED)
         exclude = ['link_it_0,0', 'link_it_1,1', 'link_it_2,2', 'link_it_3,3']
@@ -825,6 +845,8 @@ class SSFEMultiLinkIt( PyTool, ProviMixin ):
             for file in files :
                 zipf.write(os.path.join(root, file))
         zipf.close()
+
+
 
 class SSFELinkIt( PyTool, ProviMixin ):
     args = [
