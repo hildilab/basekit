@@ -429,7 +429,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         stat2Dir = self.subdir('RateVsExtension')
         stat3Dir = self.subdir('ScoreVsLoopLenghtPerExtension')
         stat4Dir = self.subdir('ClashVsLoopLenghtPerExtension')
-        stat5Dir = self.subdir('AvgScoreVsLoopLenghtPerModel')
+        #stat5Dir = self.subdir('AvgScoreVsLoopLenghtPerModel')
         
         # bestimmt den durchschnittlichen Score fuer jede Looplaenge
         self.scoreListY = []
@@ -723,46 +723,64 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         self.avgScoreY = []
         self.modelNumX = []
         
-        for i in range(11) :
-            avgList = [x for x in statAvgScoreList if x [0] == i]
-            lenAvg = len(avgList)
-            if lenAvg == 0 :
-                continue
-            avgScore = sum(x[1] for x in avgList)/ lenAvg
-            self.avgScoreY.append(avgScore)
-            std = np.std(self.avgScoreY)
-            self.modelNumX.append(i)
-            
-            # print self.avgScoreY
-            # print '==========='
-            # print self.modelNumX
-                        
-        pyplot.close()
-        pyplot.xlabel('model')
-        pyplot.ylabel('avgScore')
-        pyplot.title('AvgScore per Model')
-        pyplot.bar(self.modelNumX, self.avgScoreY, color = '#BDBDBD', yerr = std)
-        pyplot.savefig(os.path.join(stat5Dir, 'AvgScore per Model'))
+        # for i in range(11) :
+        #     avgList = [x for x in statAvgScoreList if x [0] == i]
+        #     lenAvg = len(avgList)
+        #     if lenAvg == 0 :
+        #         continue
+        #     avgScore = sum(x[1] for x in avgList)/ lenAvg
+        #     self.avgScoreY.append(avgScore)
+        #     std = np.std(self.avgScoreY)
+        #     self.modelNumX.append(i)
+        #     
+        #     # print self.avgScoreY
+        #     # print '==========='
+        #     # print self.modelNumX
+        #                 
+        # pyplot.close()
+        # pyplot.xlabel('model')
+        # pyplot.ylabel('avgScore')
+        # pyplot.title('AvgScore per Model')
+        # pyplot.bar(self.modelNumX, self.avgScoreY, color = '#BDBDBD', yerr = std)
+        # pyplot.savefig(os.path.join(stat5Dir, 'AvgScore per Model'))
         
-        
-# fuert SSFE fuer einen Datensatz aus
-class SSFEZip (PyTool, ProviMixin ):
+# fuer Failed.txt zusammenfassen        
+class SSFEFailed (PyTool, ProviMixin ):
     args = [
         _("out_dataSet", type="dir")
     ]
     
     def func ( self ) :
         
-        # path = os.path.join(outJobDir)
+        zipf = zipfile.ZipFile( os.path.join(self.output_dir, "failed.zip"), 'w', zipfile.ZIP_DEFLATED)
+        include = set(['Failed.txt', 'Failed1.txt', 'Failed2.txt', 'Failed3.txt'])
+        exclude = ['link_it_0,0', 'link_it_1,1', 'link_it_2,2', 'link_it_3,3', 'Helix8']
+        for root, dirs, files in os.walk(self.out_dataSet, topdown=True) :
+            dirs[:] = [d for d in dirs if d not in exclude]
+            if not set(files).intersection(include) and 'Result_Table.csv' in files:
+                continue            
+            for file in files :
+                zipf.write(os.path.join(os.path.relpath(root), file))
+        zipf.close()   
 
-        os.chdir
+
+        
+# fuert SSFE fuer einen Datensatz aus
+class SSFEZip (PyTool, ProviMixin ):
+    args = [
+        _("out_dataSet", type="dir")
+    ]
+
+    def func ( self ) :
+        
+        # path = os.path.join(outJobDir)
                                        
         zipf = zipfile.ZipFile( os.path.join(self.output_dir, "results.zip"), 'w', zipfile.ZIP_DEFLATED)
         exclude = ['link_it_0,0', 'link_it_1,1', 'link_it_2,2', 'link_it_3,3', 'Helix8']
         for root, dirs, files in os.walk(self.out_dataSet, topdown=True) :
             dirs[:] = [d for d in dirs if d not in exclude]
             for file in files :
-                zipf.write(os.path.join(root, file))
+                zipf.write(os.path.join(os.path.relpath(root), file))
         zipf.close()
         
 
@@ -835,16 +853,16 @@ class SSFEMultiLinkIt( PyTool, ProviMixin ):
                 
             os.chdir('..')
         
-        path = os.path.join(outJobDir)
-
-                                       
-        zipf = zipfile.ZipFile( os.path.join(self.output_dir, "results.zip"), 'w', zipfile.ZIP_DEFLATED)
-        exclude = ['link_it_0,0', 'link_it_1,1', 'link_it_2,2', 'link_it_3,3']
-        for root, dirs, files in os.walk(path, topdown=True) :
-            dirs[:] = [d for d in dirs if d not in exclude]
-            for file in files :
-                zipf.write(os.path.join(root, file))
-        zipf.close()
+        # path = os.path.join(outJobDir)
+        # 
+        #                                
+        # zipf = zipfile.ZipFile( os.path.join(self.output_dir, "results.zip"), 'w', zipfile.ZIP_DEFLATED)
+        # exclude = ['link_it_0,0', 'link_it_1,1', 'link_it_2,2', 'link_it_3,3']
+        # for root, dirs, files in os.walk(path, topdown=True) :
+        #     dirs[:] = [d for d in dirs if d not in exclude]
+        #     for file in files :
+        #         zipf.write(os.path.join(root, file))
+        # zipf.close()
 
 
 
@@ -910,6 +928,8 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     if len(seq) > seqLength :
                         # self.loopTasks = []
                         self.loopPosList.append([0, 0])
+                        with open(os.path.join( self.output_dir, "ERROR_LoopSequenzToLong.txt"), 'w') :
+                            pass                        
                         continue
                         # loopBrackets = []
                         # loopBracketAminos = {}
@@ -945,7 +965,20 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         #print self.loopBracketAminosHelix8
                         self.loopPosList.append([0, 0])
                         continue
-                        
+                    
+                    endInt2 = int(end)+1    
+                    with open( self.pdb_file, 'r' ) as fp :
+                        for line in fp :
+                            if line.startswith("ATOM") :
+                                position = int(line[22:26])
+                                last_res=position
+                    # print last_res
+                    # print '------------------'
+                    # print endInt2+3
+                    if last_res < endInt2+3 :
+                        with open ('ERROR_TMH7_H8_2.txt' , 'w') as fp7 :
+                            fp7.write( 'TMH7/H8 zu nah am Ende des Rezeptors - keine Berechnung moeglich')                       
+                        continue                        
                         
                     self.loopCount += 1        
                     
@@ -955,10 +988,21 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     
                     #List von Start- und Endwertern der erweiterten Loops
                     startInt = int(start)-1
-                    endInt = int(end)+1              
+                    endInt = int(end)+1
+                    # with open( self.pdb_file, 'r' ) as fp :
+                    #     for line in fp :
+                    #         if line.startswith("ATOM") :
+                    #             position = int(line[22:26])
+                    #             last_res=position
+                    # print last_res
+                    # print '------------------'
+                    # print endInt+3
+                    # if last_res < endInt+3 :
+                    #     continue
                     loopBrackets.append(([startInt-2,startInt-1,startInt], [endInt, endInt+1, endInt+2]))
                     loopBracketAminos.update(dict.fromkeys(loopBrackets[-1][0]))
                     loopBracketAminos.update(dict.fromkeys(loopBrackets[-1][1]))
+                    
                     
                     
         self.loopPosList += (7 * [[0, 0]])
@@ -981,7 +1025,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
         
         #ersetzt 3-Buchstabencode durch 1-Buchstabencode
         for position, aminoTriplet in loopBracketAminos.iteritems() :
-            #print position,aminoTriplet
+            print position,aminoTriplet
             loopBracketAminos[position] = SSFELinkIt.AminoDict[aminoTriplet]
                
         last_res = 1
@@ -1002,8 +1046,8 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 if last_res >= max(self.loopBracketAminosHelix8.keys()):
                     self.loopBracketAminosHelix8[position] = SSFELinkIt.AminoDict[aminoTriplet]
                 else :
-                    with open ('FailedTH7_H8_1.txt' , 'a') as fp :
-                        fp.write( 'Luecke zwischen TH7 und Helix8 konnte fuer die Visualisierung nicht geschlossen werden. Sequenzpositionen nicht korrekt/verarbeitbar.')
+                    with open ('ERROR_TMH7_H8_1.txt' , 'a') as fp :
+                        fp.write( 'Luecke zwischen TMH7 und Helix8 konnte fuer die Visualisierung nicht geschlossen werden. Sequenzpositionen nicht korrekt/verarbeitbar.')
                     failed = True
             if not failed :
                 
@@ -1128,7 +1172,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     seq = loopBracketAminos[start - j ] + seq + loopBracketAminos[end + j]    
                 loopTasksList.append([str(start - i) + ':' + c, str(end + i) + ':' + c, seq])
             # print '------------' 
-            #print loopTasksList
+            print loopTasksList
             for k in loopTasksList :
                 self.oriSeqDict[i].append(k[2])
              
