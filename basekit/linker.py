@@ -1441,27 +1441,57 @@ class SSFELinkIt( PyTool, ProviMixin ):
         
         # print self.loopCount
         
-        self.gpcrListe = ["5K2A", "5K2B", "5K2C", "5K2D", "5GLH", "5D6L", "5DYS", "5EN0", "5G53", "5L7D",
-                          "5L7I", "4Z9G", "5IU4", "5IU7", "5IU8", "5IUA", "5IUB", "5DGY", "5DSG", "4ZJ8",
-                          "4ZJC", "5CXV", "5D5A", "5D5B", "5F8U", "4X1H", "5DHG", "5DHH", "4ZUD", "5A8E",
-                          "5CGC", "5CGD", "5C1M", "4XEE", "4XES", "4ZWJ", "4WW3", "4Z34", "4ZR5", "4Z36",
-                          "4YAY", "4UG2", "4UHR", "4XNV", "4XNW", "4XT1", "4XT3", "4RWS", "4RWA", "4RWD",
-                          "4S0V", "4U14", "4PXF", "4PHU", "4OO9", "4PXZ", "4PY0", "4BVN", "4NTJ", "4OR2",
-                          "3ZEV", "4BOU", "4BV0", "4BWB", "4N4W", "4N6H", "4NC3", "4MQE", "4MQF", "4MR7",
-                          "4MR8", "4MR9", "4MRM", "4MS1", "4MS3", "4MS4", "4MQS", "4MQT", "4J4Q", "4MBS",
-                          "4L6R", "4K5Y", "4BEY", "4BEZ", "4JKV", "3ZPQ", "3ZPR", "4IAQ", "4IAR", "4IB4",
-                          "4GPO", "2LOT", "2LOU", "2LOV", "2LOW", "3VW7", "4GBR", "2LNL", "4GRV", "4EIY",
-                          "4AMI", "4AMJ", "4EJ4", "4EA3", "3UZA", "3UZC", "4DJH", "4DKL", "4DAJ", "3V2W",
-                          "3V2Y", "3UON", "3VG9", "3VGA", "4A4M", "3PWH", "3REY", "3RFM", "3AYM", "3AYN",
-                          "3SN6", "3RZE", "2YCY", "2YCW", "2YCX", "2YCZ", "2YDO", "2YDV", "2Y01", "2X72",
-                          "3PQR", "3PXO", "3QAK", "3OAX", "3P0G", "2Y00", "2Y02", "2Y03", "2Y04", "3PDS",
-                          "3PBL", "3ODU", "3OE0", "3OE6", "3OE8", "3OE9", "3NY8", "3NY9", "3NYA", "3KJ6",
-                          "3EML", "3DQB", "3C9L", "3C9M", "2VT4", "3CAP", "3D4S", "2Z73", "2ZIY", "2R4R",
-                          "2R4S", "2PED", "2RH1", "2J4Y", "2I35", "2I36", "2I37", "2G87", "2HPY", "1U19",
-                          "1V6R", "1GZM", "1LN6", "1L9H", "1JFP", "1HZX", "1F88", "1EDN"]
+        self.gpcrListe = ["1EDN", "1F88", "1GZM", "1HZX", "1JFP", "1L9H", "1LN6", "1U19", "1V6R", "2G87",
+                          "2HPY", "2I35", "2I36", "2I37", "2J4Y", "2LNL", "2LOT", "2LOU", "2LOV", "2LOW",
+                          "2PED", "2R4R", "2R4S", "2RH1", "2VT4", "2X72", "2Y00", "2Y01", "2Y02", "2Y03",
+                          "2Y04", "2YCW", "2YCX", "2YCY", "2YCZ", "2YDO", "2YDV", "2Z73", "2ZIY", "3AYM",
+                          "3AYN", "3C9L", "3C9M", "3CAP", "3D4S", "3DQB", "3EML", "3KJ6", "3NY8", "3NY9",
+                          "3NYA", "3OAX", "3ODU", "3OE0", "3OE6", "3OE8", "3OE9", "3P0G", "3PBL", "3PDS",
+                          "3PQR", "3PWH", "3PXO", "3QAK", "3REY", "3RFM", "3RZE", "3SN6", "3UON", "3UZA",
+                          "3UZC", "3V2W", "3V2Y", "3VG9", "3VGA", "3VW7", "3ZEV", "3ZPQ", "3ZPR", "4A4M",
+                          "4AMI", "4AMJ", "4BEY", "4BEZ", "4BUO", "4BV0", "4BVN", "4BWB", "4DAJ", "4DJH",
+                          "4DKL", "4EA3", "4EIY", "4EJ4", "4GBR", "4GPO", "4GRV", "4IAQ", "4IAR", "4IB4",
+                          "4J4Q", "4JKV", "4K5Y", "4L6R", "4MBS", "4MQE", "4MQF", "4MQS", "4MQT", "4MR7",
+                          "4MR8", "4MR9", "4MRM", "4MS1", "4MS3", "4MS4", "4N4W", "4N6H", "4NC3", "4NTJ",
+                          "4OO9", "4OR2", "4PHU", "4PXF", "4PXZ", "4PY0", "4RWA", "4RWD", "4RWS", "4S0V",
+                          "4U14", "4UG2", "4UHR", "4WW3", "4X1H", "4XEE", "4XES", "4XNV", "4XNW", "4XT1",
+                          "4XT3", "4YAY", "4Z34", "4Z35", "4Z36", "4Z9G", "4ZJ8", "4ZJC", "4ZUD", "4ZWJ",
+                          "5A8E", "5C1M", "5CGC", "5CGD", "5CXV", "5D5A", "5D5B", "5D6L", "5DGY", "5DHG",
+                          "5DHH", "5DSG", "5DYS", "5EN0", "5F8U", "5G53", "5GLH", "5IU4", "5IU7", "5IU8",
+                          "5IUA", "5IUB", "5K2A", "5K2B", "5K2C", "5K2D", "5L7D", "5L7I", "5LWE", "5T04",
+                          "5T1A", "5TGZ", "5TVN", "5U09"]
+        
+        self.gpcrDict = {'X_5HT2B': ["4IB4", "4NC3", "5TVN"], 'X_ENLYS': ["2RH1"],
+                         'X_GABR1': ["4MQE", "4MQF", "4MR7", "4MR8", "4MR9", "4MRM", "4MS1", "4MS3", "4MS4"],
+                         'X_NTR1': ["3ZEV", "4BUO", "4BV0", "4BWB", "4GRV", "4XEE", "4XES", "5T04"],
+                         'X_GABR2': ["4MQE", "4MQF", "4MR8", "4MR9", "4MRM", "4MS1", "4MS3", "4MS4"],
+                         'X_SMO': ["4JKV", "4N4W", "5L7D", "5L7I"], 'X_OX2R': ["4S0V"], 'X_CCR2': ["5T1A"],
+                         'X_CCR5': ["4MBS"], 'X_CCR9': ["5LWE"], 'X_GLR': ["4L6R"], 'X_EDNRB': ["5GLH"],
+                         'X_OPRK': ["4DJH"], 'X_P2Y12': ["4NTJ", "4PXZ", "4PY0"], 'X_P2RY1': ["4XNV", "4XNW"],
+                         'X_OPRM': ["4DKL", "5C1M"], 'X_CRFR1': ["4K5Y", "4Z9G"], 'X_S1PR1': ["3V2W", "3V2Y"],
+                         'X_OPRD': ["4EJ4", "4N6H", "4RWA", "4RWD"], 'X_CXCR1': ["2LNL"], 'X_OPRX': ["4EA3", "5DHG", "5DHH"],
+                         'X_HRH1': ["3RZE"], 'X_EDN1': ["1EDN", "1V6R"], 'X_GRM5': ["4OO9", "5CGC", "5CGD"], 'X_GRM1': ["4OR2"],
+                         'X_CNR1': ["5TGZ", "5U09"],'X_AA2AR': ["2YDO", "2YDV", "3EML", "3PWH", "3QAK", "3REY", "3RFM", "3UZA", "3UZC", "3VG9", "3VGA", "4EIY",
+                                                            "4UG2", "4UHR", "5G53", "5IU4", "5IU7", "5IU8", "5IUA", "5IUB", "5K2A", "5K2B", "5K2C", "5K2D"],
+                         'X_5HT1B': ["4IAQ", "4IAR"], 'X_CXCR4': ["3ODU", "3OE0", "3OE6", "3OE8", "3OE9", "4RWS"], 'X_ACM3': ["4DAJ", "4U14"],
+                         'X_ACM2': ["3UON", "4MQS", "4MQT"], 'X_ACM1': ["5CXV"], 'X_ACM4': ["5DSG"], 'X_FFAR1': ["4PHU"], 'X_OX1R': ["4ZJ8", "4ZJC"],
+                         'X_US28': ["4XT1", "4XT3"], 'X_OPSD': ["1F88", "1GZM", "1HZX", "1JFP", "1L9H", "1LN6", "1U19", "2G87", "2HPY", "2I35", "2I36", "2I37",
+                                                            "2J4Y", "2PED", "2X72", "2Z73", "2ZIY", "3AYM", "3AYN", "3C9L", "3C9M", "3CAP", "3DQB", "3OAX",
+                                                            "3PQR", "3PXO", "4A4M", "4BEY", "4BEZ", "4J4Q", "4PXF", "4WW3", "4X1H", "4ZWJ", "5DGY", "5DYS", "5EN0"],
+                         'X_DRD3': ["3PBL"], 'X_APJ': ["2LOT", "2LOU", "2LOV", "2LOW"], 'X_ADRB1': ["2VT4", "2Y00", "2Y01", "2Y02", "2Y03", "2Y04", "2YCW",
+                                                                                              "2YCX", "2YCY", "2YCZ", "3ZPQ", "3ZPR", "4AMI", "4AMJ",
+                                                                                              "4BVN", "4GPO", "5A8E", "5F8U"],
+                         'X_ADRB2': ["2R4R", "2R4S", "3D4S", "3KJ6", "3NY8", "3NY9", "3NYA", "3P0G", "3PDS", "3SN6", "4GBR", "5D5A", "5D5B", "5D6L"],
+                         'X_PAR1': ["3VW7"], 'X_AGTR1': ["4YAY", "4ZUD"], 'X_LPAR1': ["4Z34", "4Z35", "4Z36"]}
+        
+        
         
         #erstellt Dict mit den 3 besten berechneten Loops pro Loop
         #list, damit keine tamplate doppelt vorkommt (z.b.4z36)
+        
+        speciesName = os.path.splitext(os.path.basename(self.loop_file))[0].split("_")[0]
+        print "speciesName", speciesName
+        
         templateList = []
         for i in range(6) :
             for j in range(self.loopCount) :
@@ -1488,11 +1518,16 @@ class SSFELinkIt( PyTool, ProviMixin ):
                             sortedSingleLoopDict.remove(loopElement)
                         else :    
                             templateList.append(loopElement[4])
+                            
+                    # Sezies hoeher werten        
+                    for index, loopEntrie in enumerate(sortedSingleLoopDict) :
+                        if loopEntrie[4].upper() in self.gpcrDict["X_" + speciesName] :
+                            sortedSingleLoopDict[index][2] *= 1000
 
                     # GPCR Score bei gefunden verdoppelt
                     for index, loopEntrie in enumerate(sortedSingleLoopDict) :
                         if loopEntrie[4].upper() in self.gpcrListe :
-                            sortedSingleLoopDict[index][2] *= 2
+                            sortedSingleLoopDict[index][2] *= 20
                             sortedSingleLoopDict[index].append(True)
                         else :
                             sortedSingleLoopDict[index].append(False)
