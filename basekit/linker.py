@@ -1520,10 +1520,13 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         else :    
                             templateList.append(loopElement[4])
                             
-                    # Sezies hoeher werten        
-                    for index, loopEntrie in enumerate(sortedSingleLoopDict) :
-                        if loopEntrie[4].upper() in self.gpcrDict["X_" + speciesName] :
-                            sortedSingleLoopDict[index][2] *= 1000
+                    # Sezies hoeher werten
+                    try:
+                        for index, loopEntrie in enumerate(sortedSingleLoopDict) :
+                            if loopEntrie[4].upper() in self.gpcrDict["X_" + speciesName] :
+                                sortedSingleLoopDict[index][2] *= 1000
+                    except:
+                        pass
 
                     # GPCR Score bei gefunden verdoppelt
                     for index, loopEntrie in enumerate(sortedSingleLoopDict) :
