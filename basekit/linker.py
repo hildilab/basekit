@@ -1006,7 +1006,9 @@ class SSFEZip (PyTool, ProviMixin ):
 
 class SSFEMultiLinkIt( PyTool, ProviMixin ):
     args = [
-        _("loop_jobs", type="dir")
+        _("loop_jobs", type="dir"),
+        _( "GPCRscore", type="int", default=20 ),
+        _( "Speciesscore", type="int", default=1000 )
     ]   
            
     def func ( self ) :
@@ -1067,7 +1069,7 @@ class SSFEMultiLinkIt( PyTool, ProviMixin ):
                 jobFile = jobFileList[number]
                 #print jobFile, pdbFile
                 #print '==============================================='
-                SSFELinkIt(os.path.join(jobDirPath, pdbFile), os.path.join(jobDirPath, jobFile), verbose=self.verbose, debug=True)
+                SSFELinkIt(os.path.join(jobDirPath, pdbFile), os.path.join(jobDirPath, jobFile), Speciesscore=self.Speciesscore, GPCRscore=self.GPCRscore, verbose=self.verbose, debug=True)
         
                 os.chdir('..')
                 
@@ -1091,7 +1093,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
         _( "pdb_file", type="file", ext="pdb" ),
         _( "loop_file", type="file", ext="txt" ),
         _( "extension", type="list", nargs=2, action="append",
-           help="int,int", default=[0,0] )
+           help="int,int", default=[0,0] ),
+        _( "GPCRscore", type="int", default=20 ),
+        _( "Speciesscore", type="int", default=1000 )
   
     ]
     out = [
@@ -1521,17 +1525,21 @@ class SSFELinkIt( PyTool, ProviMixin ):
                             templateList.append(loopElement[4])
                             
                     # Sezies hoeher werten
-                    try:
-                        for index, loopEntrie in enumerate(sortedSingleLoopDict) :
+                    for index, loopEntrie in enumerate(sortedSingleLoopDict) :
+                        try:
                             if loopEntrie[4].upper() in self.gpcrDict["X_" + speciesName] :
-                                sortedSingleLoopDict[index][2] *= 1000
-                    except:
-                        pass
+                                sortedSingleLoopDict[index][2] *= self.Speciesscore
+                                sortedSingleLoopDict[index].append(True)
+                        except:
+                            sortedSingleLoopDict[index].append(False)
+
 
                     # GPCR Score bei gefunden verdoppelt
                     for index, loopEntrie in enumerate(sortedSingleLoopDict) :
                         if loopEntrie[4].upper() in self.gpcrListe :
-                            sortedSingleLoopDict[index][2] *= 20
+                            print "iiiiiiinnnnn", loopEntrie, loopEntrie[4].upper()
+                            if not sortedSingleLoopDict[index][8]:
+                                sortedSingleLoopDict[index][2] *= self.GPCRscore
                             sortedSingleLoopDict[index].append(True)
                         else :
                             sortedSingleLoopDict[index].append(False)
@@ -1549,7 +1557,8 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     for resultIndex in range(min(3, len(sortedSingleLoopDict))) :
                         result = sortedSingleLoopDict[resultIndex]
                         #print result
-                        loop.append(["%i,%i;%i;%i" % (i,i,j,result[0]), result[2], result[5], result[3], result[4], result[6], result[8], round(result[7],2)])
+                        loop.append(["%i,%i;%i;%i" % (i,i,j,result[0]), result[2], result[5], result[3], result[4], result[6], result[9], round(result[7],2), result[8]])
+                        print loop
                     loopDict[j] = loop
         
         #print loopDict
@@ -1793,7 +1802,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
             
         
         with open ( 'Result_Table.csv', 'w' ) as fp1 :
-            fp1.write('Loop ,# , Run, GPCRdb, Score, Sequence, Templ seq, Seq identity, Clashes, PDB-Id, Templ pos\n' )
+            fp1.write('Loop ,# , Run, GPCR, Score, Sequence, Templ seq, Seq identity, Clashes, PDB-Id, Templ pos\n' )
             j = 0
             for name in (nameList) :
                 fp1.write(name)
@@ -1802,7 +1811,12 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     j += 1                    
                 for i,  loop in enumerate(tableList[j]) :    
                     # print loop
-                    fp1.write(','+ name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[1]/2.0) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + '\n')
+                    newscore = loop[1]
+                    if loop[6]:#GPCR
+                        newscore = newscore/self.GPCRscore
+                    elif loop[8]:#Species
+                        newscore = newscore/self.Speciesscore
+                    fp1.write(','+ name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + '\n')
                 j += 1
 
         with open ( 'Result.txt', 'w') as fp2 :
@@ -1812,7 +1826,12 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     j += 1                    
                 for i,  loop in enumerate(tableList[j]) :    
                     # print loop
-                    fp2.write( name + ',' + name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[1]/2.0) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';')
+                    newscore = loop[1]
+                    if loop[6]:#GPCR
+                        newscore = newscore/self.GPCRscore
+                    elif loop[8]:#Species
+                        newscore = newscore/self.Speciesscore
+                    fp2.write( name + ',' + name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';')
                 j += 1
                 
         result = ""
@@ -1822,7 +1841,12 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 j += 1                    
             for i,  loop in enumerate(tableList[j]) :    
                 # print loop
-                result +=  name + ',' + name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[1]/2.0) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';'
+                newscore = loop[1]
+                if loop[6]:#GPCR
+                    newscore = newscore/self.GPCRscore
+                elif loop[8]:#Species
+                    newscore = newscore/self.Speciesscore
+                result +=  name + ',' + name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';'
             j += 1        
                 
         with open ( 'Result_Tabel.txt', 'w') as fp2 :
@@ -1832,17 +1856,27 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     j += 1                    
                 for i,  loop in enumerate(tableList[j]) :    
                     # print loop
-                    fp2.write( name + ',' + name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[1]/2.0) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';')
+                    newscore = loop[1]
+                    if loop[6]:#GPCR
+                        newscore = newscore/self.GPCRscore
+                    elif loop[8]:#Species
+                        newscore = newscore/self.Speciesscore
+                    fp2.write( name + ',' + name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';')
                 j += 1
             
-        resultTabel = "Loop ,# , Run, GPCRdb, Score, Sequence, Templ seq, Seq identity, Clashes, PDB-Id, Templ pos,;"
+        resultTabel = "Loop ,# , Run, GPCR, Score, Sequence, Templ seq, Seq identity, Clashes, PDB-Id, Templ pos,;"
         j = 0
         for name in (nameList) :
             while j not in tableList or tableList[j] == [] :
                 j += 1                    
             for i,  loop in enumerate(tableList[j]) :    
                 # print loop
-                resultTabel += name + ',' + name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[1]/2.0) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';'
+                newscore = loop[1]
+                if loop[6]:#GPCR
+                    newscore = newscore/self.GPCRscore
+                elif loop[8]:#Species
+                    newscore = newscore/self.Speciesscore
+                resultTabel += name + ',' + name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';'
             j += 1   
         
                         

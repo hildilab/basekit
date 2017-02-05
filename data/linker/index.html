@@ -436,9 +436,11 @@
 				}}		
 				var linkerList = [];
                 for (var i = models.length - 1; i >= 0; i--) {{
-                       var linkerModel = stage.getComponentsByName(models[i]).list[0].structure;
-                       linkerList.push(linkerModel);
+                    if(linkerModel !== ""){{
+						var linkerModel = stage.getComponentsByName(models[i]).list[0].structure;
+						linkerList.push(linkerModel);
                    }}
+                }}
                 var pdbWriter = new Downloader.LinkerPdbWriter( newStructure, linkerList, {{
                     remarks: remarks
                 }} );
