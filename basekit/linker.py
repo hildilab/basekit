@@ -1495,7 +1495,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
         #list, damit keine tamplate doppelt vorkommt (z.b.4z36)
         
         speciesName = os.path.splitext(os.path.basename(self.loop_file))[0].split("_")[0]
-        print "speciesName", speciesName
+        #print "speciesName", speciesName
         
         templateList = []
         for i in range(6) :
@@ -1537,7 +1537,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     # GPCR Score bei gefunden verdoppelt
                     for index, loopEntrie in enumerate(sortedSingleLoopDict) :
                         if loopEntrie[4].upper() in self.gpcrListe :
-                            print "iiiiiiinnnnn", loopEntrie, loopEntrie[4].upper()
+                            #print "iiiiiiinnnnn", loopEntrie, loopEntrie[4].upper()
                             if not sortedSingleLoopDict[index][8]:
                                 sortedSingleLoopDict[index][2] *= self.GPCRscore
                             sortedSingleLoopDict[index].append(True)
@@ -1558,7 +1558,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         result = sortedSingleLoopDict[resultIndex]
                         #print result
                         loop.append(["%i,%i;%i;%i" % (i,i,j,result[0]), result[2], result[5], result[3], result[4], result[6], result[9], round(result[7],2), result[8]])
-                        print loop
+                        #print loop
                     loopDict[j] = loop
         
         #print loopDict
