@@ -30,6 +30,7 @@ import timeit
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "linker" )
 index_html_file = os.path.join( TMPL_DIR, "index.html" )
 ngl_js_file = os.path.join( TMPL_DIR, "ngl.js" )
+downloader_js_file = os.path.join( TMPL_DIR, "downloader.js" )
 
 def LINKIT_DIR():
     return os.environ.get("LINKIT_DIR", "")
@@ -1845,6 +1846,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
 
         # print makeLoopList
 
+        shutil.copyfile(downloader_js_file, os.path.join(self.output_dir, "downloader.js" ))
         #html.index erstellen            
         shutil.copyfile(ngl_js_file, os.path.join(self.output_dir, "ngl.js" ))
         # tmpl_name="ngl.embedded.min.js"

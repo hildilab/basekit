@@ -35,9 +35,11 @@
 
 <body>
     <script src="ngl.js"></script>
+    <script src="downloader.js"></script>
     <script>
 
         NGL.mainScriptFilePath = "ngl.js";
+        Downloader.mainScriptFilePath = "downloader.js";
 
         document.addEventListener( "DOMContentLoaded", function(){{
 
@@ -423,7 +425,7 @@
             
             var toggleDownload = document.getElementById( "toggleDownload" );
             toggleDownload.addEventListener( "click", function(){{
-                var newStructure = stage.getComponentsByName({namepdbfiles2}).list[0].structure; //"TMH_templates1_topmodel_renum_input.pdb"
+                var newStructure = stage.getComponentsByName({namepdbfiles2}).list[0].structure;
                 var remarks = [];
 				var models = [selectModelECL1.value, selectModelECL2.value, selectModelECL3.value, selectModelICL1.value, selectModelICL2.value, selectModelICL3.value, selectModel8.value];
 				for ( var i = 0; i<models.length; i++ ){{	
@@ -432,17 +434,18 @@
 						remarks.push(elem[0]+": model="+elem[1]+"_"+elem[2]+", GPCRdb="+elem[3]+", score="+elem[4]+", sequence="+elem[5]+", Template="+elem[9]+"_"+elem[10]);
 					}}
 				}}		
-                var pdbWriter = new NGL.PdbWriter( newStructure, {{
+				var linkerList = [];
+                for (var i = models.length - 1; i >= 0; i--) {{
+                       var linkerModel = stage.getComponentsByName(models[i]).list[0].structure;
+                       linkerList.push(linkerModel);
+                   }}
+                var pdbWriter = new Downloader.LinkerPdbWriter( newStructure, linkerList, {{
                     remarks: remarks
                 }} );
                 pdbWriter.download( "model" );
             }} );
-
-          
-	
     
     var table = document.getElementById( "toggleTable" );
-			console.log(table)
 			var rows = txt.split(';'),
     		tr = null;
 			td = null;
@@ -450,14 +453,12 @@
 			for ( var i = 0; i<rows.length; i++ ) {{
 				tr = document.createElement('tr');
 				tds = rows[i].split(',');
-				console.log(tds.length)
 				for ( var j = 0; j < tds.length; j++ ) {{
 				   td = document.createElement('td');
 				   td.innerHTML = tds[j];
 				   tr.appendChild(td);
 				}}
 				table.appendChild(tr);
-			//	console.log(tr)
 			}}
             
 	}} );
@@ -485,10 +486,6 @@
 <table id="toggleTable"></table>
 </div>
 <div class="clear"></div>
-
-
-
-
 
 </body>
 </html>
