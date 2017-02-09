@@ -1404,8 +1404,12 @@ class SSFELinkIt( PyTool, ProviMixin ):
              
             self.multiLinkIts.append(MultiLinkIt(self.ori_file, input = loopTasksList,
                     **copy_dict( kwargs, run=False,
-                                output_dir=self.subdir("link_it_%i,%i" % (i,i) ), verbose=True, debug=True )))
-                
+                                output_dir=self.subdir("membranDB/link_it_%i,%i" % (i,i) ), gpcrDB=False, verbose=True, debug=True )))
+            
+            self.multiLinkIts.append(MultiLinkIt(self.ori_file, input = loopTasksList,
+                    **copy_dict( kwargs, run=False,
+                                output_dir=self.subdir("GPCRDB/link_it_%i,%i" % (i,i) ), gpcrDB=True, verbose=True, debug=True )))
+            
         #print self.oriSeqDict        
 
     def compareLoops( self, x,y):
@@ -1439,10 +1443,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
         for m in self.multiLinkIts : 
             m()
         
-        #loopDict enthaelt fuer jeden Loop die 3 besten berechneten Loops pro Erweiterung:(0,0);(1,1);(2,2);(3,3)
-        loopDict = {}
-        #zum Laden der einzelnen Loop-json zur Auswahl der 3 besten Loops nach Score und Anzahl Clashes
-        singleLoopDict = {}
+        
         
         # print self.loopCount
         
@@ -1497,76 +1498,98 @@ class SSFELinkIt( PyTool, ProviMixin ):
         speciesName = os.path.splitext(os.path.basename(self.loop_file))[0].split("_")[0]
         #print "speciesName", speciesName
         
-        templateList = []
-        for i in range(6) :
-            for j in range(self.loopCount) :
-                jsonPfad = os.path.join( self.output_dir,"link_it_%i,%i/link_it_%i" % (i,i,j) )+ "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker.json"
-                if os.path.isfile(jsonPfad) :
-                    with open(os.path.join( self.output_dir,"link_it_%i,%i/link_it_%i" % (i,i,j) )+ "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker.json", 'r') as fp :
-                        singleLoopDict = json.load(fp)
-                        loop = loopDict.get(j, [])
-                        #print type(loopDict)
-                        #print (os.path.join( self.output_dir,"link_it_%i,%i/link_it_%i" % (i,i,j) )+ "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker.json")
-                    
-                    sortedSingleLoopDict = []
-                        # damit man noch weiss welches Model(1-100) zu den Werten gehoert 
-                    for key in singleLoopDict["linker"] :
-                        sortedSingleLoopDict += [[int(key)] + singleLoopDict["linker"][key]]
-                        # print k
-                        # print '========'
-                    
-                    # print '========================================'    
-                    #print sortedSingleLoopDict
-                    #loecht eintraege wenn tamplate doppelt vorkommt (z.b.4z36)
-                    for loopElement in sortedSingleLoopDict :
-                        if loopElement[4] in templateList :
-                            sortedSingleLoopDict.remove(loopElement)
-                        else :    
-                            templateList.append(loopElement[4])
-                            
-                    # Sezies hoeher werten
-                    for index, loopEntrie in enumerate(sortedSingleLoopDict) :
-                        try:
-                            if loopEntrie[4].upper() in self.gpcrDict["X_" + speciesName] :
-                                sortedSingleLoopDict[index][2] *= self.Speciesscore
+        def firstsort( outputDir, memDB=False ):
+            #loopDict enthaelt fuer jeden Loop die 3 besten berechneten Loops pro Erweiterung:(0,0);(1,1);(2,2);(3,3)
+            temp_loopDict = {}
+            #zum Laden der einzelnen Loop-json zur Auswahl der 3 besten Loops nach Score und Anzahl Clashes
+            singleLoopDict = {}
+            templateList = []
+            for i in range(6) :
+                for j in range(self.loopCount) :
+                    jsonPfad = os.path.join( outputDir,"link_it_%i,%i/link_it_%i" % (i,i,j) )+ "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker.json"
+                    if os.path.isfile(jsonPfad) :
+                        with open(os.path.join( outputDir,"link_it_%i,%i/link_it_%i" % (i,i,j) )+ "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker.json", 'r') as fp :
+                            singleLoopDict = json.load(fp)
+                            loop = temp_loopDict.get(j, [])
+                            #print type(loopDict)
+                            #print (os.path.join( self.output_dir,"link_it_%i,%i/link_it_%i" % (i,i,j) )+ "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker.json")
+                        
+                        sortedSingleLoopDict = []
+                            # damit man noch weiss welches Model(1-100) zu den Werten gehoert 
+                        for key in singleLoopDict["linker"] :
+                            sortedSingleLoopDict += [[int(key)] + singleLoopDict["linker"][key]]
+                            # print k
+                            # print '========'
+                        
+                        # print '========================================'    
+                        #print sortedSingleLoopDict
+                        #loecht eintraege wenn tamplate doppelt vorkommt (z.b.4z36)
+                        for loopElement in sortedSingleLoopDict :
+                            if loopElement[4] in templateList :
+                                sortedSingleLoopDict.remove(loopElement)
+                            else :    
+                                templateList.append(loopElement[4])
+                                
+                        # Sezies hoeher werten
+                        for index, loopEntrie in enumerate(sortedSingleLoopDict) :
+                            try:
+                                if loopEntrie[4].upper() in self.gpcrDict["X_" + speciesName] :
+                                    sortedSingleLoopDict[index][2] *= self.Speciesscore
+                                    sortedSingleLoopDict[index].append(True)
+                                else:
+                                    sortedSingleLoopDict[index].append(False)
+                            except:
+                                sortedSingleLoopDict[index].append(False)
+    
+    
+                        # GPCR Score bei gefunden verdoppelt
+                        for index, loopEntrie in enumerate(sortedSingleLoopDict) :
+                            if loopEntrie[4].upper() in self.gpcrListe :
+                                #print "iiiiiiinnnnn", loopEntrie, loopEntrie[4].upper()
+                                #print sortedSingleLoopDict[index]
+                                if not sortedSingleLoopDict[index][8]:
+                                    sortedSingleLoopDict[index][2] *= self.GPCRscore
                                 sortedSingleLoopDict[index].append(True)
-                        except:
-                            sortedSingleLoopDict[index].append(False)
+                            else :
+                                sortedSingleLoopDict[index].append(False)
+                        
+                        #print sortedSingleLoopDict 
+                                
+                        numclashes = 5
+                        sortedSingleLoopDict = filter(lambda loop: loop[5] < numclashes, sortedSingleLoopDict)
+                        sortedSingleLoopDict.sort(key=lambda loop: (loop[2], loop[5]), cmp =self.compareLoops )
+                        sortedSingleLoopDict.reverse()
+                        
+                        #print sortedSingleLoopDict
+                        
+                        
+                        for resultIndex in range(min(3, len(sortedSingleLoopDict))) :
+                            result = sortedSingleLoopDict[resultIndex]
+                            #print result
+                            loop.append(["%i,%i;%i;%i;%i" % (i,i,j,result[0],memDB), result[2], result[5], result[3], result[4], result[6], result[9], round(result[7],2), result[8], memDB])
+                            #print loop
+                        temp_loopDict[j] = loop
 
-
-                    # GPCR Score bei gefunden verdoppelt
-                    for index, loopEntrie in enumerate(sortedSingleLoopDict) :
-                        if loopEntrie[4].upper() in self.gpcrListe :
-                            #print "iiiiiiinnnnn", loopEntrie, loopEntrie[4].upper()
-                            if not sortedSingleLoopDict[index][8]:
-                                sortedSingleLoopDict[index][2] *= self.GPCRscore
-                            sortedSingleLoopDict[index].append(True)
-                        else :
-                            sortedSingleLoopDict[index].append(False)
-                    
-                    #print sortedSingleLoopDict 
-                            
-                    numclashes = 5
-                    sortedSingleLoopDict = filter(lambda loop: loop[5] < numclashes, sortedSingleLoopDict)
-                    sortedSingleLoopDict.sort(key=lambda loop: (loop[2], loop[5]), cmp =self.compareLoops )
-                    sortedSingleLoopDict.reverse()
-                    
-                    #print sortedSingleLoopDict
-                    
-                    
-                    for resultIndex in range(min(3, len(sortedSingleLoopDict))) :
-                        result = sortedSingleLoopDict[resultIndex]
-                        #print result
-                        loop.append(["%i,%i;%i;%i" % (i,i,j,result[0]), result[2], result[5], result[3], result[4], result[6], result[9], round(result[7],2), result[8]])
-                        #print loop
-                    loopDict[j] = loop
+            return temp_loopDict, singleLoopDict
         
         #print loopDict
+        outputDir1 = self.output_dir + "membranDB"
+        loopDict1, singleLoopDict1 = firstsort( outputDir1, memDB=False )
+        outputDir2 = self.output_dir + "GPCRDB"
+        loopDict2, singleLoopDict2 = firstsort( outputDir2, memDB=True)
         
-        if not singleLoopDict == {} :
+        if not singleLoopDict1 == {} or not singleLoopDict2 == {} :
             
             #print singleLoopDict    
-                        
+            loopDict = {}
+            if singleLoopDict1 == {}:
+                loopDict = loopDict2
+            elif singleLoopDict2 == {}:
+                loopDict = loopDict1
+            else:
+                for modelnum in loopDict2:
+                    loopDict[modelnum] = loopDict1[modelnum] + loopDict2[modelnum]
+            #print loopDict
             #Ergebnis wird in BestResultsDict.json ausgegeben                
             with open(os.path.join(self.output_dir, "BestResultsDict.json"), 'w') as fp :
                 json.dump(loopDict, fp)
@@ -1656,17 +1679,22 @@ class SSFELinkIt( PyTool, ProviMixin ):
             loopLineList = []
             loopStartEndList = []
             for loop in self.sortedPdbLoopDict[key] :
-                extension, loopName, numLoop = loop[0].split(';')
+                extension, loopName, numLoop, numDB = loop[0].split(';')
                 
                 loopName = int(loopName)
                 numLoop = int(numLoop)
+                numDB = int(numDB)
                 #da extension ein Doupel ist (z.B. 0,0), wird es aufgeteilt 
                 extensionSingle1, extensionSingle2 = extension.split(',')
                 extensionSingle1 = int(extensionSingle1)
                 extensionSingle2 = int(extensionSingle2)
                 
                 loopFile = []
-                with open(self.subdir("link_it_%i,%i/link_it_%i" % (extensionSingle1,extensionSingle2,loopName)) + "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker2.pdb", 'r') as fp :
+                if numDB == 1:
+                    databaseOri = "GPCRDB"
+                else:
+                    databaseOri = "membranDB"
+                with open(self.subdir(databaseOri+"/link_it_%i,%i/link_it_%i" % (extensionSingle1,extensionSingle2,loopName)) + "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker2.pdb", 'r') as fp :
                     loopFile = fp.readlines()
                 
                 modelBegin = -1
@@ -2098,7 +2126,8 @@ class MultiLinkIt( PyTool, ProviMixin ):
         _( "pdb_file", type="file", ext="pdb" ),
         _( "input", type="list", nargs=3, action="append",
            help="sele,sele,str", default=None ),
-        _( "names", type="list", nargs="*", default=None )
+        _( "names", type="list", nargs="*", default=None ),
+        _( "gpcrDB", type="boolean", default=False )
     ]
     out = [
         _( "ori_file", file="{pdb_file.stem}_out.pdb" )
@@ -2120,7 +2149,7 @@ class MultiLinkIt( PyTool, ProviMixin ):
             #print 'res2:  ' , res2
             #print 'seq:  ' , seq
             link_it = LinkIt(
-                self.pdb_file, res1, res2, seq, memdb=True,
+                self.pdb_file, res1, res2, seq, memdb=self.gpcrDB,
                 **copy_dict( kwargs, run=False, debug=True,
                              output_dir=self.subdir("link_it_%i" % i) )
             )
