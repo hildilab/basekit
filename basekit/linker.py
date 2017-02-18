@@ -390,38 +390,45 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         # print '================================'
         # print countLoopSpeziesFoundList
                    
-        # print statTopTenResultList
+        #print statTopTenResultList
         # print '----------------'
         # print statSortedPdbLoopDictList
                     
         for x in statTopTenResultList :
-            extension, loopName, whichLoop = x[0].split(';')
+            extension, loopName, whichLoop, datenbank = x[0].split(';')
             exStart, exEnd = extension.split(',')
-            x[:] = [int(exStart), int(exEnd), int(loopName), int(whichLoop)] + x[1:]
+            x[:] = [int(exStart), int(exEnd), int(loopName), int(whichLoop)] + x[1:] 
             loopLen = len(x[6]) 
             x.append(loopLen)
-            oriLoopLen = x[10] - x[0] - x[1]
+            oriLoopLen = x[13] - x[0] - x[1]
             x.append(oriLoopLen)
+            x.append(int(datenbank))
         
         for x in statBestResultsList :
-            extension, loopName, whichLoop = x[0].split(';')        
+            extension, loopName, whichLoop, datenbank = x[0].split(';')        
             exStart, exEnd = extension.split(',')
-            x[:] = [int(exStart), int(exEnd), int(loopName), int(whichLoop)] + x[1:]
+            x[:] = [int(exStart), int(exEnd), int(loopName), int(whichLoop)] + x[1:] 
             loopLen = len(x[6]) 
             x.append(loopLen)
-            oriLoopLen = x[11] - x[0] - x[1]
+            oriLoopLen = x[13] - x[0] - x[1]
             x.append(oriLoopLen)
+            x.append(int(datenbank))
             
-        print statSortedPdbLoopDictList    
+        #print statSortedPdbLoopDictList    
             
         for x in statSortedPdbLoopDictList :
-            extension, loopName, whichLoop = x[0].split(';')        
+            extension, loopName, whichLoop, datenbank = x[0].split(';')        
             exStart, exEnd = extension.split(',')
             x[:] = [int(exStart), int(exEnd), int(loopName), int(whichLoop)] + x[1:]
-            loopLen = len(x[6]) 
+            loopLen = len(x[6])
             x.append(loopLen)
-            oriLoopLen = x[11] - x[0] - x[1]
-            x.append(oriLoopLen)            
+            oriLoopLen = x[13] - x[0] - x[1]
+            x.append(oriLoopLen)
+            x.append(int(datenbank))
+        
+        # print '-------------------'   
+        # print statSortedPdbLoopDictList
+        # [0][1] Erweiterung, [2] Loop, [3] Loopauswahl, [4] Score, [5] Clashes, [6] Sequenz, [7] Template, [8] Position(Datenbank), [9] GPCR True/False, [10] SequenzIdentitaet, [11] Spezies True/False, [12] memDB True/False, [13] Looplaenge, [14] originalLooplaenge, [15] datenbank 0=GPCRDB 1=memDB
                             
                     
         with open (os.path.join(self.output_dir, "StatBestResultsList.json"),'w' ) as fp :
@@ -445,6 +452,57 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         stat3Dir = self.subdir('ScoreVsLoopLengthPerExtension')
         stat4Dir = self.subdir('ClashVsLoopLengthPerExtension')
         #stat5Dir = self.subdir('AvgScoreVsLoopLenghtPerModel')
+        stat6Dir = self.subdir('DataspaceAndGPCR')
+        
+        #wie oft wurde welche Datenbank genutz
+        gpcrDB = 0
+        memDB =0
+        
+        for j, loop in enumerate(statSortedPdbLoopDictList) :
+            if loop[15] == 0:
+                gpcrDB +=1
+            elif loop[15] == 1 :
+                memDB +=1
+                
+        self.dataspace = [0,1]
+        self.numDataspace = [gpcrDB, memDB]
+                       
+        pyplot.close()
+        pyplot.xlabel('dataspace')
+        pyplot.ylabel('rate')
+        pyplot.xticks(range(2))
+        pyplot.title('rate per dataspace')
+        pyplot.bar(self.dataspace, self.numDataspace, color = '#BDBDBD')
+        pyplot.savefig(os.path.join(stat6Dir, 'RateDataspace.svg'), format='svg')
+        
+        # Verhaltniss von gefundener Spezies und GPCR
+        FalseSpeziesFalseGpcr = 0
+        TrueSpeziesTrueGpcr = 0
+        FalseSpeziesTrueGpcr = 0
+        TrueSpeziesFalseGpcr = 0
+        
+        for j, loop in enumerate(statSortedPdbLoopDictList) :
+            if loop[11] == False and loop[9] == False :
+                FalseSpeziesFalseGpcr +=1
+            elif loop[11] == True and loop[9] == True :
+                TrueSpeziesTrueGpcr +=1
+            elif loop[11] == False and loop[9] == True :
+                FalseSpeziesTrueGpcr +=1
+            elif loop[11] == True and loop[9] == False :
+                TrueSpeziesFalseGpcr +=1
+                
+        self.speziesVsGpcr = [0,1,2,3]
+        self.numSpeziesVsGpcr = [FalseSpeziesFalseGpcr, TrueSpeziesTrueGpcr, FalseSpeziesTrueGpcr, TrueSpeziesFalseGpcr]
+                       
+        print self.numSpeziesVsGpcr               
+                       
+        pyplot.close()
+        pyplot.xlabel('dataspace')
+        pyplot.ylabel('rate')
+        pyplot.xticks(range(4))
+        pyplot.title('rate per dataspace')
+        pyplot.bar(self.speziesVsGpcr, self.numSpeziesVsGpcr, color = '#BDBDBD')
+        pyplot.savefig(os.path.join(stat6Dir, 'SpeziesVsGPCR.svg'), format='svg')
         
         # bestimmt den durchschnittlichen Score fuer jede Looplaenge
         self.scoreListY = []
@@ -454,7 +512,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         gpcrTrue =0
         gpcrFoundList = {}
         
-        for j, loop in enumerate(statBestResultsList) :
+        for j, loop in enumerate(statSortedPdbLoopDictList) :
             if loop[9] == False :
                 gpcrFalse +=1
             elif loop[9] == True :
@@ -515,6 +573,8 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         #bestimmt wie oft eine Erweiterung genutzt wurde, den Druchschnittsscore fuer jede Erweierung, Durchschnittliche Anzahl an Chlashes fuer jede Erweiterung     
         self.rateY = []
         self.extensionX = []
+        
+        #print statSortedPdbLoopDictList    
             
         for i in range(6) :
            extensionList = [x for x in statSortedPdbLoopDictList if x[0] == i]
@@ -522,8 +582,8 @@ class SSFEStatistic ( PyTool, ProviMixin ):
            self.rateY.append(rateExtension)
            self.extensionX.append(i)
            
-        print 'Nummer of Extension:'
-        print self.rateY
+        # print 'Nummer of Extension:'
+        # print self.rateY
            
         std = np.std(self.rateY)   
         pyplot.close()
@@ -538,13 +598,16 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         self.extensionX = []
             
         for i in range(6) :
-           extensionList = [x for x in statTopTenResultList if x[0] == i]
-           avgScoreExtension = sum([x[4] for x in extensionList]) / len(extensionList)
-           self.rateY.append(avgScoreExtension)
-           self.extensionX.append(i)
+            extensionList = [x for x in statSortedPdbLoopDictList if x[0] == i]
+            if len(extensionList) != 0 :
+                avgScoreExtension = sum([x[4] for x in extensionList]) / len(extensionList)
+            else :
+                avgScoreExtension = 0
+            self.rateY.append(avgScoreExtension)
+            self.extensionX.append(i)
            
-        print 'Nummer of AvgScore:'
-        print self.rateY
+        # print 'Nummer of AvgScore:'
+        # print self.rateY
            
         std = np.std(self.rateY)   
         pyplot.close()
@@ -559,13 +622,16 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         self.extensionX = []
             
         for i in range(6) :
-           extensionList = [x for x in statSortedPdbLoopDictList if x[0] == i]
-           avgScoreExtension = sum([x[5] for x in extensionList]) / len(extensionList)
-           self.rateY.append(avgScoreExtension)
-           self.extensionX.append(i)
+            extensionList = [x for x in statSortedPdbLoopDictList if x[0] == i]
+            if len(extensionList) != 0 :
+                avgScoreExtension = sum([x[5] for x in extensionList]) / len(extensionList)
+            else :
+                avgScoreExtension = 0
+            self.rateY.append(avgScoreExtension)
+            self.extensionX.append(i)
            
-        print 'Nummer of AvgClashes:'
-        print self.rateY
+        # print 'Nummer of AvgClashes:'
+        # print self.rateY
            
         std = np.std(self.rateY)   
         pyplot.close()
@@ -585,7 +651,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 extensionList0 = [x for x in statSortedPdbLoopDictList if x[0] == i]
                 for k in range(36) :
                     # print i
-                    lengthList0 = [x for x in extensionList0 if x[12] == k]
+                    lengthList0 = [x for x in extensionList0 if x[14] == k]
                     lenList0 = len(lengthList0)
                     if lenList0 == 0 :
                         continue
@@ -595,14 +661,18 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     self.extensionList0Y.append(avgScore)
                     self.extensionList0X.append(k)  
         
-        std0 = np.std(self.extensionList0Y)
-        pyplot.close()
-        pyplot.xlabel('ori loop length')
-        pyplot.ylabel('score')
-        pyplot.title('Score per Loop Length for 0,0')
-        pyplot.bar(self.extensionList0X, self.extensionList0Y, color = '#BDBDBD', yerr = std0)
-        pyplot.xticks(range(36))
-        pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor0,0.svg'),format='svg')
+        if len(self.extensionList0Y) == 0 :
+            with open (os.path.join(stat3Dir, "ScoreVsLoopLengthFor0,0-notExisting.txt"),'w' ) as fp10 :
+                fp10.write('wurde nicht ausgewaehlt')
+        else :
+            std0 = np.std(self.extensionList0Y)
+            pyplot.close()
+            pyplot.xlabel('ori loop length')
+            pyplot.ylabel('score')
+            pyplot.title('Score per Loop Length for 0,0')
+            pyplot.bar(self.extensionList0X, self.extensionList0Y, color = '#BDBDBD', yerr = std0)
+            pyplot.xticks(range(36))
+            pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor0,0.svg'),format='svg')
         
         
         self.extensionList1X = []
@@ -613,7 +683,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 extensionList1 = [x for x in statSortedPdbLoopDictList if x[0] == i]
                 for k in range(36) :
                     # print i
-                    lengthList1 = [x for x in extensionList1 if x[12] == k]
+                    lengthList1 = [x for x in extensionList1 if x[14] == k]
                     lenList1 = len(lengthList1)
                     if lenList1 == 0 :
                         continue
@@ -623,14 +693,18 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     self.extensionList1Y.append(avgScore)
                     self.extensionList1X.append(k)
                     
-        std1 = np.std(self.extensionList1Y)                   
-        pyplot.close()
-        pyplot.xlabel('ori loop length')
-        pyplot.ylabel('score')
-        pyplot.title('Score per Loop Length for 1,1')
-        pyplot.bar(self.extensionList1X, self.extensionList1Y, color = '#BDBDBD', yerr = std1)
-        pyplot.xticks(range(36))
-        pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor1,1.svg'), format='svg')
+        if len(self.extensionList0Y) == 0 :
+            with open (os.path.join(stat3Dir, "ScoreVsLoopLengthFor1,1-notExisting.txt"),'w' ) as fp10 :
+                fp10.write('wurde nicht ausgewaehlt')
+        else :
+            std1 = np.std(self.extensionList1Y)                   
+            pyplot.close()
+            pyplot.xlabel('ori loop length')
+            pyplot.ylabel('score')
+            pyplot.title('Score per Loop Length for 1,1')
+            pyplot.bar(self.extensionList1X, self.extensionList1Y, color = '#BDBDBD', yerr = std1)
+            pyplot.xticks(range(36))
+            pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor1,1.svg'), format='svg')
         
         self.extensionList2X = []
         self.extensionList2Y = []
@@ -640,7 +714,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 extensionList2 = [x for x in statSortedPdbLoopDictList if x[0] == i]
                 for k in range(36) :
                     # print i
-                    lengthList2 = [x for x in extensionList2 if x[12] == k]
+                    lengthList2 = [x for x in extensionList2 if x[14] == k]
                     lenList2 = len(lengthList2)
                     if lenList2 == 0 :
                         continue
@@ -650,14 +724,18 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     self.extensionList2Y.append(avgScore)
                     self.extensionList2X.append(k)
                     
-        std2 = np.std(self.extensionList2Y)                   
-        pyplot.close()
-        pyplot.xlabel('ori loop length')
-        pyplot.ylabel('score')
-        pyplot.title('Score per Loop Length for 2,2')
-        pyplot.bar(self.extensionList2X, self.extensionList2Y, color = '#BDBDBD', yerr = std2)
-        pyplot.xticks(range(36))
-        pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor2,2.svg'),format='svg')
+        if len(self.extensionList0Y) == 0 :
+            with open (os.path.join(stat3Dir, "ScoreVsLoopLengthFor2,2-notExisting.txt"),'w' ) as fp10 :
+                fp10.write('wurde nicht ausgewaehlt')
+        else :            
+            std2 = np.std(self.extensionList2Y)                   
+            pyplot.close()
+            pyplot.xlabel('ori loop length')
+            pyplot.ylabel('score')
+            pyplot.title('Score per Loop Length for 2,2')
+            pyplot.bar(self.extensionList2X, self.extensionList2Y, color = '#BDBDBD', yerr = std2)
+            pyplot.xticks(range(36))
+            pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor2,2.svg'),format='svg')
                 
         self.extensionList3X = []
         self.extensionList3Y = []
@@ -667,7 +745,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 extensionList3 = [x for x in statSortedPdbLoopDictList if x[0] == i]
                 for k in range(36) :
                     # print i
-                    lengthList3 = [x for x in extensionList3 if x[12] == k]
+                    lengthList3 = [x for x in extensionList3 if x[14] == k]
                     lenList3 = len(lengthList3)
                     if lenList3 == 0 :
                         continue
@@ -677,32 +755,34 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     self.extensionList3Y.append(avgScore)
                     self.extensionList3X.append(k)
                     
-        std3 = np.std(self.extensionList3Y)                   
-        pyplot.close()
-        pyplot.xlabel('ori loop length')
-        pyplot.ylabel('score')
-        pyplot.title('Score per Loop Length for 3,3')
-        pyplot.bar(self.extensionList3X, self.extensionList3Y, color = '#BDBDBD', yerr = std3)
-        pyplot.xticks(range(36))
-        pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor3,3.svg'),format='svg')
+        if len(self.extensionList0Y) == 0 :
+            with open (os.path.join(stat3Dir, "ScoreVsLoopLengthFor3,3-notExisting.txt"),'w' ) as fp10 :
+                fp10.write('wurde nicht ausgewaehlt')
+        else :            
+            std3 = np.std(self.extensionList3Y)                   
+            pyplot.close()
+            pyplot.xlabel('ori loop length')
+            pyplot.ylabel('score')
+            pyplot.title('Score per Loop Length for 3,3')
+            pyplot.bar(self.extensionList3X, self.extensionList3Y, color = '#BDBDBD', yerr = std3)
+            pyplot.xticks(range(36))
+            pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor3,3.svg'),format='svg')
         
-        barWidth = 0.2
-        _, ax = pyplot.subplots()
-        ex0 = ax.bar(np.array(self.extensionList0X) - barWidth, self.extensionList0Y, barWidth, color='#FA5882', yerr = std0, label = 'Extension_0')
-        ex1 = ax.bar(np.array(self.extensionList1X) - 2*barWidth, self.extensionList1Y, barWidth, color='#5882FA', yerr = std1, label = 'Extension_1')
-        ex2 = ax.bar(np.array(self.extensionList2X), self.extensionList2Y, barWidth, color='#FAAC58', yerr = std2, label = 'Extension_2')
-        ex3 = ax.bar(np.array(self.extensionList3X) + barWidth, self.extensionList3Y, barWidth, color='#58FA58', yerr = std3, label = 'Extension_3')
-        pyplot.xticks(range(36))
-        ax.set_xlabel('ori loop length')
-        ax.set_ylabel('score')
-        ax.set_title('Score per Loop Length')
-        pyplot.legend()
-        #ax.set_xticks([x + barWidth for x in range(41)])
-        pyplot.tight_layout()
-        pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLength.svg'),format='svg')
+        # barWidth = 0.2
+        # _, ax = pyplot.subplots()
+        # ex0 = ax.bar(np.array(self.extensionList0X) - barWidth, self.extensionList0Y, barWidth, color='#FA5882', yerr = std0, label = 'Extension_0')
+        # ex1 = ax.bar(np.array(self.extensionList1X) - 2*barWidth, self.extensionList1Y, barWidth, color='#5882FA', yerr = std1, label = 'Extension_1')
+        # ex2 = ax.bar(np.array(self.extensionList2X), self.extensionList2Y, barWidth, color='#FAAC58', yerr = std2, label = 'Extension_2')
+        # ex3 = ax.bar(np.array(self.extensionList3X) + barWidth, self.extensionList3Y, barWidth, color='#58FA58', yerr = std3, label = 'Extension_3')
+        # pyplot.xticks(range(36))
+        # ax.set_xlabel('ori loop length')
+        # ax.set_ylabel('score')
+        # ax.set_title('Score per Loop Length')
+        # pyplot.legend()
+        # #ax.set_xticks([x + barWidth for x in range(41)])
+        # pyplot.tight_layout()
+        # pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLength.svg'),format='svg')
         #bestimmt durschnittlichen Score des durchschnittlichen Scores von und fuer pdb 1-10 
-        self.avgScoreY = []
-        self.modelNumX = []
         
         self.extensionList4X = []
         self.extensionList4Y = []
@@ -712,7 +792,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 extensionList4 = [x for x in statSortedPdbLoopDictList if x[0] == i]
                 for k in range(36) :
                     # print i
-                    lengthList4 = [x for x in extensionList4 if x[12] == k]
+                    lengthList4 = [x for x in extensionList4 if x[14] == k]
                     lenList4 = len(lengthList4)
                     if lenList4 == 0 :
                         continue
@@ -720,16 +800,20 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     # print lengthList
                     avgScore = sum([x[4] for x in lengthList4], 0.0) / lenList4
                     self.extensionList4Y.append(avgScore)
-                    self.extensionList4X.append(k)  
-        
-        std4 = np.std(self.extensionList4Y)
-        pyplot.close()
-        pyplot.xlabel('ori loop length')
-        pyplot.ylabel('score')
-        pyplot.title('Score per Loop Length for 4,4')
-        pyplot.bar(self.extensionList4X, self.extensionList4Y, color = '#BDBDBD', yerr = std4)
-        pyplot.xticks(range(36))
-        pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor4,4.svg'),format='svg')
+                    self.extensionList4X.append(k)
+                    
+        if len(self.extensionList0Y) == 0 :
+            with open (os.path.join(stat3Dir, "ScoreVsLoopLengthFor4,4-notExisting.txt"),'w' ) as fp10 :
+                fp10.write('wurde nicht ausgewaehlt')
+        else :
+            std4 = np.std(self.extensionList4Y)
+            pyplot.close()
+            pyplot.xlabel('ori loop length')
+            pyplot.ylabel('score')
+            pyplot.title('Score per Loop Length for 4,4')
+            pyplot.bar(self.extensionList4X, self.extensionList4Y, color = '#BDBDBD', yerr = std4)
+            pyplot.xticks(range(36))
+            pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor4,4.svg'),format='svg')
         
         self.extensionList5X = []
         self.extensionList5Y = []
@@ -739,7 +823,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 extensionList5 = [x for x in statSortedPdbLoopDictList if x[0] == i]
                 for k in range(36) :
                     # print i
-                    lengthList5 = [x for x in extensionList5 if x[12] == k]
+                    lengthList5 = [x for x in extensionList5 if x[14] == k]
                     lenList5 = len(lengthList5)
                     if lenList5 == 0 :
                         continue
@@ -747,16 +831,20 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     # print lengthList
                     avgScore = sum([x[4] for x in lengthList5], 0.0) / lenList5
                     self.extensionList5Y.append(avgScore)
-                    self.extensionList5X.append(k)  
-        
-        std5 = np.std(self.extensionList5Y)
-        pyplot.close()
-        pyplot.xlabel('ori loop length')
-        pyplot.ylabel('score')
-        pyplot.title('Score per Loop Length for 5,5')
-        pyplot.bar(self.extensionList5X, self.extensionList5Y, color = '#BDBDBD', yerr = std5)
-        pyplot.xticks(range(36))
-        pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor5,5.svg'),format='svg')
+                    self.extensionList5X.append(k)
+                    
+        if len(self.extensionList0Y) == 0 :
+            with open (os.path.join(stat3Dir, "ScoreVsLoopLengthFor5,5-notExisting.txt"),'w' ) as fp10 :
+                fp10.write('wurde nicht ausgewaehlt')
+        else :
+            std5 = np.std(self.extensionList5Y)
+            pyplot.close()
+            pyplot.xlabel('ori loop length')
+            pyplot.ylabel('score')
+            pyplot.title('Score per Loop Length for 5,5')
+            pyplot.bar(self.extensionList5X, self.extensionList5Y, color = '#BDBDBD', yerr = std5)
+            pyplot.xticks(range(36))
+            pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor5,5.svg'),format='svg')
         
         #bestimmt fuer jede Erweiterung einzelt das Verhaeltnis von Clashes zur Looplaenge
         self.extensionList0X = []
@@ -767,7 +855,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 extensionList0 = [x for x in statSortedPdbLoopDictList if x[0] == i]
                 for k in range(36) :
                     # print i
-                    lengthList0 = [x for x in extensionList0 if x[12] == k]
+                    lengthList0 = [x for x in extensionList0 if x[14] == k]
                     lenList0 = len(lengthList0)
                     if lenList0 == 0 :
                         continue
@@ -777,15 +865,18 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     self.extensionList0Y.append(avgScore)
                     self.extensionList0X.append(k)
                                
-                    
-        std0 = np.std(self.extensionList0Y)                   
-        pyplot.close()
-        pyplot.xlabel('ori loop length')
-        pyplot.ylabel('clash')
-        pyplot.title('Clashes per Loop Length for 0,0')
-        pyplot.bar(self.extensionList0X, self.extensionList0Y, color = '#BDBDBD', yerr = std0)
-        pyplot.xticks(range(36))
-        pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor0,0.svg'), format='svg')
+        if len(self.extensionList0Y) == 0 :
+            with open (os.path.join(stat3Dir, "ClashVsLoopLengthFor0,0-notExisting.txt"),'w' ) as fp10 :
+                fp10.write('wurde nicht ausgewaehlt')
+        else :            
+            std0 = np.std(self.extensionList0Y)                   
+            pyplot.close()
+            pyplot.xlabel('ori loop length')
+            pyplot.ylabel('clash')
+            pyplot.title('Clashes per Loop Length for 0,0')
+            pyplot.bar(self.extensionList0X, self.extensionList0Y, color = '#BDBDBD', yerr = std0)
+            pyplot.xticks(range(36))
+            pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor0,0.svg'), format='svg')
         
         self.extensionList1X = []
         self.extensionList1Y = []
@@ -795,7 +886,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 extensionList1 = [x for x in statSortedPdbLoopDictList if x[0] == i]
                 for k in range(36) :
                     # print i
-                    lengthList1 = [x for x in extensionList1 if x[12] == k]
+                    lengthList1 = [x for x in extensionList1 if x[14] == k]
                     lenList1 = len(lengthList1)
                     if lenList1 == 0 :
                         continue
@@ -805,15 +896,18 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     self.extensionList1Y.append(avgScore)
                     self.extensionList1X.append(k)
 
-                              
-        std1 = np.std(self.extensionList1Y)                   
-        pyplot.close()
-        pyplot.xlabel('ori loop length')
-        pyplot.ylabel('clash')
-        pyplot.title('Clashes per Loop Length for 1,1')
-        pyplot.bar(self.extensionList1X, self.extensionList1Y, color = '#BDBDBD', yerr = std1)
-        pyplot.xticks(range(36))
-        pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor1,1.svg'),format='svg')
+        if len(self.extensionList0Y) == 0 :
+            with open (os.path.join(stat3Dir, "ClashVsLoopLengthFor1,1-notExisting.txt"),'w' ) as fp10 :
+                fp10.write('wurde nicht ausgewaehlt')
+        else :                      
+            std1 = np.std(self.extensionList1Y)                   
+            pyplot.close()
+            pyplot.xlabel('ori loop length')
+            pyplot.ylabel('clash')
+            pyplot.title('Clashes per Loop Length for 1,1')
+            pyplot.bar(self.extensionList1X, self.extensionList1Y, color = '#BDBDBD', yerr = std1)
+            pyplot.xticks(range(36))
+            pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor1,1.svg'),format='svg')
         
         self.extensionList2X = []
         self.extensionList2Y = []
@@ -823,7 +917,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 extensionList2 = [x for x in statSortedPdbLoopDictList if x[0] == i]
                 for k in range(36) :
                     # print i
-                    lengthList2 = [x for x in extensionList2 if x[12] == k]
+                    lengthList2 = [x for x in extensionList2 if x[14] == k]
                     lenList2 = len(lengthList2)
                     if lenList2 == 0 :
                         continue
@@ -833,14 +927,18 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     self.extensionList2Y.append(avgScore)
                     self.extensionList2X.append(k)
                     
-        std2 = np.std(self.extensionList2Y)                   
-        pyplot.close()
-        pyplot.xlabel('ori loop length')
-        pyplot.ylabel('clash')
-        pyplot.title('Clashes per Loop Length for 2,2')
-        pyplot.bar(self.extensionList2X, self.extensionList2Y, color = '#BDBDBD', yerr = std2)
-        pyplot.xticks(range(36))
-        pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor2,2.svg'),format='svg')
+        if len(self.extensionList0Y) == 0 :
+            with open (os.path.join(stat3Dir, "ClashVsLoopLengthFor2,2-notExisting.txt"),'w' ) as fp10 :
+                fp10.write('wurde nicht ausgewaehlt')
+        else :            
+            std2 = np.std(self.extensionList2Y)                   
+            pyplot.close()
+            pyplot.xlabel('ori loop length')
+            pyplot.ylabel('clash')
+            pyplot.title('Clashes per Loop Length for 2,2')
+            pyplot.bar(self.extensionList2X, self.extensionList2Y, color = '#BDBDBD', yerr = std2)
+            pyplot.xticks(range(36))
+            pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor2,2.svg'),format='svg')
         
         self.extensionList3X = []
         self.extensionList3Y = []
@@ -850,7 +948,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 extensionList3 = [x for x in statSortedPdbLoopDictList if x[0] == i]
                 for k in range(36) :
                     # print i
-                    lengthList3 = [x for x in extensionList3 if x[12] == k]
+                    lengthList3 = [x for x in extensionList3 if x[14] == k]
                     lenList3 = len(lengthList3)
                     if lenList3 == 0 :
                         continue
@@ -860,31 +958,35 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     self.extensionList3Y.append(avgScore)
                     self.extensionList3X.append(k)
                     
-        std3 = np.std(self.extensionList3Y)                   
-        pyplot.close()
-        pyplot.xlabel('ori loop length')
-        pyplot.ylabel('clash')
-        pyplot.title('Clashes per Loop Length for 3,3')
-        pyplot.bar(self.extensionList3X, self.extensionList3Y, color = '#BDBDBD', yerr = std3)
-        pyplot.xticks(range(36))
-        pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor3,3.svg'),format='svg')
+        if len(self.extensionList0Y) == 0 :
+            with open (os.path.join(stat3Dir, "ClashVsLoopLengthFor3,3-notExisting.txt"),'w' ) as fp10 :
+                fp10.write('wurde nicht ausgewaehlt')
+        else :            
+            std3 = np.std(self.extensionList3Y)                   
+            pyplot.close()
+            pyplot.xlabel('ori loop length')
+            pyplot.ylabel('clash')
+            pyplot.title('Clashes per Loop Length for 3,3')
+            pyplot.bar(self.extensionList3X, self.extensionList3Y, color = '#BDBDBD', yerr = std3)
+            pyplot.xticks(range(36))
+            pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor3,3.svg'),format='svg')
         
         pyplot.close()
         
-        barWidth = 0.2
-        _, ax = pyplot.subplots()
-        ex0 = ax.bar(np.array(self.extensionList0X) - 2*barWidth, self.extensionList0Y, barWidth, color='#FA5882', yerr = std0, label = 'Extension_0')
-        ex1 = ax.bar(np.array(self.extensionList1X) - barWidth, self.extensionList1Y, barWidth, color='#5882FA', yerr = std1, label = 'Extension_1')
-        ex2 = ax.bar(np.array(self.extensionList2X), self.extensionList2Y, barWidth, color='#FAAC58', yerr = std2, label = 'Extension_2')
-        ex3 = ax.bar(np.array(self.extensionList3X) + barWidth, self.extensionList3Y, barWidth, color='#58FA58', yerr = std3, label = 'Extension_3')
-        pyplot.xticks(range(36))
-        ax.set_xlabel('loop length')
-        ax.set_ylabel('clash')
-        ax.set_title('Clash per Loop Length')
-        pyplot.legend()
-        #ax.set_xticks([x + barWidth for x in range(41)])
-        pyplot.tight_layout()
-        pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLength.svg'),format='svg')
+        # barWidth = 0.2
+        # _, ax = pyplot.subplots()
+        # ex0 = ax.bar(np.array(self.extensionList0X) - 2*barWidth, self.extensionList0Y, barWidth, color='#FA5882', yerr = std0, label = 'Extension_0')
+        # ex1 = ax.bar(np.array(self.extensionList1X) - barWidth, self.extensionList1Y, barWidth, color='#5882FA', yerr = std1, label = 'Extension_1')
+        # ex2 = ax.bar(np.array(self.extensionList2X), self.extensionList2Y, barWidth, color='#FAAC58', yerr = std2, label = 'Extension_2')
+        # ex3 = ax.bar(np.array(self.extensionList3X) + barWidth, self.extensionList3Y, barWidth, color='#58FA58', yerr = std3, label = 'Extension_3')
+        # pyplot.xticks(range(36))
+        # ax.set_xlabel('loop length')
+        # ax.set_ylabel('clash')
+        # ax.set_title('Clash per Loop Length')
+        # pyplot.legend()
+        # #ax.set_xticks([x + barWidth for x in range(41)])
+        # pyplot.tight_layout()
+        # pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLength.svg'),format='svg')
 
         
         self.extensionList4X = []
@@ -895,7 +997,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 extensionList4 = [x for x in statSortedPdbLoopDictList if x[0] == i]
                 for k in range(36) :
                     # print i
-                    lengthList4 = [x for x in extensionList4 if x[12] == k]
+                    lengthList4 = [x for x in extensionList4 if x[14] == k]
                     lenList4 = len(lengthList4)
                     if lenList4 == 0 :
                         continue
@@ -905,15 +1007,18 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     self.extensionList4Y.append(avgScore)
                     self.extensionList4X.append(k)
                                
-                    
-        std4 = np.std(self.extensionList4Y)                   
-        pyplot.close()
-        pyplot.xlabel('ori loop length')
-        pyplot.ylabel('clash')
-        pyplot.title('Clashes per Loop Length for 4,4')
-        pyplot.bar(self.extensionList4X, self.extensionList4Y, color = '#BDBDBD', yerr = std4)
-        pyplot.xticks(range(36))
-        pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor4,4.svg'), format='svg')
+        if len(self.extensionList0Y) == 0 :
+            with open (os.path.join(stat3Dir, "ClashVsLoopLengthFor4,4-notExisting.txt"),'w' ) as fp10 :
+                fp10.write('wurde nicht ausgewaehlt')
+        else :            
+            std4 = np.std(self.extensionList4Y)                   
+            pyplot.close()
+            pyplot.xlabel('ori loop length')
+            pyplot.ylabel('clash')
+            pyplot.title('Clashes per Loop Length for 4,4')
+            pyplot.bar(self.extensionList4X, self.extensionList4Y, color = '#BDBDBD', yerr = std4)
+            pyplot.xticks(range(36))
+            pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor4,4.svg'), format='svg')
         
         self.extensionList5X = []
         self.extensionList5Y = []
@@ -923,7 +1028,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 extensionList5 = [x for x in statSortedPdbLoopDictList if x[0] == i]
                 for k in range(36) :
                     # print i
-                    lengthList5 = [x for x in extensionList5 if x[12] == k]
+                    lengthList5 = [x for x in extensionList5 if x[14] == k]
                     lenList5 = len(lengthList5)
                     if lenList5 == 0 :
                         continue
@@ -933,16 +1038,21 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     self.extensionList5Y.append(avgScore)
                     self.extensionList5X.append(k)
                                
-                    
-        std5 = np.std(self.extensionList5Y)                   
-        pyplot.close()
-        pyplot.xlabel('ori loop length')
-        pyplot.ylabel('clash')
-        pyplot.title('Clashes per Loop Length for 5,5')
-        pyplot.bar(self.extensionList5X, self.extensionList5Y, color = '#BDBDBD', yerr = std5)
-        pyplot.xticks(range(36))
-        pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor5,5.svg'), format='svg')
+        if len(self.extensionList0Y) == 0 :
+            with open (os.path.join(stat3Dir, "ClashVsLoopLengthFor5,5-notExisting.txt"),'w' ) as fp10 :
+                fp10.write('wurde nicht ausgewaehlt')
+        else :            
+            std5 = np.std(self.extensionList5Y)                   
+            pyplot.close()
+            pyplot.xlabel('ori loop length')
+            pyplot.ylabel('clash')
+            pyplot.title('Clashes per Loop Length for 5,5')
+            pyplot.bar(self.extensionList5X, self.extensionList5Y, color = '#BDBDBD', yerr = std5)
+            pyplot.xticks(range(36))
+            pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor5,5.svg'), format='svg')
         
+        # self.avgScoreY = []
+        # self.modelNumX = []
         # for i in range(11) :
         #     avgList = [x for x in statAvgScoreList if x [0] == i]
         #     lenAvg = len(avgList)
@@ -1566,8 +1676,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         for resultIndex in range(min(3, len(sortedSingleLoopDict))) :
                             result = sortedSingleLoopDict[resultIndex]
                             #print result
+                            # [0] Erweiterung, Loop, Loopauswahl, Datenbank [1] Score, [2] Clashes, [3] Sequenz, [4] Template, [5] Position(Datenbank), [6] GPCR True/False, [7] SequenzIdentitaet, [8] Spezies True/False, [9] memDB True/False
                             loop.append(["%i,%i;%i;%i;%i" % (i,i,j,result[0],memDB), result[2], result[5], result[3], result[4], result[6], result[9], round(result[7],2), result[8], memDB])
-                            #print loop
+                            print loop
                         temp_loopDict[j] = loop
 
             return temp_loopDict, singleLoopDict
