@@ -287,7 +287,9 @@ class LinkIt( CmdTool, ProviMixin ):
 #erstellt eine Statistik zu einem fertig berechneten Datensatz  
 class SSFEStatistic ( PyTool, ProviMixin ):
     args = [
-        _("out_dataSet", type="dir")
+        _("out_dataSet", type="dir"),
+        _( "GPCRscore", type="int", default=20 ),
+        _( "Speciesscore", type="int", default=1000 )
     ]
     
     def func ( self ) :
@@ -425,6 +427,16 @@ class SSFEStatistic ( PyTool, ProviMixin ):
             oriLoopLen = x[13] - x[0] - x[1]
             x.append(oriLoopLen)
             x.append(int(datenbank))
+            newscore = x[4]
+            # print newscore
+            if x[9]:#GPCR gefunden
+                newscore = newscore/self.GPCRscore
+            elif x[11]:#Spezies gefunden
+                newscore = newscore/self.Speciesscore
+            x[4] = newscore
+            # print'-------'
+            # print x[4]
+            # print 'next'
         
         # print '-------------------'   
         # print statSortedPdbLoopDictList
