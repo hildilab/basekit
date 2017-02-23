@@ -2318,13 +2318,13 @@ class MultiLinkIt( PyTool, ProviMixin ):
         for i, linker_args in enumerate( self.input ):
             #print linker_args
             res1, res2, seq = linker_args
-            print LINKIT_CMD
-            print '============'
-            print LINKIT_DIR2
-            print 'res1:  ' , res1
-            print 'res2:  ' , res2
-            print 'seq:  ' , seq
-            print 'last:  ' , self.last_res
+            # print LINKIT_CMD
+            # print '============'
+            # print LINKIT_DIR2
+            # print 'res1:  ' , res1
+            # print 'res2:  ' , res2
+            # print 'seq:  ' , seq
+            # print 'last:  ' , self.last_res
             if int(res1.split(":")[0]) <= self.last_res and int(res2.split(":")[0]) <= self.last_res :  
                 link_it = LinkIt(
                     self.pdb_file, res1, res2, seq, memdb=self.gpcrDB,
@@ -2340,9 +2340,9 @@ class MultiLinkIt( PyTool, ProviMixin ):
     def func( self ):
         self.log( "%i linkit runs" % len( self.input ) ) 
         for i, link_it in enumerate ( self.link_it_list ):
-            print 'res1:  ' , link_it.res1
-            print 'res2:  ' , link_it.res2
-            print 'seq:  ' , link_it.seq
+            # print 'res1:  ' , link_it.res1
+            # print 'res2:  ' , link_it.res2
+            # print 'seq:  ' , link_it.seq
             link_it()
             
             #print link_it.res1["resno" ] +1
