@@ -1132,7 +1132,8 @@ class SSFEMultiLinkIt( PyTool, ProviMixin ):
         _("loop_jobs", type="dir"),
         _( "GPCRscore", type="int", default=20 ),
         _( "Speciesscore", type="int", default=1000 ),
-        _( "clashOut", type="float", default=0.75 )
+        _( "clashOut", type="float", default=0.75 ),
+        _( "numclashes", type="int", default=10)
     ]   
            
     def func ( self ) :
@@ -1220,7 +1221,8 @@ class SSFELinkIt( PyTool, ProviMixin ):
            help="int,int", default=[0,0] ),
         _( "GPCRscore", type="int", default=20 ),
         _( "Speciesscore", type="int", default=1000 ),
-        _( "clashOut", type="float", default=0.75 )
+        _( "clashOut", type="float", default=0.75 ),
+        _( "numclashes", type="int", default=10)
   
     ]
     out = [
@@ -1696,8 +1698,8 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         
                         #print sortedSingleLoopDict 
                                 
-                        numclashes = 5
-                        sortedSingleLoopDict = filter(lambda loop: loop[5] < numclashes, sortedSingleLoopDict)
+                        
+                        sortedSingleLoopDict = filter(lambda loop: loop[5] < self.numclashes, sortedSingleLoopDict)
                         sortedSingleLoopDict.sort(key=lambda loop: (loop[2], loop[5]), cmp =self.compareLoops )
                         sortedSingleLoopDict.reverse()
                         
@@ -1733,10 +1735,11 @@ class SSFELinkIt( PyTool, ProviMixin ):
             elif singleLoopDict2 == {}:
                 loopDict = loopDict1
             else:
-                for modelnum in loopDict2:
+                for modelnum in [0,1,2,3,4,5]:#loopDict2:
                     # print '================================================================'
                     # print modelnum
                     # falls einer der Loops (ICL1) in einem der dicts nicht vorhanden ist, abfrage mit get und []
+                    #loopDict[modelnum] = loopDict1 + loopDict2
                     loopDict[modelnum] = loopDict1.get(modelnum, []) + loopDict2.get(modelnum, [])
             #print loopDict
             #Ergebnis wird in BestResultsDict.json ausgegeben                
@@ -1754,9 +1757,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
             self.topTenResult = {}
              
             #sortiert nach hoestem Score die Liste der 3 besten berechneten Loops pro Loop (12 Ergebnisse pro Loop) und dreht sie um, d.h bester Score zu erst
-            numclashes = 5
+         
             for key in loopDict :
-                loopDict[key] = filter(lambda loop: loop[2] < numclashes, loopDict[key])
+                loopDict[key] = filter(lambda loop: loop[2] < self.numclashes, loopDict[key])
                 loopDict[key].sort(key=lambda loop: (loop[1], loop[2]), cmp =self.compareLoops )
                 loopDict[key].reverse()
             
@@ -1834,9 +1837,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
         # print n
         # print k
 
-        numclashes = 5
+
         for key in self.sortedPdbLoopDict:
-            self.sortedPdbLoopDict[key] = filter(lambda loop: loop[2] < numclashes, self.sortedPdbLoopDict[key])
+            self.sortedPdbLoopDict[key] = filter(lambda loop: loop[2] < self.numclashes, self.sortedPdbLoopDict[key])
             self.sortedPdbLoopDict[key].sort(key=lambda loop: (loop[1], loop[2]), cmp =self.compareLoops )
             self.sortedPdbLoopDict[key].reverse()
             self.sortedPdbLoopDict[key] = self.sortedPdbLoopDict[key][0:5] # er werden die ersten 5 genommen
@@ -2014,9 +2017,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     # print loop
                     # score erhoeungen zurueck aendern
                     newscore = loop[1]
-                    if loop[8]:#Species
+                    if loop[9]:#Species
                         newscore = newscore/self.Speciesscore
-                    elif loop[6]:#GPCR
+                    elif loop[7]:#GPCR
                         newscore = newscore/self.GPCRscore
 
                     fp1.write(','+ ('%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) +  ',' + str(loop[9]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + '\n')
@@ -2030,9 +2033,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 for i,  loop in enumerate(tableList[j]) :    
                     # print loop
                     newscore = loop[1]
-                    if loop[8]:#Species
+                    if loop[9]:#Species
                         newscore = newscore/self.Speciesscore
-                    elif loop[6]:#GPCR
+                    elif loop[7]:#GPCR
                         newscore = newscore/self.GPCRscore
                     fp2.write( name + ',' + name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[9]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';')
                 j += 1
@@ -2045,9 +2048,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
             for i,  loop in enumerate(tableList[j]) :    
                 # print loop
                 newscore = loop[1]
-                if loop[8]:#Species
+                if loop[9]:#Species
                     newscore = newscore/self.Speciesscore
-                elif loop[6]:#GPCR
+                elif loop[7]:#GPCR
                     newscore = newscore/self.GPCRscore
                 result +=  name + ',' + name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[9]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';'
             j += 1        
@@ -2060,9 +2063,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 for i,  loop in enumerate(tableList[j]) :    
                     # print loop
                     newscore = loop[1]
-                    if loop[8]:#Species
+                    if loop[9]:#Species
                         newscore = newscore/self.Speciesscore
-                    elif loop[6]:#GPCR
+                    elif loop[7]:#GPCR
                         newscore = newscore/self.GPCRscore
                     fp2.write( name + ',' + name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[9]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';')
                 j += 1
@@ -2075,9 +2078,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
             for i,  loop in enumerate(tableList[j]) :    
                 # print loop
                 newscore = loop[1]
-                if loop[8]:#Species
+                if loop[9]:#Species
                     newscore = newscore/self.Speciesscore
-                elif loop[6]:#GPCR
+                elif loop[7]:#GPCR
                     newscore = newscore/self.GPCRscore
                 resultTabel += name + ',' + ('%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[9]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';'
             j += 1   
