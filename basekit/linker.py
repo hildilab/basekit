@@ -2076,6 +2076,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
             
         resultTabel = "Loop ,# , Ext, GPCR, Species, Score, Sequence, Templ seq, Seq ident, Clashes, PDB-ID, Templ pos,;"
         j = 0
+        PDBaddress = 'http://www.rcsb.org/pdb/explore/explore.do?structureId='
         for name in (nameList) :
             while j not in tableList or tableList[j] == [] :
                 j += 1                    
@@ -2086,7 +2087,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     newscore = newscore/self.Speciesscore
                 elif loop[7]:#GPCR
                     newscore = newscore/self.GPCRscore
-                resultTabel += name + ',' + ('%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[9]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';'
+                resultTabel += name + ',' + ('%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[9]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + ('<a href="' + PDBaddress + loop[5] + '">' + loop[5] + '</a>') + ',' + loop[6] + ';'
             j += 1   
         
                         
@@ -2168,7 +2169,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
         templateDict["namepdbfiles"] = templateHtmlString
         templateDict["namepdbfiles2"] = templateHtmlString
         templateDict["result"] = '"' + result + '"'
-        templateDict["resultTabel"] = '"' + resultTabel + '"'
+        templateDict["resultTabel"] = "'" + resultTabel + "'"
         #print templateDict 
                 
         # print self.loopPosList
