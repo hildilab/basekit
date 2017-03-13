@@ -2394,11 +2394,13 @@ class LinkItDensity( PyTool ):
             help="N-terminal stem residue and chain, '123:A'." ),
         _( "res2", type="sele", label="Stem residue 2",
             help="C-terminal stem residue." ),
-        _( "seq", type="str", label="Sequence",
+        _( "seq", type="str", label="Fragment sequence",
             help="One-letter code of the linker amino acids." ),
         _( "resolution", type="float", fixed=True , range=[0.5,20], default=5,
             precision=1, label="Map resolution",
             help="Used for filtering the map." ),
+        _( "memdb", type="bool", label="MembraneDB",
+            help="Show only results from membrane proteins.", default=False ),
         _( "max_loops", type="int", range=[0, 500], default=100 , step=100,
             advanced=True )
     ]
@@ -2409,10 +2411,12 @@ class LinkItDensity( PyTool ):
     tmpl_dir = TMPL_DIR
     #start=timeit.timeit()
     def _init( self, *args, **kwargs ):
+        self.res1['chain'] = self.res1['chain'].upper()
+        self.res2['chain'] = self.res2['chain'].upper()
         if self.res1['resno'] > self.res2['resno']:
             self.res1, self.res2 = self.res2, self.res1
         self.link_it = LinkIt(
-            self.edited_pdb_file, self.res1, self.res2, self.seq,
+            self.edited_pdb_file, self.res1, self.res2, self.seq, self.memdb,
             **copy_dict( kwargs, run=False, output_dir=self.subdir("link_it") )
         )
         
