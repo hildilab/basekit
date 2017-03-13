@@ -1165,7 +1165,7 @@ class SSFEMultiLinkIt( PyTool, ProviMixin ):
             inputFiles = os.listdir(jobDirPath)
            
             for inputFile in inputFiles :
-                if  os.path.splitext(inputFile)[1] == '.pdb' :
+                if  (os.path.splitext(inputFile)[1] == '.pdb') :
                     pdbFileList.append(inputFile)
                 else :
                     nrjob = re.compile("([a-zA-Z_]+)([0-9]+)")
@@ -1676,6 +1676,8 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         for index, loopEntrie in enumerate(sortedSingleLoopDict) :
                             try:
                                 if loopEntrie[4].upper() in self.gpcrDict["X_" + speciesName] :
+                                    # if loopEntrie[4].upper() == '3ODU' :
+                                    #     print loopEntrie              
                                     sortedSingleLoopDict[index][2] *= self.Speciesscore
                                     sortedSingleLoopDict[index].append(True)
                                 else:
@@ -1700,8 +1702,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                                 sortedSingleLoopDict[index].append(False)
                         
                         #print sortedSingleLoopDict 
-                                
-                        
+                            
                         sortedSingleLoopDict = filter(lambda loop: loop[5] < self.numclashes, sortedSingleLoopDict)
                         sortedSingleLoopDict.sort(key=lambda loop: (loop[2], loop[5]), cmp =self.compareLoops )
                         sortedSingleLoopDict.reverse()
@@ -1709,17 +1710,18 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         #print sortedSingleLoopDict
                         
                         
-                        for resultIndex in range(min(6, len(sortedSingleLoopDict))) :
+                        for resultIndex in range(min(20, len(sortedSingleLoopDict))) :
                             result = sortedSingleLoopDict[resultIndex]
                             #print result
                             # [0] Erweiterung, Loop, Loopauswahl, Datenbank [1] Score, [2] Clashes, [3] Sequenz, [4] Template, [5] Position(Datenbank), [6] GPCR True/False, [7] SequenzIdentitaet, [8] Spezies True/False, [9] memDB True/False
                             loop.append(["%i,%i;%i;%i;%i" % (i,i,j,result[0],memDB), result[2], result[5], result[3], result[4], result[6], result[9], round(result[7],2), result[8], memDB])
                             # print loop
                         temp_loopDict[j] = loop
+                        #temp_loopDict[j] = filter(lambda loop: not (loop[0].split(',')[0] == 0 and loop[2] != 0), temp_loopDict[j])
 
             return temp_loopDict, singleLoopDict
         
-        #print loopDict
+        # print loopDict
         outputDir1 = self.output_dir + "membranDB"
         loopDict1, singleLoopDict1 = firstsort( outputDir1, memDB=False )
         outputDir2 = self.output_dir + "GPCRDB"
@@ -1817,14 +1819,16 @@ class SSFELinkIt( PyTool, ProviMixin ):
         # print self.sortedPdbLoopDict
         # print '==========================='
         
-        templateList = []
+        
 
         n=0
         k=0
         
         #loecht eintraege wenn tamplate doppelt vorkommt (z.b.4z36)
+        #print self.sortedPdbLoopDict
         for key in self.sortedPdbLoopDict :
             noDoubelList = []
+            templateList = []
             # print loopElements
             for loopElement in self.sortedPdbLoopDict[key] :
                 k = k+1
