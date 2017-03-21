@@ -1131,8 +1131,8 @@ class SSFEZip (PyTool, ProviMixin ):
 class SSFEMultiLinkIt( PyTool, ProviMixin ):
     args = [
         _("loop_jobs", type="dir"),
-        _( "GPCRscore", type="int", default=20 ),
-        _( "Speciesscore", type="int", default=1000 ),
+        _( "GPCRscore", type="int", default=1 ),
+        _( "Speciesscore", type="int", default=2 ),
         _( "clashOut", type="float", default=0.75 ),
         _( "numclashes", type="int", default=10)
     ]   
@@ -1220,8 +1220,8 @@ class SSFELinkIt( PyTool, ProviMixin ):
         _( "loop_file", type="file", ext="txt" ),
         _( "extension", type="list", nargs=2, action="append",
            help="int,int", default=[0,0] ),
-        _( "GPCRscore", type="int", default=20 ),
-        _( "Speciesscore", type="int", default=1000 ),
+        _( "GPCRscore", type="int", default=1 ),
+        _( "Speciesscore", type="int", default=2 ),
         _( "clashOut", type="float", default=0.75 ),
         _( "numclashes", type="int", default=10)
   
@@ -1740,7 +1740,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
             elif singleLoopDict2 == {}:
                 loopDict = loopDict1
             else:
-                for modelnum in [0,1,2,3]:#loopDict2:
+                for modelnum in [0,1,2,3,4,5,6]:#loopDict2:
                     # ,4,5
                     # print '================================================================'
                     # print modelnum
@@ -1824,21 +1824,35 @@ class SSFELinkIt( PyTool, ProviMixin ):
         n=0
         k=0
         
-        #loecht eintraege wenn tamplate doppelt vorkommt (z.b.4z36)
+        #loecht eintraege je looptyp, wenn tamplate doppelt vorkommt (z.b.4z36)
         #print self.sortedPdbLoopDict
         for key in self.sortedPdbLoopDict :
             noDoubelList = []
             templateList = []
             # print loopElements
             for loopElement in self.sortedPdbLoopDict[key] :
-                k = k+1
-                if loopElement[4] in templateList :
+                extension, loopName, numLoop, numDB = loopElement[0].split(';')
+                extensionSingle1, extensionSingle2 = extension.split(',')
+                extensionSingle1 = int(extensionSingle1)
+                posNum, posLet = loopElement[5].split(':')
+                posNum1, posNum2 = posNum.split('-')
+                posNum1 = int(posNum1)
+                # print extensionSingle1
+                # print posNum1
+                seqPos = posNum1+extensionSingle1
+                # print seqPos
+                # print "--------"
+                if [loopElement[4],seqPos] in templateList :
                     n = n+1
+                    #print (loopElement[4],seqPos)
                 else :    
-                    templateList.append(loopElement[4])
+                    templateList.append([loopElement[4], seqPos])
                     noDoubelList.append(loopElement)
                     n = n+1
-            self.sortedPdbLoopDict[key] = noDoubelList        
+            self.sortedPdbLoopDict[key] = noDoubelList
+        
+            
+        
             
                 
         # print self.sortedPdbLoopDict
@@ -2091,7 +2105,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     newscore = newscore/self.Speciesscore
                 elif loop[7]:#GPCR
                     newscore = newscore/self.GPCRscore
-                resultTabel += name + ',' + ('%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[9]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + ('<a href="' + PDBaddress + loop[5] + '">' + loop[5] + '</a>') + ',' + loop[6] + ';'
+                resultTabel += name + ',' + ('%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[9]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + ('<a target="_blank" href="' + PDBaddress + loop[5] + '">' + loop[5] + '</a>') + ',' + loop[6] + ';'
             j += 1   
         
                         
