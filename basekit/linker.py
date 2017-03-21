@@ -103,7 +103,7 @@ class LinkIt( CmdTool, ProviMixin ):
         else:
             with open(os.path.join( self.output_dir, "ERROR_no_loops.txt"), 'w') :
                 pass
-        
+
     def _make_kos_file( self ):
         npdb = NumPdb( self.pdb_file, features={
             "phi_psi": False, "sstruc": False, "backbone_only": True
@@ -197,7 +197,7 @@ class LinkIt( CmdTool, ProviMixin ):
         nowater=noloop.sele(resname=['HOH','WAT','SOL'],invert=True)
         rest=noloop.copy(sele=nowater)
         rest.write('hurz.pdb')
-        
+
 
 
         protein_tree = get_tree(rest['xyz'])
@@ -233,8 +233,8 @@ class LinkIt( CmdTool, ProviMixin ):
 
 
         return model_clash_count
-    
-         
+
+
     def seq_id ( self,seq1,seq2 ):
         si=0
         for sf in range(0, len(seq1),1):
@@ -243,7 +243,7 @@ class LinkIt( CmdTool, ProviMixin ):
         sqi=(si/len(seq1))*100
         return sqi
     def _make_linker_json( self, compact=False ):
-     
+
         linker_dict = {}
         model_clash_count = self._find_clashes()
         parameter={'res1':self.res1,'res2':self.res2,'sequence':self.seq}
@@ -268,42 +268,42 @@ class LinkIt( CmdTool, ProviMixin ):
                             str(d[3].strip().split() [0]),
                             model_clash_count[ i ],
                             posfield,
-                            self.seq_id(self.seq, str(d[2].strip()))     
+                            self.seq_id(self.seq, str(d[2].strip()))
                         ]
-                        
-                        
-                        
+
+
+
         top_level={
             "params": parameter,
             "linker": linker_dict
         }
         with open( self.json_file, "w" ) as fp:
             if compact:
-                
+
                 json.dump(top_level, fp, separators=(',', ':') )
             else:
                 json.dump( top_level, fp, indent=4 )
 
-#erstellt eine Statistik zu einem fertig berechneten Datensatz  
+#erstellt eine Statistik zu einem fertig berechneten Datensatz
 class SSFEStatistic ( PyTool, ProviMixin ):
     args = [
         _("out_dataSet", type="dir"),
         _( "GPCRscore", type="int", default=20 ),
         _( "Speciesscore", type="int", default=1000 )
     ]
-    
+
     def func ( self ) :
-        
-        statTopTenResultList = []            
+
+        statTopTenResultList = []
         statBestResultsList = []
         statAvgScoreList = []
         statResultLoopFoundList = []
         statSortedPdbLoopDictList = []
-        
+
         filename = 'RelResultLoopsList.json'
         resultLoopFoundList = []
-        
-        #Ergebnisse fuer alle berechneten Spezies zusammenfassen            
+
+        #Ergebnisse fuer alle berechneten Spezies zusammenfassen
         os.chdir(self.out_dataSet)
         for result_dir in [d for d in os.listdir(self.out_dataSet) if os.path.isdir(d)] :
             for template_dir in [d for d in os.listdir(result_dir) if os.path.isdir(os.path.join(result_dir,d))]:
@@ -316,17 +316,17 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     resultLoopList.insert(1,template_dir)
                     resultLoopFoundList.append(resultLoopList)
                     #print resultLoopFoundList
-                   
+
         with open(os.path.join(self.output_dir, "ResultLoopFoundList.json"), 'w') as fp :
             json.dump(resultLoopFoundList, fp)
-            
+
         with open (os.path.join(self.output_dir, 'ResultLoopFoundList.csv'), 'w' ) as fp7 :
             fp7.write( 'Timestamp, Template, Name, ICL1, ICL2, ICL3, ECL1, ECL2, ECL3, TM7_H8\n')
             for result in resultLoopFoundList :
                 fp7.write(result[0] + ',' + result[1] + ',' + result[2] + ',' + str(result[3][1]) + ',' + str(result[4][1]) + ',' + str(result[5][1]) + ',' + str(result[6][1]) + ','
                           + str(result[7][1]) + ',' + str(result[8][1]) + ',' + str(result[9][1]) + '\n')
-        
-        
+
+
         for subdir, dirs, files in os.walk(self.out_dataSet):
             if "BestResultsDict.json" in files and "TopTenResult.json" in files and "AvgScore.json" and "SortedPdBLoopDict.json" in files :
                 with open (os.path.join(subdir, "BestResultsDict.json"), 'r') as fp :
@@ -341,16 +341,16 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 with open (os.path.join(subdir, "SortedPdBLoopDict.json"), 'r') as fp5 :
                     sortedPdbLoopDictList = json.load(fp5)
                     statSortedPdbLoopDictList += [x for sublist in sortedPdbLoopDictList.values() for x in sublist]
-                    
-        
-        
+
+
+
         with open (os.path.join(self.output_dir, "ResultLoopFoundList.json"), 'r') as fp4 :
             resultLoopFoundList = json.load(fp4)
             statResultLoopFoundList += [x for x in resultLoopFoundList]
-        
+
         #print statResultLoopFoundList
-            
-        countLoopFoundList = {'ICL1':[0,0], 'ICL2':[0,0], 'ICL3':[0,0], 'ECL1':[0,0], 'ECL2':[0,0], 'ECL3':[0,0], 'TM7_H8':[0,0]}    
+
+        countLoopFoundList = {'ICL1':[0,0], 'ICL2':[0,0], 'ICL3':[0,0], 'ECL1':[0,0], 'ECL2':[0,0], 'ECL3':[0,0], 'TM7_H8':[0,0]}
         for loop in statResultLoopFoundList :
             #print loop
             for res in loop[3:] :
@@ -359,67 +359,67 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     countLoopFoundList[res[0]][0] +=1
                 else :
                     countLoopFoundList[res[0]][1] +=1
-                    
-        #print countLoopFoundList            
-                    
-        countLoopSpeziesFoundList = {key : [set(), set()] for key in ['ICL1', 'ICL2', 'ICL3', 'ECL1', 'ECL2', 'ECL3', 'TM7_H8']}    
+
+        #print countLoopFoundList
+
+        countLoopSpeziesFoundList = {key : [set(), set()] for key in ['ICL1', 'ICL2', 'ICL3', 'ECL1', 'ECL2', 'ECL3', 'TM7_H8']}
         for loop in statResultLoopFoundList :
             for res in loop[3:] :
                 if res[1] :
                     countLoopSpeziesFoundList[res[0]][0].add(loop[2])
                 else :
                     countLoopSpeziesFoundList[res[0]][1].add(loop[2])
-                    
+
         countSpezies = set()
-        
+
         for loop in statResultLoopFoundList :
             countSpezies.add(loop[2])
-             
-        countSpeziesNum = len(countSpezies)     
-                    
+
+        countSpeziesNum = len(countSpezies)
+
         for key in countLoopSpeziesFoundList :
             countLoopSpeziesFoundList[key] = [len(countLoopSpeziesFoundList[key][0]), len(countLoopSpeziesFoundList[key][1])]
-        
-        
-        
+
+
+
         with open (os.path.join(self.output_dir, 'CountLoopResults.csv'), 'w' ) as fp6 :
             fp6.write('Loop, found/total, found/species, not found/total, not found/species, could be found, species found\n' )
             for key, result in countLoopFoundList.iteritems():
                 fp6.write(key + ',' + str(result[0]) + ',' + str(countLoopSpeziesFoundList[key][0]) + ',' + str(result[1]) + ',' + str(countLoopSpeziesFoundList[key][1]) + ','
                           + str(result[0] + result[1]) + ',' + str(countSpeziesNum) + '\n')
-        
+
         # print countLoopFoundList
         # print '================================'
         # print countLoopSpeziesFoundList
-                   
+
         #print statTopTenResultList
         # print '----------------'
         # print statSortedPdbLoopDictList
-                    
+
         for x in statTopTenResultList :
             extension, loopName, whichLoop, datenbank = x[0].split(';')
             exStart, exEnd = extension.split(',')
-            x[:] = [int(exStart), int(exEnd), int(loopName), int(whichLoop)] + x[1:] 
-            loopLen = len(x[6]) 
+            x[:] = [int(exStart), int(exEnd), int(loopName), int(whichLoop)] + x[1:]
+            loopLen = len(x[6])
             x.append(loopLen)
             oriLoopLen = x[13] - x[0] - x[1]
             x.append(oriLoopLen)
             x.append(int(datenbank))
-        
+
         for x in statBestResultsList :
-            extension, loopName, whichLoop, datenbank = x[0].split(';')        
+            extension, loopName, whichLoop, datenbank = x[0].split(';')
             exStart, exEnd = extension.split(',')
-            x[:] = [int(exStart), int(exEnd), int(loopName), int(whichLoop)] + x[1:] 
-            loopLen = len(x[6]) 
+            x[:] = [int(exStart), int(exEnd), int(loopName), int(whichLoop)] + x[1:]
+            loopLen = len(x[6])
             x.append(loopLen)
             oriLoopLen = x[13] - x[0] - x[1]
             x.append(oriLoopLen)
             x.append(int(datenbank))
-            
-        print statSortedPdbLoopDictList    
-            
+
+        print statSortedPdbLoopDictList
+
         for x in statSortedPdbLoopDictList :
-            extension, loopName, whichLoop, datenbank = x[0].split(';')        
+            extension, loopName, whichLoop, datenbank = x[0].split(';')
             exStart, exEnd = extension.split(',')
             x[:] = [int(exStart), int(exEnd), int(loopName), int(whichLoop)] + x[1:]
             loopLen = len(x[6])
@@ -437,48 +437,48 @@ class SSFEStatistic ( PyTool, ProviMixin ):
             # print'-------'
             # print x[4]
             # print 'next'
-        
-        # print '-------------------'   
+
+        # print '-------------------'
         print statSortedPdbLoopDictList
         # [0][1] Erweiterung, [2] Loop, [3] Loopauswahl, [4] Score, [5] Clashes, [6] Sequenz, [7] Template, [8] Position(Datenbank), [9] GPCR True/False, [10] SequenzIdentitaet, [11] Spezies True/False, [12] memDB True/False, [13] Looplaenge, [14] originalLooplaenge, [15] datenbank 0=GPCRDB 1=memDB
-                            
-                    
+
+
         with open (os.path.join(self.output_dir, "StatBestResultsList.json"),'w' ) as fp :
             json.dump(statBestResultsList, fp)
-            
+
         with open (os.path.join(self.output_dir, "StatTopTenResultList.json"), 'w') as fp2 :
             json.dump(statTopTenResultList, fp2)
-            
+
         with open (os.path.join(self.output_dir, "StatAvgScoreList.json"), 'w') as fp3 :
             json.dump(statAvgScoreList, fp3)
-            
+
         with open (os.path.join(self.output_dir, "StatResultLoopFoundList.json"), 'w') as fp4 :
             json.dump(statResultLoopFoundList, fp4)
-            
+
         with open (os.path.join(self.output_dir, "StatSortedPdbLoopDictList.json"), 'w') as fp5 :
             json.dump(statSortedPdbLoopDictList, fp5)
-            
-        
+
+
         stat1Dir = self.subdir('AvgScoreVsLoopLengthPerLength')
         stat2Dir = self.subdir('RateVsExtension')
         stat3Dir = self.subdir('ScoreVsLoopLengthPerExtension')
         stat4Dir = self.subdir('ClashVsLoopLengthPerExtension')
         #stat5Dir = self.subdir('AvgScoreVsLoopLenghtPerModel')
         stat6Dir = self.subdir('DataspaceAndGPCR')
-        
+
         #wie oft wurde welche Datenbank genutz
         gpcrDB = 0
         memDB =0
-        
+
         for j, loop in enumerate(statSortedPdbLoopDictList) :
             if loop[15] == 0:
                 gpcrDB +=1
             elif loop[15] == 1 :
                 memDB +=1
-                
+
         self.dataspace = [0,1]
         self.numDataspace = [gpcrDB, memDB]
-                       
+
         pyplot.close()
         pyplot.xlabel('dataspace')
         pyplot.ylabel('rate')
@@ -486,13 +486,13 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.title('rate per dataspace')
         pyplot.bar(self.dataspace, self.numDataspace, color = '#BDBDBD')
         pyplot.savefig(os.path.join(stat6Dir, 'RateDataspace.svg'), format='svg')
-        
+
         # Verhaltniss von gefundener Spezies und GPCR
         FalseSpeziesFalseGpcr = 0
         TrueSpeziesTrueGpcr = 0
         FalseSpeziesTrueGpcr = 0
         TrueSpeziesFalseGpcr = 0
-        
+
         for j, loop in enumerate(statSortedPdbLoopDictList) :
             if loop[11] == False and loop[9] == False :
                 FalseSpeziesFalseGpcr +=1
@@ -502,13 +502,13 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 FalseSpeziesTrueGpcr +=1
             elif loop[11] == True and loop[9] == False :
                 TrueSpeziesFalseGpcr +=1
-                
+
         self.speziesVsGpcr = [0,1,2,3]
         self.numSpeziesVsGpcr = [FalseSpeziesFalseGpcr, TrueSpeziesTrueGpcr, FalseSpeziesTrueGpcr, TrueSpeziesFalseGpcr]
-        
-        print 'SpeziesAndGPCR:'              
-        print self.numSpeziesVsGpcr               
-                       
+
+        print 'SpeziesAndGPCR:'
+        print self.numSpeziesVsGpcr
+
         pyplot.close()
         pyplot.xlabel('dataspace')
         pyplot.ylabel('rate')
@@ -516,29 +516,29 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.title('rate per dataspace')
         pyplot.bar(self.speziesVsGpcr, self.numSpeziesVsGpcr, color = '#BDBDBD')
         pyplot.savefig(os.path.join(stat6Dir, 'SpeziesVsGPCR.svg'), format='svg')
-        
+
         # bestimmt den durchschnittlichen Score fuer jede Looplaenge
         self.scoreListY = []
         self.lenX = []
-        
+
         gpcrFalse = 0
         gpcrTrue =0
         gpcrFoundList = {}
-        
+
         for j, loop in enumerate(statSortedPdbLoopDictList) :
             if loop[9] == False :
                 gpcrFalse +=1
             elif loop[9] == True :
                 gpcrTrue +=1
-                
+
         gpcrFoundList["LoopTotal"] = j+1
         gpcrFoundList["FalseTotal"] = gpcrFalse
         gpcrFoundList["TrueTotal"] = gpcrTrue
-        
+
         with open (os.path.join(self.output_dir, "GPCR-Found.json"), 'w') as fp7 :
             json.dump(gpcrFoundList, fp7)
-        
-        
+
+
         for i in range(36) :
             # print i
             lengthList = [x for x in statSortedPdbLoopDictList if x[11] == i]
@@ -549,7 +549,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
             # print lengthList
             avgScore = sum([x[4] for x in lengthList], 0.0) / lenList
             self.scoreListY.append(avgScore)
-            self.lenX.append(i)             
+            self.lenX.append(i)
 
         std = np.std(self.scoreListY)
         pyplot.xlabel('loop length')
@@ -558,10 +558,10 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.bar(self.lenX, self.scoreListY, color = '#BDBDBD', yerr = std)
         pyplot.xticks(range(36))
         pyplot.savefig(os.path.join(stat1Dir, 'AvgScoreVsLooplengthPerLength.svg'),format='svg')
-        
+
         self.scoreListY = []
         self.lenX = []
-        
+
         for i in range(36) :
             # print i
             lengthList = [x for x in statSortedPdbLoopDictList if x[11] == i]
@@ -572,7 +572,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
             # print lengthList
             avgScore = sum([x[5] for x in lengthList], 0.0) / lenList
             self.scoreListY.append(avgScore)
-            self.lenX.append(i)             
+            self.lenX.append(i)
 
         std = np.std(self.scoreListY)
         pyplot.close()
@@ -582,23 +582,23 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.bar(self.lenX, self.scoreListY, color = '#BDBDBD', yerr = std)
         pyplot.xticks(range(36))
         pyplot.savefig(os.path.join(stat1Dir, 'AvgClashesVsLooplengthPerLength.svg'),format='svg')
-        
-        #bestimmt wie oft eine Erweiterung genutzt wurde, den Druchschnittsscore fuer jede Erweierung, Durchschnittliche Anzahl an Chlashes fuer jede Erweiterung     
+
+        #bestimmt wie oft eine Erweiterung genutzt wurde, den Druchschnittsscore fuer jede Erweierung, Durchschnittliche Anzahl an Chlashes fuer jede Erweiterung
         self.rateY = []
         self.extensionX = []
-        
-        #print statSortedPdbLoopDictList    
-            
+
+        #print statSortedPdbLoopDictList
+
         for i in range(4) :
            extensionList = [x for x in statSortedPdbLoopDictList if x[0] == i]
            rateExtension = len(extensionList)
            self.rateY.append(rateExtension)
            self.extensionX.append(i)
-           
+
         print 'Nummer of Extension:'
         print self.rateY
-           
-        std = np.std(self.rateY)   
+
+        std = np.std(self.rateY)
         pyplot.close()
         pyplot.xlabel('extension')
         pyplot.ylabel('rate')
@@ -606,10 +606,10 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.title('Rate per Extension')
         pyplot.bar(self.extensionX, self.rateY, color = '#BDBDBD', yerr = std)
         pyplot.savefig(os.path.join(stat2Dir, 'RateVsExtension.svg'), format='svg')
-        
+
         self.rateY = []
         self.extensionX = []
-            
+
         for i in range(4) :
             extensionList = [x for x in statSortedPdbLoopDictList if x[0] == i]
             if len(extensionList) != 0 :
@@ -618,11 +618,11 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 avgScoreExtension = 0
             self.rateY.append(avgScoreExtension)
             self.extensionX.append(i)
-           
+
         print 'Nummer of AvgScore:'
         print self.rateY
-           
-        std = np.std(self.rateY)   
+
+        std = np.std(self.rateY)
         pyplot.close()
         pyplot.xlabel('extension')
         pyplot.ylabel('avgScore')
@@ -630,10 +630,10 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.title('AvgScore per Extension')
         pyplot.bar(self.extensionX, self.rateY, color = '#BDBDBD', yerr = std)
         pyplot.savefig(os.path.join(stat2Dir, 'AvgScorePerExtension.svg'), format='svg')
-        
+
         self.rateY = []
         self.extensionX = []
-            
+
         for i in range(4) :
             extensionList = [x for x in statSortedPdbLoopDictList if x[0] == i]
             if len(extensionList) != 0 :
@@ -642,11 +642,11 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                 avgScoreExtension = 0
             self.rateY.append(avgScoreExtension)
             self.extensionX.append(i)
-           
+
         print 'Nummer of AvgClashes:'
         print self.rateY
-           
-        std = np.std(self.rateY)   
+
+        std = np.std(self.rateY)
         pyplot.close()
         pyplot.xlabel('extension')
         pyplot.ylabel('avgClashes')
@@ -654,11 +654,11 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.title('AvgClashes per Extension')
         pyplot.bar(self.extensionX, self.rateY, color = '#BDBDBD', yerr = std)
         pyplot.savefig(os.path.join(stat2Dir, 'AvgClashesPerExtension.svg'), format='svg')
-        
+
         #bestimmt fuer jede Erweiterung einzelt das Verhaeltnis von Score zuer Looplaenge
         self.extensionList0X = []
         self.extensionList0Y = []
-        
+
         for i in range(4) :
             if i == 0 :
                 extensionList0 = [x for x in statSortedPdbLoopDictList if x[0] == i]
@@ -672,8 +672,8 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     # print lengthList
                     avgScore = sum([x[4] for x in lengthList0], 0.0) / lenList0
                     self.extensionList0Y.append(avgScore)
-                    self.extensionList0X.append(k)  
-        
+                    self.extensionList0X.append(k)
+
         if len(self.extensionList0Y) == 0 :
             with open (os.path.join(stat3Dir, "ScoreVsLoopLengthFor0,0-notExisting.txt"),'w' ) as fp10 :
                 fp10.write('wurde nicht ausgewaehlt')
@@ -686,11 +686,11 @@ class SSFEStatistic ( PyTool, ProviMixin ):
             pyplot.bar(self.extensionList0X, self.extensionList0Y, color = '#BDBDBD', yerr = std0)
             pyplot.xticks(range(36))
             pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor0,0.svg'),format='svg')
-        
-        
+
+
         self.extensionList1X = []
         self.extensionList1Y = []
-        
+
         for i in range(4) :
             if i == 1 :
                 extensionList1 = [x for x in statSortedPdbLoopDictList if x[0] == i]
@@ -705,12 +705,12 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     avgScore = sum([x[4] for x in lengthList1], 0.0) / lenList1
                     self.extensionList1Y.append(avgScore)
                     self.extensionList1X.append(k)
-                    
+
         if len(self.extensionList0Y) == 0 :
             with open (os.path.join(stat3Dir, "ScoreVsLoopLengthFor1,1-notExisting.txt"),'w' ) as fp10 :
                 fp10.write('wurde nicht ausgewaehlt')
         else :
-            std1 = np.std(self.extensionList1Y)                   
+            std1 = np.std(self.extensionList1Y)
             pyplot.close()
             pyplot.xlabel('ori loop length')
             pyplot.ylabel('score')
@@ -718,10 +718,10 @@ class SSFEStatistic ( PyTool, ProviMixin ):
             pyplot.bar(self.extensionList1X, self.extensionList1Y, color = '#BDBDBD', yerr = std1)
             pyplot.xticks(range(36))
             pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor1,1.svg'), format='svg')
-        
+
         self.extensionList2X = []
         self.extensionList2Y = []
-        
+
         for i in range(4) :
             if i == 2 :
                 extensionList2 = [x for x in statSortedPdbLoopDictList if x[0] == i]
@@ -736,12 +736,12 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     avgScore = sum([x[4] for x in lengthList2], 0.0) / lenList2
                     self.extensionList2Y.append(avgScore)
                     self.extensionList2X.append(k)
-                    
+
         if len(self.extensionList0Y) == 0 :
             with open (os.path.join(stat3Dir, "ScoreVsLoopLengthFor2,2-notExisting.txt"),'w' ) as fp10 :
                 fp10.write('wurde nicht ausgewaehlt')
-        else :            
-            std2 = np.std(self.extensionList2Y)                   
+        else :
+            std2 = np.std(self.extensionList2Y)
             pyplot.close()
             pyplot.xlabel('ori loop length')
             pyplot.ylabel('score')
@@ -749,10 +749,10 @@ class SSFEStatistic ( PyTool, ProviMixin ):
             pyplot.bar(self.extensionList2X, self.extensionList2Y, color = '#BDBDBD', yerr = std2)
             pyplot.xticks(range(36))
             pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor2,2.svg'),format='svg')
-                
+
         self.extensionList3X = []
         self.extensionList3Y = []
-        
+
         for i in range(4) :
             if i == 3 :
                 extensionList3 = [x for x in statSortedPdbLoopDictList if x[0] == i]
@@ -767,12 +767,12 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     avgScore = sum([x[4] for x in lengthList3], 0.0) / lenList3
                     self.extensionList3Y.append(avgScore)
                     self.extensionList3X.append(k)
-                    
+
         if len(self.extensionList0Y) == 0 :
             with open (os.path.join(stat3Dir, "ScoreVsLoopLengthFor3,3-notExisting.txt"),'w' ) as fp10 :
                 fp10.write('wurde nicht ausgewaehlt')
-        else :            
-            std3 = np.std(self.extensionList3Y)                   
+        else :
+            std3 = np.std(self.extensionList3Y)
             pyplot.close()
             pyplot.xlabel('ori loop length')
             pyplot.ylabel('score')
@@ -780,7 +780,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
             pyplot.bar(self.extensionList3X, self.extensionList3Y, color = '#BDBDBD', yerr = std3)
             pyplot.xticks(range(36))
             pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor3,3.svg'),format='svg')
-        
+
         barWidth = 0.2
         _, ax = pyplot.subplots()
         ex0 = ax.bar(np.array(self.extensionList0X) - barWidth, self.extensionList0Y, barWidth, color='#FA5882', yerr = std0, label = 'Extension_0')
@@ -795,11 +795,11 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         #ax.set_xticks([x + barWidth for x in range(41)])
         pyplot.tight_layout()
         pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLength.svg'),format='svg')
-        #bestimmt durschnittlichen Score des durchschnittlichen Scores von und fuer pdb 1-10 
-        
+        #bestimmt durschnittlichen Score des durchschnittlichen Scores von und fuer pdb 1-10
+
         self.extensionList4X = []
         self.extensionList4Y = []
-        
+
         # for i in range(6) :
         #     if i == 4 :
         #         extensionList4 = [x for x in statSortedPdbLoopDictList if x[0] == i]
@@ -814,7 +814,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         #             avgScore = sum([x[4] for x in lengthList4], 0.0) / lenList4
         #             self.extensionList4Y.append(avgScore)
         #             self.extensionList4X.append(k)
-        #             
+        #
         # if len(self.extensionList0Y) == 0 :
         #     with open (os.path.join(stat3Dir, "ScoreVsLoopLengthFor4,4-notExisting.txt"),'w' ) as fp10 :
         #         fp10.write('wurde nicht ausgewaehlt')
@@ -827,10 +827,10 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         #     pyplot.bar(self.extensionList4X, self.extensionList4Y, color = '#BDBDBD', yerr = std4)
         #     pyplot.xticks(range(36))
         #     pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor4,4.svg'),format='svg')
-        # 
+        #
         # self.extensionList5X = []
         # self.extensionList5Y = []
-        
+
         # for i in range(6) :
         #     if i == 5 :
         #         extensionList5 = [x for x in statSortedPdbLoopDictList if x[0] == i]
@@ -845,7 +845,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         #             avgScore = sum([x[4] for x in lengthList5], 0.0) / lenList5
         #             self.extensionList5Y.append(avgScore)
         #             self.extensionList5X.append(k)
-        #             
+        #
         # if len(self.extensionList0Y) == 0 :
         #     with open (os.path.join(stat3Dir, "ScoreVsLoopLengthFor5,5-notExisting.txt"),'w' ) as fp10 :
         #         fp10.write('wurde nicht ausgewaehlt')
@@ -858,11 +858,11 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         #     pyplot.bar(self.extensionList5X, self.extensionList5Y, color = '#BDBDBD', yerr = std5)
         #     pyplot.xticks(range(36))
         #     pyplot.savefig(os.path.join(stat3Dir, 'ScoreVsLoopLengthFor5,5.svg'),format='svg')
-        
+
         #bestimmt fuer jede Erweiterung einzelt das Verhaeltnis von Clashes zur Looplaenge
         self.extensionList0X = []
         self.extensionList0Y = []
-        
+
         for i in range(4) :
             if i == 0 :
                 extensionList0 = [x for x in statSortedPdbLoopDictList if x[0] == i]
@@ -877,12 +877,12 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     avgScore = sum([x[5] for x in lengthList0], 0.0) / lenList0
                     self.extensionList0Y.append(avgScore)
                     self.extensionList0X.append(k)
-                               
+
         if len(self.extensionList0Y) == 0 :
             with open (os.path.join(stat3Dir, "ClashVsLoopLengthFor0,0-notExisting.txt"),'w' ) as fp10 :
                 fp10.write('wurde nicht ausgewaehlt')
-        else :            
-            std0 = np.std(self.extensionList0Y)                   
+        else :
+            std0 = np.std(self.extensionList0Y)
             pyplot.close()
             pyplot.xlabel('ori loop length')
             pyplot.ylabel('clash')
@@ -890,10 +890,10 @@ class SSFEStatistic ( PyTool, ProviMixin ):
             pyplot.bar(self.extensionList0X, self.extensionList0Y, color = '#BDBDBD', yerr = std0)
             pyplot.xticks(range(36))
             pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor0,0.svg'), format='svg')
-        
+
         self.extensionList1X = []
         self.extensionList1Y = []
-        
+
         for i in range(4) :
             if i == 1 :
                 extensionList1 = [x for x in statSortedPdbLoopDictList if x[0] == i]
@@ -912,8 +912,8 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         if len(self.extensionList0Y) == 0 :
             with open (os.path.join(stat3Dir, "ClashVsLoopLengthFor1,1-notExisting.txt"),'w' ) as fp10 :
                 fp10.write('wurde nicht ausgewaehlt')
-        else :                      
-            std1 = np.std(self.extensionList1Y)                   
+        else :
+            std1 = np.std(self.extensionList1Y)
             pyplot.close()
             pyplot.xlabel('ori loop length')
             pyplot.ylabel('clash')
@@ -921,10 +921,10 @@ class SSFEStatistic ( PyTool, ProviMixin ):
             pyplot.bar(self.extensionList1X, self.extensionList1Y, color = '#BDBDBD', yerr = std1)
             pyplot.xticks(range(36))
             pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor1,1.svg'),format='svg')
-        
+
         self.extensionList2X = []
         self.extensionList2Y = []
-        
+
         for i in range(4) :
             if i == 2 :
                 extensionList2 = [x for x in statSortedPdbLoopDictList if x[0] == i]
@@ -939,12 +939,12 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     avgScore = sum([x[5] for x in lengthList2], 0.0) / lenList2
                     self.extensionList2Y.append(avgScore)
                     self.extensionList2X.append(k)
-                    
+
         if len(self.extensionList0Y) == 0 :
             with open (os.path.join(stat3Dir, "ClashVsLoopLengthFor2,2-notExisting.txt"),'w' ) as fp10 :
                 fp10.write('wurde nicht ausgewaehlt')
-        else :            
-            std2 = np.std(self.extensionList2Y)                   
+        else :
+            std2 = np.std(self.extensionList2Y)
             pyplot.close()
             pyplot.xlabel('ori loop length')
             pyplot.ylabel('clash')
@@ -952,10 +952,10 @@ class SSFEStatistic ( PyTool, ProviMixin ):
             pyplot.bar(self.extensionList2X, self.extensionList2Y, color = '#BDBDBD', yerr = std2)
             pyplot.xticks(range(36))
             pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor2,2.svg'),format='svg')
-        
+
         self.extensionList3X = []
         self.extensionList3Y = []
-        
+
         for i in range(4) :
             if i == 3 :
                 extensionList3 = [x for x in statSortedPdbLoopDictList if x[0] == i]
@@ -970,12 +970,12 @@ class SSFEStatistic ( PyTool, ProviMixin ):
                     avgScore = sum([x[5] for x in lengthList3], 0.0) / lenList3
                     self.extensionList3Y.append(avgScore)
                     self.extensionList3X.append(k)
-                    
+
         if len(self.extensionList0Y) == 0 :
             with open (os.path.join(stat3Dir, "ClashVsLoopLengthFor3,3-notExisting.txt"),'w' ) as fp10 :
                 fp10.write('wurde nicht ausgewaehlt')
-        else :            
-            std3 = np.std(self.extensionList3Y)                   
+        else :
+            std3 = np.std(self.extensionList3Y)
             pyplot.close()
             pyplot.xlabel('ori loop length')
             pyplot.ylabel('clash')
@@ -983,9 +983,9 @@ class SSFEStatistic ( PyTool, ProviMixin ):
             pyplot.bar(self.extensionList3X, self.extensionList3Y, color = '#BDBDBD', yerr = std3)
             pyplot.xticks(range(36))
             pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor3,3.svg'),format='svg')
-        
+
         pyplot.close()
-        
+
         barWidth = 0.2
         _, ax = pyplot.subplots()
         ex0 = ax.bar(np.array(self.extensionList0X) - 2*barWidth, self.extensionList0Y, barWidth, color='#FA5882', yerr = std0, label = 'Extension_0')
@@ -1001,10 +1001,10 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         pyplot.tight_layout()
         pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLength.svg'),format='svg')
 
-        
+
         # self.extensionList4X = []
         # self.extensionList4Y = []
-        # 
+        #
         # for i in range(6) :
         #     if i == 4 :
         #         extensionList4 = [x for x in statSortedPdbLoopDictList if x[0] == i]
@@ -1019,12 +1019,12 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         #             avgScore = sum([x[5] for x in lengthList4], 0.0) / lenList4
         #             self.extensionList4Y.append(avgScore)
         #             self.extensionList4X.append(k)
-        #                        
+        #
         # if len(self.extensionList0Y) == 0 :
         #     with open (os.path.join(stat3Dir, "ClashVsLoopLengthFor4,4-notExisting.txt"),'w' ) as fp10 :
         #         fp10.write('wurde nicht ausgewaehlt')
-        # else :            
-        #     std4 = np.std(self.extensionList4Y)                   
+        # else :
+        #     std4 = np.std(self.extensionList4Y)
         #     pyplot.close()
         #     pyplot.xlabel('ori loop length')
         #     pyplot.ylabel('clash')
@@ -1032,10 +1032,10 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         #     pyplot.bar(self.extensionList4X, self.extensionList4Y, color = '#BDBDBD', yerr = std4)
         #     pyplot.xticks(range(36))
         #     pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor4,4.svg'), format='svg')
-        # 
+        #
         # self.extensionList5X = []
         # self.extensionList5Y = []
-        # 
+        #
         # for i in range(6) :
         #     if i == 5 :
         #         extensionList5 = [x for x in statSortedPdbLoopDictList if x[0] == i]
@@ -1050,12 +1050,12 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         #             avgScore = sum([x[5] for x in lengthList5], 0.0) / lenList5
         #             self.extensionList5Y.append(avgScore)
         #             self.extensionList5X.append(k)
-        #                        
+        #
         # if len(self.extensionList0Y) == 0 :
         #     with open (os.path.join(stat3Dir, "ClashVsLoopLengthFor5,5-notExisting.txt"),'w' ) as fp10 :
         #         fp10.write('wurde nicht ausgewaehlt')
-        # else :            
-        #     std5 = np.std(self.extensionList5Y)                   
+        # else :
+        #     std5 = np.std(self.extensionList5Y)
         #     pyplot.close()
         #     pyplot.xlabel('ori loop length')
         #     pyplot.ylabel('clash')
@@ -1063,7 +1063,7 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         #     pyplot.bar(self.extensionList5X, self.extensionList5Y, color = '#BDBDBD', yerr = std5)
         #     pyplot.xticks(range(36))
         #     pyplot.savefig(os.path.join(stat4Dir, 'ClashVsLoopLengthFor5,5.svg'), format='svg')
-        
+
         # self.avgScoreY = []
         # self.modelNumX = []
         # for i in range(11) :
@@ -1075,39 +1075,39 @@ class SSFEStatistic ( PyTool, ProviMixin ):
         #     self.avgScoreY.append(avgScore)
         #     std = np.std(self.avgScoreY)
         #     self.modelNumX.append(i)
-        #     
+        #
         #     # print self.avgScoreY
         #     # print '==========='
         #     # print self.modelNumX
-        #                 
+        #
         # pyplot.close()
         # pyplot.xlabel('model')
         # pyplot.ylabel('avgScore')
         # pyplot.title('AvgScore per Model')
         # pyplot.bar(self.modelNumX, self.avgScoreY, color = '#BDBDBD', yerr = std)
         # pyplot.savefig(os.path.join(stat5Dir, 'AvgScore per Model'))
-        
-# fuer Failed.txt zusammenfassen        
+
+# fuer Failed.txt zusammenfassen
 class SSFEFailed (PyTool, ProviMixin ):
     args = [
         _("out_dataSet", type="dir")
     ]
-    
+
     def func ( self ) :
-        
+
         zipf = zipfile.ZipFile( os.path.join(self.output_dir, "failed.zip"), 'w', zipfile.ZIP_DEFLATED)
         include = set(['Failed.txt', 'Failed1.txt', 'Failed2.txt', 'Failed3.txt'])
         exclude = ['link_it_0,0', 'link_it_1,1', 'link_it_2,2', 'link_it_3,3', 'Helix8']
         for root, dirs, files in os.walk(self.out_dataSet, topdown=True) :
             dirs[:] = [d for d in dirs if d not in exclude]
             if not set(files).intersection(include) and 'Result_Table.csv' in files:
-                continue            
+                continue
             for file in files :
                 zipf.write(os.path.join(os.path.relpath(root), file))
-        zipf.close()   
+        zipf.close()
 
 
-        
+
 # fuert SSFE fuer einen Datensatz aus
 class SSFEZip (PyTool, ProviMixin ):
     args = [
@@ -1115,9 +1115,9 @@ class SSFEZip (PyTool, ProviMixin ):
     ]
 
     def func ( self ) :
-        
+
         # path = os.path.join(outJobDir)
-                                       
+
         zipf = zipfile.ZipFile( os.path.join(self.output_dir, "results.zip"), 'w', zipfile.ZIP_DEFLATED)
         exclude = ['link_it_0,0', 'link_it_1,1', 'link_it_2,2', 'link_it_3,3', 'Helix8']
         # 'link_it_4,4','link_it_5,5',
@@ -1126,7 +1126,7 @@ class SSFEZip (PyTool, ProviMixin ):
             for file in files :
                 zipf.write(os.path.join(os.path.relpath(root), file))
         zipf.close()
-        
+
 
 class SSFEMultiLinkIt( PyTool, ProviMixin ):
     args = [
@@ -1135,24 +1135,24 @@ class SSFEMultiLinkIt( PyTool, ProviMixin ):
         _( "Speciesscore", type="int", default=2 ),
         _( "clashOut", type="float", default=0.75 ),
         _( "numclashes", type="int", default=10)
-    ]   
-           
+    ]
+
     def func ( self ) :
-        
-        os.chdir(self.output_dir) 
-        
+
+        os.chdir(self.output_dir)
+
         self.loop_jobs = os.path.abspath(self.loop_jobs)
-        
+
         #enthaelt Liste mit allen Dateien in denen die Proteinen + ihr Loops stehen
         jobDirs = os.listdir (self.loop_jobs)
-    
+
         for jobDir in jobDirs :
             jobDirPath = os.path.join(self.loop_jobs, jobDir)
             jobFileList = {}
             pdbFileList = []
-           
+
             gzipFiles = [f for f in os.listdir(jobDirPath) if f.endswith('.gz')]
-           
+
             os.chdir(jobDirPath)
             #entpacke eingabe daten
             for gzipFile in gzipFiles :
@@ -1161,9 +1161,9 @@ class SSFEMultiLinkIt( PyTool, ProviMixin ):
                         for line in f:
                             outfile.write(line)
             os.chdir('..')
-            
+
             inputFiles = os.listdir(jobDirPath)
-           
+
             for inputFile in inputFiles :
                 if  (os.path.splitext(inputFile)[1] == '.pdb') :
                     pdbFileList.append(inputFile)
@@ -1174,20 +1174,20 @@ class SSFEMultiLinkIt( PyTool, ProviMixin ):
                     if numberMatch :
                         numberjob = numberMatch.group(2)
                         jobFileList[numberjob]=inputFile
-                    
+
             # print pdbFileList
             # print jobFile
-               
+
             outJobDir = self.subdir(jobDir + '_Result')
-            
+
             os.chdir(outJobDir)
             #print pdbFileList
             #print '==============================================='
-            for pdbFile in pdbFileList : 
+            for pdbFile in pdbFileList :
                 outJobFileDir = self.subdir(os.path.join(outJobDir, os.path.splitext(pdbFile)[0]))
-                
+
                 os.chdir(outJobFileDir)
-                
+
                 # print '|',pdbFileList, '|',jobFile,'|'
                 #print jobDirPath, pdbFile
                 nr = re.compile("([a-zA-Z_]+)([0-9]+)")
@@ -1196,14 +1196,14 @@ class SSFEMultiLinkIt( PyTool, ProviMixin ):
                 #print jobFile, pdbFile
                 #print '==============================================='
                 SSFELinkIt(os.path.join(jobDirPath, pdbFile), os.path.join(jobDirPath, jobFile), Speciesscore=self.Speciesscore, GPCRscore=self.GPCRscore, verbose=self.verbose, debug=True)
-        
+
                 os.chdir('..')
-                
+
             os.chdir('..')
-        
+
         # path = os.path.join(outJobDir)
-        # 
-        #                                
+        #
+        #
         # zipf = zipfile.ZipFile( os.path.join(self.output_dir, "results.zip"), 'w', zipfile.ZIP_DEFLATED)
         # exclude = ['link_it_0,0', 'link_it_1,1', 'link_it_2,2', 'link_it_3,3']
         # for root, dirs, files in os.walk(path, topdown=True) :
@@ -1224,19 +1224,19 @@ class SSFELinkIt( PyTool, ProviMixin ):
         _( "Speciesscore", type="int", default=2 ),
         _( "clashOut", type="float", default=0.75 ),
         _( "numclashes", type="int", default=10)
-  
+
     ]
     out = [
         _( "ori_file", file="{pdb_file.stem}_input.pdb" )
     ]
     tmpl_dir = TMPL_DIR
     provi_tmpl = "multi_link_it.provi"
-    
-    AminoDict = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K','ILE': 'I', 'PRO': 'P', 'THR': 'T', 'PHE': 'F', 'ASN': 'N', 'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W', 
+
+    AminoDict = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K','ILE': 'I', 'PRO': 'P', 'THR': 'T', 'PHE': 'F', 'ASN': 'N', 'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W',
      'ALA': 'A','VAL':'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M'}
-    
+
     def _init( self, *args, **kwargs ):
-        
+
         #falls kein Chain vorhanden in pdb, fuegt 'A' in original_pdb ein
         with open( self.pdb_file, 'r' ) as fp, open( self.ori_file, 'w' ) as fp2:
             for line in fp:
@@ -1247,24 +1247,24 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         fp2.write(newline)
                 else:
                     fp2.write(line)
-                 
-        #speichert in c den Chain fuer Aufruf       
-        c = ''   
+
+        #speichert in c den Chain fuer Aufruf
+        c = ''
         with open( self.ori_file, 'r' ) as fp:
             for line in fp:
                 if line.startswith("ATOM") :
                     c = line[21]
                     break
-         
+
         self.multiLinkIts = []
-        
+
         #speichert Loopstart, -ende und Sequenz und Stellen der zu erweiterten Loops
         self.loopTasks = []
         #fur insertLoop --> einbau aller loops in ein pdb.file
         self.loopPosList = []
         self.loopBracketAminosHelix8 = {}
 
-        
+
         loopBrackets = []
         #loopBracketAminos : Stuktur Dict. --> Position:Amino
         loopBracketAminos = {}
@@ -1283,7 +1283,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         # self.loopTasks = []
                         self.loopPosList.append([0, 0])
                         with open(os.path.join( self.output_dir, "ERROR_LoopSequenzToLong.txt"), 'w') :
-                            pass                        
+                            pass
                         continue
                         # loopBrackets = []
                         # loopBracketAminos = {}
@@ -1303,13 +1303,13 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         with open(os.path.join( self.output_dir, "ERROR_InvalidInput.txt"), 'w') :
                             pass
                         return
-                    
+
                     # loop muss berechnet werden, damit in index keine lueck, wird unabhaenig der andern loops gemacht und nur mit Erweiterung 3,3
                     # if start > end and len(seq) == 0 or :
                     #     startInt = int(end)
                     #     endInt = int(start)
                     # 'TM7_H8'
-                    
+
                     if line[0:7] == 'between' and len(seq) == 0 :
                         startInt = int(start)
                         #print start
@@ -1319,8 +1319,8 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         #print self.loopBracketAminosHelix8
                         self.loopPosList.append([0, 0])
                         continue
-                    
-                    endInt2 = int(end)+1    
+
+                    endInt2 = int(end)+1
                     with open( self.pdb_file, 'r' ) as fp :
                         for line in fp :
                             if line.startswith("ATOM") :
@@ -1331,15 +1331,15 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     # print endInt2+3
                     if last_res < endInt2+3 :
                         with open ('ERROR_TMH7_H8_2.txt' , 'w') as fp7 :
-                            fp7.write( 'TMH7/H8 zu nah am Ende des Rezeptors - keine Berechnung moeglich')                       
-                        continue                        
-                        
-                    self.loopCount += 1        
-                    
-                    #Eingabeliste aller zu bearbeitenden Loops aus Eingabedatei       
+                            fp7.write( 'TMH7/H8 zu nah am Ende des Rezeptors - keine Berechnung moeglich')
+                        continue
+
+                    self.loopCount += 1
+
+                    #Eingabeliste aller zu bearbeitenden Loops aus Eingabedatei
                     self.loopTasks.append([int(start)-1 , int(end)+1 , seq])
                     self.loopPosList.append([start, end])
-                    
+
                     #List von Start- und Endwertern der erweiterten Loops
                     startInt = int(start)-1
                     endInt = int(end)+1
@@ -1357,21 +1357,21 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     # startInt-4,startInt-3, , endInt+3, endInt+4
                     loopBracketAminos.update(dict.fromkeys(loopBrackets[-1][0]))
                     loopBracketAminos.update(dict.fromkeys(loopBrackets[-1][1]))
-                    
+
                     # for key in loopBracketAminos :
                     #     for loop in loopBracketAminos[key] :
                     #         for pos in loopBracketAminos[key][loop] :
                     #             if pos > last_res :
-                    #                 
+                    #
                     #             else :
-                                    
-                                    
-                            
-                    
+
+
+
+
         self.loopPosList += (7 * [[0, 0]])
         #print self.loopBracketAminosHelix8
-        
-        
+
+
         #print loopBracketAminos
         #bestimmt Listen mit N und C Terminus der einzelnen Loops
         last_res = 9999
@@ -1382,18 +1382,18 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     last_res=position
                     if position in loopBracketAminos :
                         loopBracketAminos[position] = line[17:20]
-                        
+
         if None in loopBracketAminos.values() :
             with open ('Failed.txt' , 'w') as fp :
                 fp.write( 'Loopsequenze und Template stimmen nicht ueberein. Looppositionen im Template ueberpruefen')
             return
-        
+
         #ersetzt 3-Buchstabencode durch 1-Buchstabencode
         for position, aminoTriplet in loopBracketAminos.iteritems() :
             # print position,aminoTriplet
             loopBracketAminos[position] = SSFELinkIt.AminoDict[aminoTriplet]
-               
-        
+
+
         #fuer loop helix8
         if not self.loopBracketAminosHelix8 == {} :
             failed = False
@@ -1404,7 +1404,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         last_res=position
                         if position in self.loopBracketAminosHelix8 :
                             self.loopBracketAminosHelix8[position] = line[17:20]
-                
+
             for position, aminoTriplet in self.loopBracketAminosHelix8.iteritems() :
                 #print position,aminoTriplet
                 #print self.loopBracketAminosHelix8
@@ -1415,10 +1415,10 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         fp.write( 'Luecke zwischen TMH7 und Helix8 konnte fuer die Visualisierung nicht geschlossen werden. Sequenzpositionen nicht korrekt/verarbeitbar.')
                     failed = True
             if not failed :
-                
-            
-                #print self.loopBracketAminosHelix8    
-                    
+
+
+                #print self.loopBracketAminosHelix8
+
                 #print loopBracketAminos
                 #-1 und +1 fuer Gly/ wir spaeter wieder abgeschnitten
                 startLoop = min(self.loopBracketAminosHelix8.keys()) -1
@@ -1431,24 +1431,24 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     seqLoop = seqLoop[:-1]
                 else:
                     endLoop = max(self.loopBracketAminosHelix8.keys()) +1
-    
-                    
-                # c = chain 
+
+
+                # c = chain
                 loopTasksListHelix8 = [[str(startLoop) + ':' + c, str(endLoop) + ':' + c, seqLoop]]
                 #print self.loopBracketAminosHelix8
                 # print c
                 # print loopTasksListHelix8
                 # print self.loopBracketAminosHelix8
-                
+
                 MultiLinkIt(self.ori_file, input = loopTasksListHelix8,
                         **copy_dict( kwargs, run=True,
                                     output_dir=self.subdir("Helix8" ), verbose=True, debug=True ))
-                
+
                 loopFile = []
                 loopLineList = []
                 with open(self.subdir("Helix8/link_it_0") + "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker2.pdb", 'r') as fp :
                     loopFile = fp.readlines()
-                
+
                 modelBegin = -1
                 modelEnd = -1
                 breakout = False
@@ -1464,14 +1464,14 @@ class SSFELinkIt( PyTool, ProviMixin ):
                             modelEnd = i
                             break
                 if not breakout:
-                
+
                     loopLineList.append(loopFile[modelBegin + 5 : modelEnd - 4])
-                
+
                     # print modelBegin
                     # print modelEnd
-                    # print loopLineList 
-                
-                
+                    # print loopLineList
+
+
                     new_pdb_file = (os.path.splitext(self.ori_file)[0] + 'Helix8.pdb')
                     with open( self.ori_file, 'r') as fp, open (new_pdb_file, 'w') as fp2 :
                         for line in fp :
@@ -1485,13 +1485,13 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         # print startPos
                         # print endPos
                         # print loop
-                    
+
                         #Fuegt Loop an richtiger Stelle in Datei ein
                         rawPdbFile = []
                         with open( new_pdb_file, 'r') as fp :
                             rawPdbFile = fp.read().splitlines(True)
                         with open (new_pdb_file + '.tmp', 'w') as fp2 :
-                                
+
                             for i, line in enumerate(rawPdbFile) :
                                 #print i, line[0:4], line[22:26]
                                 if ((line[0:3]) == 'TER' and int(line[22:26]) == startPos -1 ) or \
@@ -1508,11 +1508,11 @@ class SSFELinkIt( PyTool, ProviMixin ):
                                     fp2.write(line)
                                 else :
                                     fp2.write(line)
-                        
+
                         shutil.move(new_pdb_file + '.tmp', new_pdb_file)
-                            
-                            
-                        #Neu-Nummerierung von out_pdb             
+
+
+                        #Neu-Nummerierung von out_pdb
                         i = 0
                         with open( new_pdb_file, 'r') as fp, open (new_pdb_file + '.tmp', 'w') as fp2 :
                             for line in fp:
@@ -1522,37 +1522,37 @@ class SSFELinkIt( PyTool, ProviMixin ):
                                     fp2.write(newline)
                                 else:
                                     fp2.write(line)
-                                    
-                        
-                        
+
+
+
                         shutil.move(new_pdb_file + '.tmp', self.ori_file)
-        #     
+        #
         # fuer restliche loops
         self.oriSeqDict = {key: [] for key in ([0,1,2,3])}
         # ,4,5
-        
+
         for i in range (4) :
             loopTasksList = []
             for start,end,seq in self.loopTasks :
                 for j in range(i) :
-                    seq = loopBracketAminos[start - j ] + seq + loopBracketAminos[end + j]    
+                    seq = loopBracketAminos[start - j ] + seq + loopBracketAminos[end + j]
                 loopTasksList.append([str(start - i) + ':' + c, str(end + i) + ':' + c, seq])
-            # print '------------' 
+            # print '------------'
             # print loopTasksList
             for k in loopTasksList :
                 self.oriSeqDict[i].append(k[2])
-                
-   
-             
+
+
+
             self.multiLinkIts.append(MultiLinkIt(self.ori_file, input = loopTasksList,
                     **copy_dict( kwargs, run=False,
                                 output_dir=self.subdir("membranDB/link_it_%i,%i" % (i,i) ), gpcrDB=False, last_res = last_res, verbose=True, debug=True )))
-            
+
             self.multiLinkIts.append(MultiLinkIt(self.ori_file, input = loopTasksList,
                     **copy_dict( kwargs, run=False,
                                 output_dir=self.subdir("GPCRDB/link_it_%i,%i" % (i,i) ), gpcrDB=True, last_res = last_res, verbose=True, debug=True )))
-            
-        #print self.oriSeqDict        
+
+        #print self.oriSeqDict
 
     def compareLoops( self, x,y):
             if x[0] > y[0] :
@@ -1576,19 +1576,19 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     return 1
                 else :
                     return -1
-                return 0               
-                     
+                return 0
+
     def func( self ):
         if len(self.multiLinkIts) == 0 :
             return
-        
-        for m in self.multiLinkIts : 
+
+        for m in self.multiLinkIts :
             m()
-        
-        
-        
+
+
+
         # print self.loopCount
-        
+
         self.gpcrListe = ["1EDN", "1F88", "1GZM", "1HZX", "1JFP", "1L9H", "1LN6", "1U19", "1V6R", "2G87",
                           "2HPY", "2I35", "2I36", "2I37", "2J4Y", "2LNL", "2LOT", "2LOU", "2LOV", "2LOW",
                           "2PED", "2R4R", "2R4S", "2RH1", "2VT4", "2X72", "2Y00", "2Y01", "2Y02", "2Y03",
@@ -1608,7 +1608,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                           "5DHH", "5DSG", "5DYS", "5EN0", "5F8U", "5G53", "5GLH", "5IU4", "5IU7", "5IU8",
                           "5IUA", "5IUB", "5K2A", "5K2B", "5K2C", "5K2D", "5L7D", "5L7I", "5LWE", "5T04",
                           "5T1A", "5TGZ", "5TVN", "5U09"]
-        
+
         self.gpcrDict = {'X_5HT2B': ["4IB4", "4NC3", "5TVN"], 'X_ENLYS': ["2RH1"],
                          'X_GABR1': ["4MQE", "4MQF", "4MR7", "4MR8", "4MR9", "4MRM", "4MS1", "4MS3", "4MS4"],
                          'X_NTR1': ["3ZEV", "4BUO", "4BV0", "4BWB", "4GRV", "4XEE", "4XES", "5T04"],
@@ -1631,15 +1631,15 @@ class SSFELinkIt( PyTool, ProviMixin ):
                                                                                               "4BVN", "4GPO", "5A8E", "5F8U"],
                          'X_ADRB2': ["2R4R", "2R4S", "3D4S", "3KJ6", "3NY8", "3NY9", "3NYA", "3P0G", "3PDS", "3SN6", "4GBR", "5D5A", "5D5B", "5D6L"],
                          'X_PAR1': ["3VW7"], 'X_AGTR1': ["4YAY", "4ZUD"], 'X_LPAR1': ["4Z34", "4Z35", "4Z36"]}
-        
-        
-        
+
+
+
         #erstellt Dict mit den 6 besten berechneten Loops pro Loop
         #list, damit keine tamplate doppelt vorkommt (z.b.4z36)
-        
+
         speciesName = os.path.splitext(os.path.basename(self.loop_file))[0].split("_")[0]
         #print "speciesName", speciesName
-        
+
         def firstsort( outputDir, memDB=False ):
             #loopDict enthaelt fuer jeden Loop die 3 besten berechneten Loops pro Erweiterung:(0,0);(1,1);(2,2);(3,3)
             temp_loopDict = {}
@@ -1655,43 +1655,43 @@ class SSFELinkIt( PyTool, ProviMixin ):
                             loop = temp_loopDict.get(j, [])
                             #print type(loopDict)
                             #print (os.path.join( self.output_dir,"link_it_%i,%i/link_it_%i" % (i,i,j) )+ "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker.json")
-                        
+
                         sortedSingleLoopDict = []
-                            # damit man noch weiss welches Model(1-100) zu den Werten gehoert 
+                            # damit man noch weiss welches Model(1-100) zu den Werten gehoert
                         for key in singleLoopDict["linker"] :
                             sortedSingleLoopDict += [[int(key)] + singleLoopDict["linker"][key]]
                             # print k
                             # print '========'
-                        
-                        # print '========================================'    
+
+                        # print '========================================'
                         #print sortedSingleLoopDict
                         #loecht eintraege wenn tamplate doppelt vorkommt (z.b.4z36)
                         # for loopElement in sortedSingleLoopDict :
                         #     if loopElement[4] in templateList :
                         #         sortedSingleLoopDict.remove(loopElement)
-                        #     else :    
+                        #     else :
                         #         templateList.append(loopElement[4])
-                                
+
                         # Sezies hoeher werten
                         for index, loopEntrie in enumerate(sortedSingleLoopDict) :
                             try:
                                 if loopEntrie[4].upper() in self.gpcrDict["X_" + speciesName] :
                                     # if loopEntrie[4].upper() == '3ODU' :
-                                    #     print loopEntrie              
+                                    #     print loopEntrie
                                     sortedSingleLoopDict[index][2] *= self.Speciesscore
                                     sortedSingleLoopDict[index].append(True)
                                 else:
                                     sortedSingleLoopDict[index].append(False)
                             except:
                                 sortedSingleLoopDict[index].append(False)
-    
+
                         # print sortedSingleLoopDict
                         # break
                         # GPCR Score bei gefunden verdoppelt
                         for index, loopEntrie in enumerate(sortedSingleLoopDict) :
                             if loopEntrie[4].upper() in self.gpcrListe :
                                 #print "iiiiiiinnnnn", loopEntrie, loopEntrie[4].upper()
-                                #print sortedSingleLoopDict[index]       
+                                #print sortedSingleLoopDict[index]
                                 if not sortedSingleLoopDict[index][8]:
                                     # print "1", sortedSingleLoopDict[index][8], sortedSingleLoopDict[index][2]
                                     sortedSingleLoopDict[index][2] *= self.GPCRscore
@@ -1700,16 +1700,16 @@ class SSFELinkIt( PyTool, ProviMixin ):
                                     # print sortedSingleLoopDict[index][2]
                             else :
                                 sortedSingleLoopDict[index].append(False)
-                        
-                        #print sortedSingleLoopDict 
-                            
+
+                        #print sortedSingleLoopDict
+
                         sortedSingleLoopDict = filter(lambda loop: loop[5] < self.numclashes, sortedSingleLoopDict)
                         sortedSingleLoopDict.sort(key=lambda loop: (loop[2], loop[5]), cmp =self.compareLoops )
                         sortedSingleLoopDict.reverse()
-                        
+
                         #print sortedSingleLoopDict
-                        
-                        
+
+
                         for resultIndex in range(min(20, len(sortedSingleLoopDict))) :
                             result = sortedSingleLoopDict[resultIndex]
                             #print result
@@ -1720,20 +1720,20 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         #temp_loopDict[j] = filter(lambda loop: not (loop[0].split(',')[0] == 0 and loop[2] != 0), temp_loopDict[j])
 
             return temp_loopDict, singleLoopDict
-        
+
         # print loopDict
         outputDir1 = self.output_dir + "membranDB"
         loopDict1, singleLoopDict1 = firstsort( outputDir1, memDB=False )
         outputDir2 = self.output_dir + "GPCRDB"
         loopDict2, singleLoopDict2 = firstsort( outputDir2, memDB=True)
-        
+
         if not singleLoopDict1 == {} or not singleLoopDict2 == {} :
-            
-            
+
+
             # print singleLoopDict1
             # print '===================================================================='
             # print singleLoopDict2
-            # print singleLoopDict    
+            # print singleLoopDict
             loopDict = {}
             if singleLoopDict1 == {}:
                 loopDict = loopDict2
@@ -1748,82 +1748,82 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     #loopDict[modelnum] = loopDict1 + loopDict2
                     loopDict[modelnum] = loopDict1.get(modelnum, []) + loopDict2.get(modelnum, [])
             #print loopDict
-            #Ergebnis wird in BestResultsDict.json ausgegeben                
+            #Ergebnis wird in BestResultsDict.json ausgegeben
             with open(os.path.join(self.output_dir, "BestResultsDict.json"), 'w') as fp :
                 json.dump(loopDict, fp)
-            
+
             # wird spaeter sortiert fuer einzelne pdb-files in pdbLoop()
             #print loopDict
             #print '======================='
             self.sortedPdbLoopDict = loopDict.copy()
             # print loopDict
-            
+
             #topTenResult entaelt die Loopinformationen der 10 besten gesamt Ergebnisse
             # --> benutzt fuer zusammenbauen der 10 besten pdb-files
             self.topTenResult = {}
-             
+
             #sortiert nach hoestem Score die Liste der 3 besten berechneten Loops pro Loop (12 Ergebnisse pro Loop) und dreht sie um, d.h bester Score zu erst
-         
+
             for key in loopDict :
                 loopDict[key] = filter(lambda loop: loop[2] < self.numclashes, loopDict[key])
                 loopDict[key].sort(key=lambda loop: (loop[1], loop[2]), cmp =self.compareLoops )
                 loopDict[key].reverse()
-            
+
             #erzeugt TopTen Liste von 1-10
             minNumResults = min(10, min(map(len, loopDict.values())))
             for i in range(1,minNumResults + 1) :
                 resultList = []
                 for key, loopList in loopDict.iteritems() :
                     resultList.append(loopList[i-1])
-                 
+
                 self.topTenResult[i] = resultList
-                
+
             #Ergebnis wird in TopTenResult.json ausgegeben
             with open(os.path.join(self.output_dir, "TopTenResult.json"), 'w') as fp :
                 json.dump(self.topTenResult, fp)
-                
+
             self.avgScoreList = []
             scoreList = []
-                
+
             for key in self.topTenResult :
                 for loop in self.topTenResult[key] :
                     scoreList.append(loop[1])
                 avgScore = round(sum(scoreList)/len(scoreList),3)
                 self.avgScoreList.append((key, avgScore))
-                
+
             with open(os.path.join(self.output_dir, "AvgScore.json"), 'w') as fp :
-                json.dump(self.avgScoreList, fp)    
-                        
+                json.dump(self.avgScoreList, fp)
+
             # self.insertLoop()
-            
+
             self.pdbLoop()
-        
+
         else :
             with open ('FailedLoop.txt' , 'w') as fp :
                 fp.write( 'Es konneten keine Loops berechnet werden')
 
     def pdbLoop( self ):
-        
+
         # print '---------------'
-        # print self.sortedPdbLoopDict        
+        # print self.sortedPdbLoopDict
         #shutil.copyfile('../../../index.html', os.path.join(self.output_dir, "index.html" ))
-        
+
         relResultLoopsList = []
         allResultLoopList = ['ICL1', 'ICL2', 'ICL3', 'ECL1', 'ECL2', 'ECL3' , '8']
-          
+
         templateHtmlString = ''
-        
+
         if self.sortedPdbLoopDict == {} :
             return
-        
+
         # print self.sortedPdbLoopDict
         # print '==========================='
-        
-        
+
+
 
         n=0
         k=0
-        
+
         #loecht eintraege je looptyp, wenn tamplate doppelt vorkommt (z.b.4z36)
         #print self.sortedPdbLoopDict
         for key in self.sortedPdbLoopDict :
@@ -1835,7 +1835,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 extensionSingle1, extensionSingle2 = extension.split(',')
                 extensionSingle1 = int(extensionSingle1)
                 posNum, posLet = loopElement[5].split(':')
-                posNum1, posNum2 = posNum.split('-')
+                posNum1, posNum2 = filter(None, posNum.split('-'))
                 posNum1 = int(posNum1)
                 # print extensionSingle1
                 # print posNum1
@@ -1845,16 +1845,16 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 if [loopElement[4],seqPos] in templateList :
                     n = n+1
                     #print (loopElement[4],seqPos)
-                else :    
+                else :
                     templateList.append([loopElement[4], seqPos])
                     noDoubelList.append(loopElement)
                     n = n+1
             self.sortedPdbLoopDict[key] = noDoubelList
-        
-            
-        
-            
-                
+
+
+
+
+
         # print self.sortedPdbLoopDict
         # print n
         # print k
@@ -1865,28 +1865,28 @@ class SSFELinkIt( PyTool, ProviMixin ):
             self.sortedPdbLoopDict[key].sort(key=lambda loop: (loop[1], loop[2]), cmp =self.compareLoops )
             self.sortedPdbLoopDict[key].reverse()
             self.sortedPdbLoopDict[key] = self.sortedPdbLoopDict[key][0:5] # er werden die ersten 5 genommen
-            
+
         with open(os.path.join(self.output_dir, "SortedPdBLoopDict.json"), 'w') as fp :
-            json.dump(self.sortedPdbLoopDict, fp)    
-            
+            json.dump(self.sortedPdbLoopDict, fp)
+
         resultLoopNames = []
         oriSequenceList = []
         makeLoopList = []
-        k = 0 
+        k = 0
         for key in self.sortedPdbLoopDict :
             loopLineList = []
             loopStartEndList = []
             for loop in self.sortedPdbLoopDict[key] :
                 extension, loopName, numLoop, numDB = loop[0].split(';')
-                
+
                 loopName = int(loopName)
                 numLoop = int(numLoop)
                 numDB = int(numDB)
-                #da extension ein Doupel ist (z.B. 0,0), wird es aufgeteilt 
+                #da extension ein Doupel ist (z.B. 0,0), wird es aufgeteilt
                 extensionSingle1, extensionSingle2 = extension.split(',')
                 extensionSingle1 = int(extensionSingle1)
                 extensionSingle2 = int(extensionSingle2)
-                
+
                 loopFile = []
                 if numDB == 1:
                     databaseOri = "GPCRDB"
@@ -1894,7 +1894,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     databaseOri = "membranDB"
                 with open(self.subdir(databaseOri+"/link_it_%i,%i/link_it_%i" % (extensionSingle1,extensionSingle2,loopName)) + "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker2.pdb", 'r') as fp :
                     loopFile = fp.readlines()
-                
+
                 modelBegin = -1
                 modelEnd = -1
                 for i, line in enumerate(loopFile) :
@@ -1903,7 +1903,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     if line[0:6] == 'ENDMDL' and modelBegin != -1 :
                         modelEnd = i
                         break
-                        
+
                 loopLineList.append(loopFile[modelBegin + 5 : modelEnd - 4])
                 loopStart = int(loopFile[modelBegin + 5][22:26])
                 loopEnd = int(loopFile[modelEnd - 4][22:26])
@@ -1912,9 +1912,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 # print modelEnd
                 # print loopLineList
                 oriModel = loopStart + extensionSingle1
-                
-                
-                
+
+
+
                 # fuer Name vom  Loop
                 with open( self.loop_file, 'r' ) as oriLoop:
                     for line in oriLoop:
@@ -1928,33 +1928,33 @@ class SSFELinkIt( PyTool, ProviMixin ):
                             if int(start) == oriModel :
                                 resultLoopNames.append(oriloopName)
                                 oriSequenceList.append(oriSequence)
-            
-            
-                                                                
+
+
+
             #print resultLoopNames
             #print oriSequenceList
-                
-  
+
+
 
             # for n, i in enumerate(resultLoopNames) :
             #     if i == '8' :
             #         resultLoopNames[n] == 'TM7_H8'
-                    
-            resultLoopNames = [ 'TM7_H8' if x == '8' else x for x in resultLoopNames ] 
-            
+
+            resultLoopNames = [ 'TM7_H8' if x == '8' else x for x in resultLoopNames ]
+
 
             #print relResultLoopsList
-            
-            
-                
+
+
+
             with open ( self.ori_file, 'r' ) as oriFile:
                 oriFileContent = oriFile.readlines()
-                                           
+
             for j, result in enumerate(loopLineList) :
                 new_pdb_file =  (resultLoopNames[k] + '_%i.pdb' %j)
                 makeLoopList.append(resultLoopNames[k] + '_%i.pdb' %j)
-                
-                
+
+
                 #new_pdb_file = (os.path.splitext(self.ori_file)[0] + '_out_%i.pdb' %j)
                 with open (new_pdb_file, 'w') as fp1 :
                     loopStart = loopStartEndList[j][0]
@@ -1965,68 +1965,68 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         fp1.write(line)
                     for line in [l for l in oriFileContent if l[0:4] == 'ATOM' and loopEnd  <= int(l[22:26])  < loopEnd + 3] :
                         fp1.write(line)
-                    
+
                 k += 1
                 #print k
-                
+
         # print resultLoopNames
         # print allResultLoopList
-        
+
         with open( self.loop_file, 'r' ) as oriLoop:
-                for line in oriLoop:                    
+                for line in oriLoop:
                     if line[0] == '>' :
                         relResultLoopsList.append(line[1:-1])
-                
+
         for name in allResultLoopList :
                 if name in resultLoopNames :
                     relResultLoopsList.append((name,True))
                 else :
                     relResultLoopsList.append((name,False))
-                    
-        # print relResultLoopsList            
-                    
+
+        # print relResultLoopsList
+
         relResultLoopsList = [ ('TM7_H8',x[1]) if x[0] == '8' else x for x in relResultLoopsList ]
-        
+
         # print '================='
-        # print relResultLoopsList  
-        
+        # print relResultLoopsList
+
         with open(os.path.join(self.output_dir, "RelResultLoopsList.json"), 'w') as fp :
                 json.dump(relResultLoopsList, fp)
-        
+
         #ErgebnissTabelle erstellen
-        
+
         i = 0
         tableList = self.sortedPdbLoopDict.copy()
         # print self.sortedPdbLoopDict
         nameList = []
-               
+
         lastName = ''
         for name in resultLoopNames :
             if name == lastName :
                 continue
             nameList.append(name)
             lastName = name
-              
+
         # for loops in tableList.values() :
         #     for loop in loops :
         #         loop.insert(4, oriSequenceList[i])
         #         i+=1
-                        
+
         # print tableList
         # print '==================================================='
         # print self.oriSeqDict
-        
+
         for key, loops in tableList.iteritems() :
             for loop in loops :
                 loop.insert(4,self.oriSeqDict[int(loop[0][0][0])][key])
-         
+
         # print '===================================================='
         # print tableList
    #     for i in range(7):
   #          if i in tableList:
  #               fixedTableList[]
-            
-        
+
+
         with open ( 'Result_Table.csv', 'w' ) as fp1 :
             fp1.write('Loop ,# , Ext, GPCR, Species, Score, Sequence, Templ seq, Seq ident, Clashes, PDB-ID, Templ pos\n' )
             j = 0
@@ -2034,8 +2034,8 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 fp1.write(name)
                 #print tableList
                 while j not in tableList or tableList[j] == []:
-                    j += 1                    
-                for i,  loop in enumerate(tableList[j]) :    
+                    j += 1
+                for i,  loop in enumerate(tableList[j]) :
                     # print loop
                     # score erhoeungen zurueck aendern
                     newscore = loop[1]
@@ -2051,8 +2051,8 @@ class SSFELinkIt( PyTool, ProviMixin ):
             j = 0
             for name in (nameList) :
                 while j not in tableList or tableList[j] == [] :
-                    j += 1                    
-                for i,  loop in enumerate(tableList[j]) :    
+                    j += 1
+                for i,  loop in enumerate(tableList[j]) :
                     # print loop
                     newscore = loop[1]
                     if loop[9]:#Species
@@ -2061,13 +2061,13 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         newscore = newscore/self.GPCRscore
                     fp2.write( name + ',' + name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[9]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';')
                 j += 1
-                
+
         result = ""
         j = 0
         for name in (nameList) :
             while j not in tableList or tableList[j] == [] :
-                j += 1                    
-            for i,  loop in enumerate(tableList[j]) :    
+                j += 1
+            for i,  loop in enumerate(tableList[j]) :
                 # print loop
                 newscore = loop[1]
                 if loop[9]:#Species
@@ -2075,14 +2075,14 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 elif loop[7]:#GPCR
                     newscore = newscore/self.GPCRscore
                 result +=  name + ',' + name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[9]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';'
-            j += 1        
-                
+            j += 1
+
         with open ( 'Result_Tabel.txt', 'w') as fp2 :
             j = 0
             for name in (nameList) :
                 while j not in tableList or tableList[j] == [] :
-                    j += 1                    
-                for i,  loop in enumerate(tableList[j]) :    
+                    j += 1
+                for i,  loop in enumerate(tableList[j]) :
                     # print loop
                     newscore = loop[1]
                     if loop[9]:#Species
@@ -2091,14 +2091,14 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         newscore = newscore/self.GPCRscore
                     fp2.write( name + ',' + name + ('_%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[9]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + loop[5] + ',' + loop[6] + ';')
                 j += 1
-            
+
         resultTabel = "Loop ,# , Ext, GPCR, Species, Score, Sequence, Templ seq, Seq ident, Clashes, PDB-ID, Templ pos,;"
         j = 0
         PDBaddress = 'http://www.rcsb.org/pdb/explore/explore.do?structureId='
         for name in (nameList) :
             while j not in tableList or tableList[j] == [] :
-                j += 1                    
-            for i,  loop in enumerate(tableList[j]) :    
+                j += 1
+            for i,  loop in enumerate(tableList[j]) :
                 # print loop
                 newscore = loop[1]
                 if loop[9]:#Species
@@ -2106,36 +2106,36 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 elif loop[7]:#GPCR
                     newscore = newscore/self.GPCRscore
                 resultTabel += name + ',' + ('%i' %i) + ',' + loop[0][0] + ',' + str(loop[7]) + ',' + str(loop[9]) + ',' + str(newscore) + ',' + loop[4] + ',' + loop[3] + ',' + str(loop[8]) + ',' + str(loop[2]) + ',' + ('<a target="_blank" href="' + PDBaddress + loop[5] + '">' + loop[5] + '</a>') + ',' + loop[6] + ';'
-            j += 1   
-        
-                        
+            j += 1
+
+
 
         # print makeLoopList
 
         shutil.copyfile(downloader_js_file, os.path.join(self.output_dir, "downloader.js" ))
-        #html.index erstellen            
+        #html.index erstellen
         shutil.copyfile(ngl_js_file, os.path.join(self.output_dir, "ngl.js" ))
         # tmpl_name="ngl.embedded.min.js"
         # tmpl_file = os.path.join( tmpl_dir, tmpl_name )
         new_pdb_file = (self.ori_file)
         templateHtmlString += '"' + os.path.basename(new_pdb_file) + '"'
         #print templateHtmlString
-            
+
         templateHtml = ''
         with open (index_html_file, 'r') as fp :
             templateHtml = fp.read()
-            
+
         loopCandidate = ["ECL1_0","ECL1_1","ECL1_2","ECL1_3","ECL1_4","ECL2_0","ECL2_1","ECL2_2","ECL2_3","ECL2_4",
                          "ECL3_0","ECL3_1","ECL3_2","ECL3_3","ECL3_4",
                          "ICL1_0","ICL1_1","ICL1_2","ICL1_3","ICL1_4","ICL2_0","ICL2_1","ICL2_2","ICL2_3","ICL2_4",
                          "ICL3_0","ICL3_1","ICL3_2","ICL3_3","ICL3_4",
                          "TM7_H8_0","TM7_H8_1","TM7_H8_2","TM7_H8_3","TM7_H8_4"]
-        
+
         posHelix = []
         fileContent = []
         with open( self.ori_file, 'r') as fp :
             fileContent = fp.readlines()
-            
+
         for u, line in enumerate(fileContent) :
             if line[0:4] == 'ATOM' and fileContent[u+1][0:4] == 'ATOM':
                 startHelix = int(line[22:26])
@@ -2143,7 +2143,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 break
             else :
                 continue
-            
+
         for w, line in enumerate(fileContent) :
             if line[0:4] == 'ATOM' :
                 startHelix = int(line[22:26])
@@ -2154,79 +2154,79 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     else :
                         posHelix.append(startHelix)
                         posHelix.append(nextHelix)
-                        
+
         for t, line in enumerate(fileContent)  :
             if line[0:4] == 'ATOM' and fileContent[t+1][0:4] != 'ATOM':
                 startHelix = int(line[22:26])
                 posHelix.append(startHelix)
             else :
                 continue
-                
-                
-        # print posHelix                       
-        
+
+
+        # print posHelix
+
         loopPosList = ["loopPos1","loopPos2","loopPos3","loopPos4","loopPos5","loopPos6","loopPos7"]
         templateDict = {}
-        
+
         for v in loopCandidate :
             if (v + '.pdb') in makeLoopList :
                 templateDict[v] = '"'+ str(v + '.pdb')+'"'
             else :
                 templateDict[v] = ""
-        
+
         # print "================="
         # print loopPosList
         # speichert positionen der helix fuer die html, nimmt dafuer die luecken im pdb.file
         q = 0
         for p in loopPosList :
             templateDict[p] = '"' + str(posHelix[q]) + '-' + str(posHelix[q+1]) + '"'
-            q += 2    
+            q += 2
         # print "====================="
-        # print templateDict    
-                
+        # print templateDict
+
         templateDict["namepdbfiles"] = templateHtmlString
         templateDict["namepdbfiles2"] = templateHtmlString
         templateDict["result"] = '"' + result + '"'
         templateDict["resultTabel"] = "'" + resultTabel + "'"
-        #print templateDict 
-                
+        #print templateDict
+
         # print self.loopPosList
         templateHtml = templateHtml.format(**templateDict)
-                                            
+
         #print templateHtml
-            
-            
+
+
         with open (os.path.join(self.output_dir, "index.html" ), 'w') as fp :
-            fp.write(templateHtml)    
-                   
-                                          
+            fp.write(templateHtml)
+
+
     #fuegt Loops in pdb-file ein
     #--> Ergebnis sind die 10 besten pdb-files
     def insertLoop( self ):
-        
+
         #shutil.copyfile('../../../index.html', os.path.join(self.output_dir, "index.html" ))
-        
+
         templateHtmlString = ''
-        
+
         if self.topTenResult == {} :
             return
-        
+
         for key in self.topTenResult :
             loopLineList = []
             for loop in self.topTenResult[key] :
                 extension, loopName, numLoop = loop[0].split(';')
-                
+
                 loopName = int(loopName)
                 numLoop = int(numLoop)
-                #da extension ein Doupel ist (z.B. 0,0), wird es aufgeteilt 
+                #da extension ein Doupel ist (z.B. 0,0), wird es aufgeteilt
                 extensionSingle1, extensionSingle2 = extension.split(',')
                 extensionSingle1 = int(extensionSingle1)
                 extensionSingle2 = int(extensionSingle2)
-                
+
                 loopFile = []
                 with open(self.subdir("link_it_%i,%i/link_it_%i" % (extensionSingle1,extensionSingle2,loopName)) + "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker2.pdb", 'r') as fp :
                     loopFile = fp.readlines()
-                
+
                 modelBegin = -1
                 modelEnd = -1
                 for i, line in enumerate(loopFile) :
@@ -2235,14 +2235,14 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     if line[0:6] == 'ENDMDL' and modelBegin != -1 :
                         modelEnd = i
                         break
-                        
+
                 loopLineList.append(loopFile[modelBegin + 5 : modelEnd - 4])
-                
+
                 #print modelBegin
                 #print modelEnd
-                #print loopLineList 
-        
-              
+                #print loopLineList
+
+
             new_pdb_file = (os.path.splitext(self.ori_file)[0] + '_out_%i.pdb' %key)
             with open( self.ori_file, 'r') as fp, open (new_pdb_file, 'w') as fp2 :
                 for line in fp :
@@ -2250,7 +2250,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                     if line[0:6] != 'ANISOU' :
                         fp2.write(line)
             for loop in loopLineList :
-                    
+
                 startPos = int(loop[0].split()[5])
                 endPos = int(loop[-1].split()[5])
                 # print startPos
@@ -2262,7 +2262,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 with open( new_pdb_file, 'r') as fp :
                     rawPdbFile = fp.read().splitlines(True)
                 with open (new_pdb_file + '.tmp', 'w') as fp2 :
-                        
+
                     for i, line in enumerate(rawPdbFile) :
                         #print i, line[0:4], line[22:26]
                         if ((line[0:3]) == 'TER' and int(line[22:26]) == startPos -1 ) or \
@@ -2279,11 +2279,11 @@ class SSFELinkIt( PyTool, ProviMixin ):
                             fp2.write(line)
                         else :
                             fp2.write(line)
-                
+
                 shutil.move(new_pdb_file + '.tmp', new_pdb_file)
-                    
-                    
-                #Neu-Nummerierung von out_pdb             
+
+
+                #Neu-Nummerierung von out_pdb
                 i = 0
                 with open( new_pdb_file, 'r') as fp, open (new_pdb_file + '.tmp', 'w') as fp2 :
                     for line in fp:
@@ -2293,22 +2293,22 @@ class SSFELinkIt( PyTool, ProviMixin ):
                             fp2.write(newline)
                         else:
                             fp2.write(line)
-                            
+
                 shutil.move(new_pdb_file + '.tmp', new_pdb_file)
-            
-            
-            
-            #html.index erstellen            
+
+
+
+            #html.index erstellen
             shutil.copyfile('../../../ngl.js', os.path.join(self.output_dir, "ngl.js" ))
             # tmpl_name="ngl.embedded.min.js"
             # tmpl_file = os.path.join( tmpl_dir, tmpl_name )
             templateHtmlString += '"' + os.path.basename(new_pdb_file) + '",\n'
             # print templateHtmlString
-            
+
             templateHtml = ''
             with open ('../../../index.html', 'r') as fp :
                 templateHtml = fp.read()
-            
+
             #print self.loopPosList
             templateHtml = templateHtml.format(namepdbfiles = templateHtmlString,
                                                loopPos1 = '"'+ str(self.loopPosList[0][0]) + '-' + str(self.loopPosList[0][1])+'"',
@@ -2319,12 +2319,12 @@ class SSFELinkIt( PyTool, ProviMixin ):
                                                loopPos6 = '"'+ str(self.loopPosList[5][0]) + '-' + str(self.loopPosList[5][1])+'"',
                                                loopPos7 = '"'+ str(self.loopPosList[6][0]) + '-' + str(self.loopPosList[6][1])+'"')
             # print templateHtml
-            
-            
+
+
             with open (os.path.join(self.output_dir, "index.html" ), 'w') as fp :
                 fp.write(templateHtml)
-   
-                      
+
+
 class MultiLinkIt( PyTool, ProviMixin ):
     args = [
         _( "pdb_file", type="file", ext="pdb" ),
@@ -2354,7 +2354,7 @@ class MultiLinkIt( PyTool, ProviMixin ):
             # print 'res2:  ' , res2
             # print 'seq:  ' , seq
             # print 'last:  ' , self.last_res
-            if int(res1.split(":")[0]) <= self.last_res and int(res2.split(":")[0]) <= self.last_res :  
+            if int(res1.split(":")[0]) <= self.last_res and int(res2.split(":")[0]) <= self.last_res :
                 link_it = LinkIt(
                     self.pdb_file, res1, res2, seq, memdb=self.gpcrDB,
                     **copy_dict( kwargs, run=False, debug=True,
@@ -2364,23 +2364,23 @@ class MultiLinkIt( PyTool, ProviMixin ):
                 self.sub_tool_list.append( link_it )
                 self.link_it_list.append( link_it )
                 #print self.link_it_list
-            
+
 
     def func( self ):
-        self.log( "%i linkit runs" % len( self.input ) ) 
+        self.log( "%i linkit runs" % len( self.input ) )
         for i, link_it in enumerate ( self.link_it_list ):
             # print 'res1:  ' , link_it.res1
             # print 'res2:  ' , link_it.res2
             # print 'seq:  ' , link_it.seq
             link_it()
-            
+
             #print link_it.res1["resno" ] +1
             #print link_it.res2["resno" ] -1
-            
+
             #print self.subdir("link_it_%i" % i + "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_linker2.pdb")
             #self.insertLoop(i)
-            
-            
+
+
     def _post_exec( self ):
         linker_list = []
         for i, link_it in enumerate( self.link_it_list ):
@@ -2390,7 +2390,7 @@ class MultiLinkIt( PyTool, ProviMixin ):
                 "json_file": self.relpath( link_it.json_file ),
                 "pdb_linker_file3": self.relpath( link_it.pdb_linker_file3 )
             })
-        
+
         # self._make_provi_file(
         #     use_jinja2=True,
         #     pdb_file=self.relpath( self.pdb_file ),
@@ -2433,7 +2433,7 @@ class LinkItDensity( PyTool ):
             self.edited_pdb_file, self.res1, self.res2, self.seq, self.memdb,
             **copy_dict( kwargs, run=False, output_dir=self.subdir("link_it") )
         )
-        
+
         self.loop_correl = LoopCrosscorrel(
             self.mrc_file, self.pdb_file,
             self.link_it.pdb_linker_file2,
@@ -2452,7 +2452,7 @@ class LinkItDensity( PyTool ):
         self.sub_tool_list.extend( [
             self.link_it, self.loop_correl
         ] )
-        
+
 
     def func( self ):
         boxsizex = getMrc(self.mrc_file, 'nx' )
@@ -2496,7 +2496,7 @@ class LinkItDensity( PyTool ):
             cc_dict = json.load(
                 fp, object_pairs_hook=collections.OrderedDict
             )
-        li_dict_li={}   
+        li_dict_li={}
         li_dict_li=li_dict["linker"]
         linker_correl_dict = {}
         parameter={'res1':self.res1,'res2':self.res2,'sequence':self.seq,'resolution':self.resolution}
