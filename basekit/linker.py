@@ -1325,7 +1325,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         #print start
                         endInt = int(end)
                         #print end
-                        self.loopBracketAminosHelix8 = dict.fromkeys([startInt-1, startInt, endInt,endInt+1])
+                        self.loopBracketAminosHelix8 = {}#dict.fromkeys([startInt-1, startInt, endInt,endInt+1])
                         #print self.loopBracketAminosHelix8
                         self.loopPosList.append([0, 0])
                         continue
@@ -1450,10 +1450,11 @@ class SSFELinkIt( PyTool, ProviMixin ):
                 # print loopTasksListHelix8
                 # print self.loopBracketAminosHelix8
 
-                MultiLinkIt(self.ori_file, input = loopTasksListHelix8,
-                        **copy_dict( kwargs, run=True,
+                rrrrr = MultiLinkIt(self.ori_file, input=loopTasksListHelix8,
+                        **copy_dict( kwargs, run=False, gpcrDB=False, 
                                     output_dir=self.subdir("Helix8" ), verbose=True, debug=True ))
-
+                rrrrr()
+                
                 loopFile = []
                 loopLineList = []
                 with open(self.subdir("Helix8/link_it_0") + "/" + os.path.splitext(os.path.basename(self.pdb_file))[0] + "_input_out_linker2.pdb", 'r') as fp :
@@ -1521,7 +1522,6 @@ class SSFELinkIt( PyTool, ProviMixin ):
 
                         shutil.move(new_pdb_file + '.tmp', new_pdb_file)
 
-
                         #Neu-Nummerierung von out_pdb
                         i = 0
                         with open( new_pdb_file, 'r') as fp, open (new_pdb_file + '.tmp', 'w') as fp2 :
@@ -1536,11 +1536,11 @@ class SSFELinkIt( PyTool, ProviMixin ):
 
 
                         shutil.move(new_pdb_file + '.tmp', self.ori_file)
+                        
         #
         # fuer restliche loops
         self.oriSeqDict = {key: [] for key in ([0,1,2,3])}
         # ,4,5
-
         for i in range (4) :
             loopTasksList = []
             for start,end,seq in self.loopTasks :
@@ -1594,7 +1594,6 @@ class SSFELinkIt( PyTool, ProviMixin ):
 
         for m in self.multiLinkIts :
             m()
-
 
 
         # print self.loopCount
@@ -2382,8 +2381,10 @@ class MultiLinkIt( PyTool, ProviMixin ):
             # print 'res1:  ' , link_it.res1
             # print 'res2:  ' , link_it.res2
             # print 'seq:  ' , link_it.seq
-            link_it()
-
+            try:
+                link_it()
+            except:
+                pass
             #print link_it.res1["resno" ] +1
             #print link_it.res2["resno" ] -1
 
