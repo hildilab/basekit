@@ -38,11 +38,17 @@ def LINKIT_DIR():
 def LINKIT_DIR2():
     return os.environ.get("LINKIT_DIR2", "")
 
+def LINKIT_DIR3():
+    return os.environ.get("LINKIT_DIR3", "")
+
 def LINKIT_CMD():
     return os.path.join( LINKIT_DIR(), "Link_It_dos2n.exe" )
 
 def LINKIT_CMD_mem():
     return os.path.join( LINKIT_DIR2(), "Link_It_dos2n.exe" )
+
+def LINKIT_CMD_GPCR():
+    return os.path.join( LINKIT_DIR3(), "Link_It_dos2n.exe" )
 
 class LinkIt( CmdTool, ProviMixin ):
     """Please upload the PDB file, define the N- and C-terminal stem-residues (e.g.: 10:A, 16:A) and provide the missing sequence in 1-letter code (ACDEF)."""
@@ -57,6 +63,8 @@ class LinkIt( CmdTool, ProviMixin ):
             help="One-letter code of the linker amino acids." ),
         _( "memdb", type="bool", label="MembraneDB",
             help="Show only results from membrane proteins.", default=False ),
+        _( "GPCRdb", type="bool", label="GPCRDB",
+            help="Show only results from GPCR proteins.", default=False ),
         _( "max_loops", type="int", range=[0, 500], default=100 , step=100,
             advanced=True )
     ]
@@ -80,6 +88,8 @@ class LinkIt( CmdTool, ProviMixin ):
             self.res1, self.res2 = self.res2, self.res1
         if self.memdb:
             self.cmd = [ "wine", LINKIT_CMD_mem(), self.kos_file, self.bin_file, "tp" ]
+        elif self.GPCRdb:
+            self.cmd = [ "wine", LINKIT_CMD_GPCR(), self.kos_file, self.bin_file, "tp" ]
         else:
             self.cmd = [ "wine", LINKIT_CMD(), self.kos_file, self.bin_file, "tp" ]
 
@@ -1219,9 +1229,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
         _( "pdb_file", type="file", ext="pdb" ),
         _( "loop_file", type="file", ext="txt" ),
         _( "extension", type="list", nargs=2, action="append",
-           help="int,int", default=[0,0] ),
-        _( "GPCRscore", type="int", default=1 ),
-        _( "Speciesscore", type="int", default=2 ),
+           help="int,int", default=[3,3] ),
+        _( "GPCRscore", type="int", default=5 ),
+        _( "Speciesscore", type="int", default=5 ),
         _( "clashOut", type="float", default=0.75 ),
         _( "numclashes", type="int", default=10)
 
@@ -2356,7 +2366,7 @@ class MultiLinkIt( PyTool, ProviMixin ):
             # print 'last:  ' , self.last_res
             if int(res1.split(":")[0]) <= self.last_res and int(res2.split(":")[0]) <= self.last_res :
                 link_it = LinkIt(
-                    self.pdb_file, res1, res2, seq, memdb=self.gpcrDB,
+                    self.pdb_file, res1, res2, seq, memdb=not self.gpcrDB, GPCRdb=self.gpcrDB,
                     **copy_dict( kwargs, run=False, debug=True,
                                  output_dir=self.subdir("link_it_%i" % i) )
                 )
@@ -2400,9 +2410,9 @@ class MultiLinkIt( PyTool, ProviMixin ):
 class LinkItDensity( PyTool ):
     """Please denote the resolution of your map. Then define the stem-residues (e.g.: 10:A, 16:A) and provide the missing sequence in 1-letter code (ACDEF). """
     args = [
-        _( "pdb_file", type="file", ext="pdb", label="PDB File",
+        _( "pdb_file", type="file", ext="pdb", label="PDB file",
             help="The input structure." ),
-        _( "mrc_file", type="file", ext="mrc", label="MRC File",
+        _( "mrc_file", type="file", ext="mrc", label="Density file",
             help="The input density." ),
         _( "res1", type="sele", label="Stem residue 1",
             help="N-terminal stem residue and chain, '123:A'." ),
