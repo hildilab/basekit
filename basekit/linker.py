@@ -1325,7 +1325,7 @@ class SSFELinkIt( PyTool, ProviMixin ):
                         #print start
                         endInt = int(end)
                         #print end
-                        self.loopBracketAminosHelix8 = {}#dict.fromkeys([startInt-1, startInt, endInt,endInt+1])
+                        self.loopBracketAminosHelix8 = dict.fromkeys([startInt-1, startInt, endInt,endInt+1])
                         #print self.loopBracketAminosHelix8
                         self.loopPosList.append([0, 0])
                         continue
