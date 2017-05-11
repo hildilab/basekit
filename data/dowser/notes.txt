@@ -15,3 +15,8 @@ with
 recompile
 ./dowser/Install
 
+To use Dowser++
+Install Dowser++ from: http://dowserplusplus.ucdavis.edu/
+Add to the folder the file callDowser++.sh which can be found in the basekit
+CHANGE the PATH of DOWSERPLUS2_CMD to the folder where Dowser++ is installed + callDowser++.sh
+Dowser++ should now be working when the command line argument -d++ is added with mppd.py
