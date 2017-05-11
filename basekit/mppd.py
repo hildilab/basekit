@@ -24,11 +24,11 @@ from utils.tool import (
 )
 from utils.numpdb import NumPdb, NumAtoms
 from opm import Opm, OpmInfo, Ppm2
-from dowser import DowserRepeat
+from dowser import DowserRepeat, DowserPlus2
 from voronoia import Voronoia, HOLE_NOT_FILLED, HOLE_PARTLY_FILLED
 from hbexplore import HBexplore
 from msms import Msms
-from mpstruc import MpstrucInfo
+from mpstruc import MpstrucDownload, MpstrucInfo
 from pdb import PdbInfo
 from dssp import Dssp
 
@@ -138,18 +138,18 @@ for x in [
 
 
 _MppdRecord = collections.namedtuple( "_MppdRecord", [
-    "pdb_id", "source", "segment", "mplanes_dist", 
-    "water_count", "residue_count", "hetero_count", 
+    "pdb_id", "source", "segment", "mplanes_dist",
+    "water_count", "residue_count", "hetero_count",
     "chain_count", "identical_chains",
     "hbx_protein_water", "hbx_water_water", "hbx_water_ligand",
-    "voro_not_filled", "voro_partly_filled", 
+    "voro_not_filled", "voro_partly_filled",
     "packdens_all", "packdens_protein", "packdens_water", "packdens_hetero",
     "msms", "msms_ses", "msms_gt_water", "msms_gt_water_ses"
 ])
 class MppdRecord( _MppdRecord ):
     def info( self ):
-        print "### %s [ %s, %s ]" % ( 
-            self.pdb_id, self.source, self.segment 
+        print "### %s [ %s, %s ]" % (
+            self.pdb_id, self.source, self.segment
         )
         print "distance: %0.2f" % self.mplanes_dist
         print "counts: %i (water), %i (aa), %i (hetero)" % (
@@ -165,11 +165,11 @@ class MppdRecord( _MppdRecord ):
             self.voro_not_filled, self.voro_partly_filled
         )
         print "pd: %0.3f (all), %0.3f (aa), %0.3f (water), %0.3f (hetero)" % (
-            self.packdens_all, self.packdens_protein, 
+            self.packdens_all, self.packdens_protein,
             self.packdens_water, self.packdens_hetero
         )
         print "msms: %i, %0.2f A^3; %i (SES>H2O), %0.2f A^3" % (
-            self.msms, self.msms_ses, 
+            self.msms, self.msms_ses,
             self.msms_gt_water, self.msms_gt_water_ses
         )
         print ""
@@ -183,12 +183,12 @@ MppdDbRecord = collections.namedtuple( "MppdDbRecord", [
 
     "mpstruc_group", "mpstruc_subgroup", "mpstruc_name", "mpstruc_species",
     "mpstruc_master", "mpstruc_related",
-    
+
     "curated_representative", "curated_related",
-    
+
     "status",
 
-    "tm_packdens_protein_buried", "tm_water_count", "tm_residue_count", 
+    "tm_packdens_protein_buried", "tm_water_count", "tm_residue_count",
     "tm_cavity_count"
 ])
 
@@ -206,11 +206,11 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         _( "pdb_input", type="str" ),
         _( "probe_radius|pr", type="float", range=[0.1, 5],
             step=0.1, default=1.4, help="coulombic probe radius" ),
-        _( "vdw_probe_radius|vpr", type="float", range=[0.1, 5], 
+        _( "vdw_probe_radius|vpr", type="float", range=[0.1, 5],
             step=0.1, default=1.7 ),
         _( "analyze_only|ao", type="bool", default=False ),
         _( "check_only|co", type="bool", default=False ),
-        _( "variants", type="str", nargs="*", default=[], 
+        _( "variants", type="str", nargs="*", default=[],
             help="a '!' as the first arg negates the list" ),
         _( "tools", type="str", nargs="*", default=[],
             help="a '!' as the first arg negates the list" ),
@@ -227,6 +227,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         _( "voro_shuffle", type="bool", default=False ),
         # dowser max repeats
         _( "dowser_max", type="int", default=None ),
+        # execute dowser++ ?
+        _( "dowserplus2|d++", type="bool", default=False ),
     ]
     out = [
         _( "processed_pdb", file="proc.pdb" ),
@@ -255,25 +257,25 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             self.output_files = []
 
             self.pdb_info = PdbInfo( self.pdb_id,
-                **copy_dict( kwargs, run=False, 
+                **copy_dict( kwargs, run=False,
                     output_dir=self.subdir("pdb_info") ) )
             self.output_files += [ self.pdb_info.info_file ]
 
             self.opm_info = OpmInfo( self.pdb_id,
-                **copy_dict( kwargs, run=False, 
+                **copy_dict( kwargs, run=False,
                     output_dir=self.subdir("opm_info") ) )
 
             # self.opm.info_file can be used to distinguish
             if self.use_ppm2:
                 self.opm = Ppm2(
                     self.pdb_id,
-                    **copy_dict( kwargs, run=False, 
+                    **copy_dict( kwargs, run=False,
                         output_dir=self.subdir("opm") )
                 )
             else:
                 self.opm = Opm(
                     self.pdb_id,
-                    **copy_dict( kwargs, run=False, 
+                    **copy_dict( kwargs, run=False,
                         output_dir=self.subdir("opm") )
                 )
             self.output_files += self.opm.output_files
@@ -285,16 +287,22 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     max_repeats=self.dowser_max )
             )
             self.output_files += self.dowser.output_files
-            msms_kwargs = { 
+            msms_kwargs = {
                 "all_components": True,
                 "density": 1.0, "hdensity": 3.0,
                 "envelope": self.probe_radius * 2,
                 "envelope_hclust": self.envelope_hclust,
                 "atom_radius_add": self.atom_radius_add,
             }
+            self.dowserPlus2 = DowserPlus2(
+                self.processed_pdb,
+                **copy_dict( kwargs,run=False,
+                    output_dir=self.subdir("dowser++"))
+            )
+            self.output_files += self.dowserPlus2.output_files
             self.msms0 = Msms(
-                self.no_water_file, **copy_dict( kwargs, run=False, 
-                output_dir=self.subdir( "msms0" ), 
+                self.no_water_file, **copy_dict( kwargs, run=False,
+                output_dir=self.subdir( "msms0" ),
                 **copy_dict( msms_kwargs, probe_radius=self.vdw_probe_radius,
                     all_components=False )
             ))
@@ -302,14 +310,19 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             self.output_files += [ self.original_dry_pdb, self.final_pdb ]
 
             self.dssp = Dssp(
-                self.final_pdb, **copy_dict( kwargs, run=False, 
+                self.final_pdb, **copy_dict( kwargs, run=False,
                 output_dir=self.subdir( "dssp" )
             ))
             self.output_files += self.dssp.output_files
 
-            self.mpstruc_info = MpstrucInfo( self.pdb_id,
-                **copy_dict( kwargs, run=False, 
-                    output_dir=self.subdir("mpstruc_info") ) )
+            self.mpstruc_download = MpstrucDownload( self.pdb_id,
+                **copy_dict( kwargs, run=False,
+                    output_dir=self.subdir( "mpstruc_download" ) ) )
+            self.output_files += self.mpstruc_download.output_files
+
+            self.mpstruc_info = MpstrucInfo( self.pdb_id, mpstruc_xml=self.mpstruc_download.mpstruc_xml,
+                **copy_dict( kwargs, run=False,
+                    output_dir=self.subdir( "mpstruc_info" ) ) )
 
             self.water_variants = [
                 ( "non", self.no_water_file ),
@@ -317,9 +330,9 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 ( "dow", self.dowser_dry_pdb ),
                 ( "fin", self.final_pdb ),
             ]
-            
+
             self.tool_list = [
-                ( "voronoia", Voronoia, { 
+                ( "voronoia", Voronoia, {
                     "ex":0.2, "shuffle": self.voro_shuffle
                 }),
                 ( "hbexplore", HBexplore, {} ),
@@ -343,12 +356,12 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 for prefix, tool, tool_kwargs in self.tool_list:
                     name = "%s_%s" % ( prefix, suffix )
                     self.__dict__[ name ] = tool(
-                        pdb_file, **copy_dict( kwargs, run=False, 
+                        pdb_file, **copy_dict( kwargs, run=False,
                             output_dir=self.subdir( name ), **tool_kwargs )
                     )
                     self.output_files += self.__dict__[ name ].output_files
 
-            
+
             self.output_files += [ self.mpstruc_info.info_file ]
             self.output_files += [ self.opm_info.info_file ]
             self.output_files += [ self.info_file ]
@@ -380,6 +393,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 self.make_nowat_pdb()
             if do( "dowser" ):
                 self.dowser()
+            if (self.dowserplus2):
+                self.dowserPlus2()
             if do( "msms0" ):
                 self.msms0()
             if do( "dry" ):
@@ -391,6 +406,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             if do( "pdb_info" ):
                 self.pdb_info()
             if do( "mpstruc_info" ):
+                self.mpstruc_download()
                 self.mpstruc_info()
             if do( "info" ):
                 self.make_info()
@@ -404,10 +420,11 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     mplane_file=self.relpath( self.opm.mplane_file ),
                     hbx_file=self.relpath( self.hbexplore_fin.hbx_file ),
                     vol_file=self.relpath( self.voronoia_fin.vol_file ),
-                    msms_components=self.msms_vdw_fin.components_provi(
-                        color="lightgreen", translucent=0.5, 
+                    msms_components="" '''self.msms_vdw_fin.components_provi(
+                        color="lightgreen", translucent=0.5,
                         relpath=self.relpath, max_atomno=len( npdb )
-                    ),
+                    ),'''
+
                 )
 
             for suffix, pdb_file in self.water_variants:
@@ -419,7 +436,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             self.make_stats()
         if do( "stats2" ):
             self.make_stats2()
-        
+
         self.records = self.make_records()
         self.write()
         # for r in self.records:
@@ -450,7 +467,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     if os.path.isfile( t.opm.outpath( "ppm_error.txt" ) ):
                         tag = "ppm"
                         # print open( t.opm.outpath( "ppm_error.txt" ) ).read()
-                
+
                 if tag!="pdb_info" and t.pdb_info.check():
                     info = t.pdb_info.get_info()
                     if "CA ATOMS ONLY" in info.get( "model_type", {} ):
@@ -483,7 +500,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
 
             # representative id search
             test_rep_list = flatten([
-                zip( [x]*len(dct[x]), dct[x] ) 
+                zip( [x]*len(dct[x]), dct[x] )
                 for x in [ "opm", "ppm", "msms0", "msms_vdw_fin", "dowser" ]
             ])
             print test_rep_list
@@ -504,7 +521,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     if master_id:
                         rid_list.append( master_id.upper() )
                     rid_list += mpstruc_info.get("related", [])
-                        
+
                 rep = None
                 for rid in rid_list:
                     for x in dct["Ok"]:
@@ -519,7 +536,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 else:
                     dct[ "no_representative" ].append( t )
 
-            ignore_tags = [ 
+            ignore_tags = [
                 "no_pdb_entry",
                 "mplane",
                 "representative",
@@ -562,7 +579,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
 
             for tag, t_list in dct.iteritems():
                 if tag!="Ok":
-                    print tag, " ".join( map( lambda x: x.id, t_list ) ) 
+                    print tag, " ".join( map( lambda x: x.id, t_list ) )
             for tag, t_list in dct.iteritems():
                 print tag, len(t_list)
 
@@ -618,7 +635,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 fdir = self.extract
                 if not os.path.exists( fdir ):
                     os.makedirs( fdir )
-                shutil.copyfile( 
+                shutil.copyfile(
                     self.outpath( "mppd.db" ),
                     os.path.join( fdir, "mppd.db" )
                 )
@@ -656,14 +673,14 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                         key = ( s["source"], s["segment"] )
                         nres[ key ].append( s["residue_count"] )
                         nwater[ key ].append( s["water_count"] )
-                        resolution[ key ].append( 
-                            try_float( info["pdb_resolution"], 0.0 )    
+                        resolution[ key ].append(
+                            try_float( info["pdb_resolution"], 0.0 )
                         )
                         ncav[ key ].append( s["msms"] )
                         sesvol[ key ].append( s["msms_ses"] )
                         packdens[ key ].append( s["packdens_protein"] )
-                        packdens_buried[ key ].append( 
-                            s["packdens_protein_buried"] 
+                        packdens_buried[ key ].append(
+                            s["packdens_protein_buried"]
                         )
                 print nres.keys()
                 for key in nres.keys():
@@ -678,7 +695,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     vol_y = vol/y
                     pd = np.array( packdens[ key ] )
                     pd_buried = np.array( packdens_buried[ key ] )
-                    
+
                     from mpl_toolkits.axes_grid.anchored_artists import (
                         AnchoredText
                     )
@@ -693,17 +710,17 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                         summary = (
                             "Var: %.4f\nStd: %.4f\nMean: %.4f\n"
                             "Median: %.4f\nMin: %.4f\nMax: %.4f\n"
-                        ) % ( 
-                            np.var(x), x.std(), x.mean(), 
-                            np.median(x), x.min(), x.max() 
+                        ) % (
+                            np.var(x), x.std(), x.mean(),
+                            np.median(x), x.min(), x.max()
                         )
                         at = AnchoredText(
-                            summary, loc=loc or 1, prop={ "size": 10 }, 
+                            summary, loc=loc or 1, prop={ "size": 10 },
                             frameon=True, pad=0.5, borderpad=1.0
                         )
                         axis.add_artist( at )
 
-                    def scatter( axis, x, y, xlabel, ylabel, 
+                    def scatter( axis, x, y, xlabel, ylabel,
                                  loc=1, nzero=True ):
                         if nzero:
                             xnzero = x!=0
@@ -720,16 +737,16 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                         axis.set_ylim( ( 0, axis.get_ylim()[1] ) )
                         summary = "r: %.4f\np: %.4f\n" % r
                         at = AnchoredText(
-                            summary, loc=loc or 1, prop={ "size": 10 }, 
+                            summary, loc=loc or 1, prop={ "size": 10 },
                             frameon=True, pad=0.5, borderpad=1.0
                         )
                         axis.add_artist( at )
 
                     fig, (ax) = plt.subplots(3, 4, figsize=[20,12] )
-                    
+
                     scatter( ax[0,0], x, y, "#h20", "#res" )
                     hist( ax[0,1], x_y, "#h2o / #res" )
-                    
+
                     scatter( ax[1,0], r, x_y, "resolution [A]", "#h2o / #res" )
                     hist( ax[1,1], cav_y, "#cav / #res" )
 
@@ -737,12 +754,12 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
 
                     hist( ax[0,2], pd, "packing density" )
 
-                    scatter( ax[1,2], r, pd, 
+                    scatter( ax[1,2], r, pd,
                         "resolution [A]", "packing density" )
 
                     hist( ax[0,3], pd_buried, "packing density buried" )
-                    
-                    scatter( ax[1,3], r, pd_buried, 
+
+                    scatter( ax[1,3], r, pd_buried,
                         "resolution [A]", "packing density buried" )
 
                     fig.savefig( "_".join( key ) + ".png" )
@@ -751,15 +768,15 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     y = [ np.array(yd).mean() for yd in ydata ]
                     x = np.arange( len( y ) )
                     e = [ np.array(yd).std() for yd in ydata ]
-                    ax.bar( 
-                        x, y, align='center', yerr=e, 
-                        ecolor='black', facecolor='#777777' 
+                    ax.bar(
+                        x, y, align='center', yerr=e,
+                        ecolor='black', facecolor='#777777'
                     )
                     ax.set_xticks( x )
                     ax.set_xticklabels( labels )
                     xlim = ( x.min()-1, x.max()+1 )
                     ax.set_xlim( xlim )
-                
+
 
                 # ...
                 tm_keys = [
@@ -773,7 +790,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     for key in tm_keys:
                         ydata.append(
                             ( np.array( nwater[ key ] ) /
-                                np.array( nres[ key ] ) ) * 100 
+                                np.array( nres[ key ] ) ) * 100
                         )
                         labels.append( key[0] )
                     fig, (ax) = plt.subplots(1, 1, figsize=[6,4.5] )
@@ -799,19 +816,19 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                             nwater_cutoff[ key ][i].append( frac )
                 for key in nwater_cutoff.keys():
                     fig, (ax) = plt.subplots(1, 1, figsize=[8,4] )
-                    bar( 
-                        ax, 
-                        nwater_cutoff[ key ], 
-                        map( str, cutoff_list ) 
+                    bar(
+                        ax,
+                        nwater_cutoff[ key ],
+                        map( str, cutoff_list )
                     )
                     fig.savefig( str( key ) + ".png" )
     def make_final_pdb( self ):
-        npdb_dow = NumPdb( 
+        npdb_dow = NumPdb(
             self.dowser_dry_pdb, features=self.npdb_features )
-        npdb_org = NumPdb( 
+        npdb_org = NumPdb(
             self.original_dry_pdb, features=self.npdb_features )
-        dow_tree = get_tree( 
-            npdb_dow.get( 'xyz', resname="HOH" ) 
+        dow_tree = get_tree(
+            npdb_dow.get( 'xyz', resname="HOH" )
         )
         sele = npdb_org.sele()
         i = 0
@@ -826,8 +843,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 i += 1
         coords_dow, atoms_dow = npdb_dow._select()
         coords_org, atoms_org = npdb_org._select( sele=sele )
-        npdb_final = NumAtoms( 
-            np.hstack(( atoms_dow, atoms_org )), 
+        npdb_final = NumAtoms(
+            np.hstack(( atoms_dow, atoms_org )),
             np.vstack(( coords_dow, coords_org ))
         )
         npdb_final.write2( self.final_pdb )
@@ -835,10 +852,10 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         envelope = self.msms0.envelope_msms.get_vert( filt=False )
         envelope = [ ( x['x'], x['y'], x['z'] ) for x in envelope ]
         envelope_tree = scipy.spatial.KDTree( envelope )
-        npdb_non = NumPdb( 
+        npdb_non = NumPdb(
             self.no_water_file, features=self.npdb_features )
         non_tree = scipy.spatial.KDTree( npdb_non['xyz'] )
-        
+
         pr2 = self.probe_radius * 2
         pr3 = self.probe_radius * 3
         wet_pdb = [
@@ -869,7 +886,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     i += 1
             npdb.copy( sele=sele ).write2( out_file )
     def make_processed_pdb( self ):
-        npdb = NumPdb( 
+        npdb = NumPdb(
             self.opm.processed_file, features=self.npdb_features )
         sele = npdb.sele()
         coords_dict = {}
@@ -945,12 +962,12 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 _count_hbonds = count_hbonds( npdb_d[ suffix ], hbx )
                 _count_holes_voro = count_holes_voro( npdb_d[ suffix ], voro )
                 _packing_density = packing_density( npdb_d[ suffix ], voro )
-                _count_holes_msms = count_holes_msms( 
-                    npdb_d[ suffix ], msms_vdw, pr, 
+                _count_holes_msms = count_holes_msms(
+                    npdb_d[ suffix ], msms_vdw, pr,
                     len( segments[0][1][ suffix ] )
                 )
                 mppd_stats.append({
-                    "pdb_id": self.pdb_id, 
+                    "pdb_id": self.pdb_id,
                     "source": suffix,
                     "segment": seg,
                     "mplanes_dist": dist,
@@ -983,8 +1000,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
         for seg, npdb_d in segments:
             npdb_dow = npdb_d[ "dow" ]
             npdb_org = npdb_d[ "org" ]
-            dow_tree = get_tree( 
-                npdb_dow.get( 'xyz', resname="HOH" ) 
+            dow_tree = get_tree(
+                npdb_dow.get( 'xyz', resname="HOH" )
             )
             water_count = 0
             residue_count = 0
@@ -1002,7 +1019,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                 elif numa[0]["record"]=="ATOM  ":
                     residue_count += 1
             mppd_stats2.append({
-                "pdb_id": self.pdb_id, 
+                "pdb_id": self.pdb_id,
                 "segment": seg,
                 "water_count": water_count,
                 "residue_count": residue_count,
@@ -1044,8 +1061,8 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
             return json.load( fp )
     def get_stats2( self ):
         with open( self.stats2_file, "r" ) as fp:
-            return json.load( 
-                fp, object_pairs_hook=collections.OrderedDict 
+            return json.load(
+                fp, object_pairs_hook=collections.OrderedDict
             )
     def make_records( self ):
         with open( self.stats_file, "r" ) as fp:
@@ -1128,8 +1145,8 @@ def count_water( npdb ):
     water_count = 0
     aa_count = 0
     hetero_count = 0
-    chain_count = len( np.unique( 
-        npdb.copy(resname="HOH", invert=True)["chain"] 
+    chain_count = len( np.unique(
+        npdb.copy(resname="HOH", invert=True)["chain"]
     ))
     for numa in npdb._iter_resno():
         if numa[0]["resname"]=="HOH" and numa[0]["atomname"]==" O  ":
@@ -1208,9 +1225,9 @@ def count_holes_msms( npdb, msms, probe_radius, n ):
         c for c in components0 if c[1] < -water_vol
     ]
     return (
-        len( components2 ), 
+        len( components2 ),
         sum([ c[1] for c in components2]),
-        len( components3 ), 
+        len( components3 ),
         sum([ c[1] for c in components3])
     )
 
@@ -1225,7 +1242,3 @@ class MppdStats( PyTool ):
     def func( self ):
         records = JsonBackend( self.mppd_file, MppdRecord )
         print len( records )
-
-
-
-
