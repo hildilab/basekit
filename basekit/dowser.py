@@ -8,10 +8,12 @@
 
 import os
 import shutil
+import auto_parameterization as ap
 
 from utils import copy_dict
 from utils.tool import _, _dir_init, CmdTool, PyTool, ProviMixin
 from utils.numpdb import NumPdb
+from shutil import copyfile
 
 
 DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "dowser" )
@@ -19,6 +21,7 @@ DIR, PARENT_DIR, TMPL_DIR = _dir_init( __file__, "dowser" )
 DOWSER_CMD = "dowser"
 DOWSERX_CMD = "dowserx"
 DOWSER_REPEAT_CMD = "dowser-repeat"
+DOWSERPLUS2_CMD="/home/student/Software/Dowser++/callDowser++.sh"
 
 DOWSER_ATOMDICT = os.path.join( TMPL_DIR, "atomdict.db" )
 DOWSER_ATOMPARMS = os.path.join( TMPL_DIR, "atomparms.db" )
@@ -28,6 +31,12 @@ class DowserMixin( object ):
     def _pre_exec( self ):
         shutil.copy( self.pdb_file, self.input_file )
     def _post_exec( self ):
+        print('TEST 1')
+        print(self.relpath( self.dowser_file ))
+        if '++' in self.relpath( self.dowser_file ):
+            print('TEST !!!')
+            print('Dowser++ not looked at!')
+            return None
         self._make_provi_file(
             input_file=self.relpath( self.input_file ),
             wat_file=self.relpath( self.wat_file ),
@@ -35,6 +44,7 @@ class DowserMixin( object ):
             intsurf_file=self.relpath( self.intsurf_file )
         )
         # make sure all file exist
+
         for f in [ self.wat_file, self.watall_file, self.intsurf_file ]:
             with open( f, "a" ):
                 pass
@@ -69,12 +79,20 @@ DOWSER_ARGS = [
     _( "atomtypes", type="str", default=DOWSER_ATOMDICT ),
     _( "atomparms", type="str", default=DOWSER_ATOMPARMS )
 ]
+DOWSERPLUS2_ARGS = [
+    _( "pdb_file", type="file", ext="pdb" ),
+    _( "box", type="int", default=10 )
+]
 DOWSER_OUT = [
     _( "input_file", file="myinput.pdb" ),
     _( "wat_file", file="dowserwat.pdb" ),
     _( "watall_file", file="dowserwat_all.pdb" ),
     _( "intsurf_file", file="intsurf.pdb" ),
     _( "dowser_file", file="dowser.pdb" )
+]
+DOWSERPLUS2_OUT = [
+    _( "input_file", file="myinput.pdb" ),
+    _( "dowser_file", file="dowser++.pdb" )
 ]
 
 class Dowser( DowserMixin, CmdTool, ProviMixin ):
@@ -92,17 +110,31 @@ class Dowser( DowserMixin, CmdTool, ProviMixin ):
         elif self.alt=="repeat":
             exe = DOWSER_REPEAT_CMD
 
-        self.cmd = [ 
-            exe, self.relpath( self.input_file ), 
+        # Ligand Parameterization
+
+        ligands,aligands=ap.get_ligands(os.path.basename(self.input_file),os.path.dirname(os.path.abspath( self.input_file )) )
+        input_file=self.input_file
+        if len(ligands)>0:
+            ap.main(os.path.basename(self.input_file),os.path.dirname(os.path.abspath( self.input_file )))
+            self.hetero=True
+            print('Test1', os.path.dirname(os.path.abspath( self.input_file )))
+            input_file=os.path.dirname(os.path.abspath( self.input_file ))+"/Dowser_"+os.path.basename(self.input_file)
+        self.cmd = [
+            exe, self.relpath( input_file ),
             "-probe", self.probe,
             "-separation", self.separation
         ]
-        if self.hetero: self.cmd.append( "-hetero" )
+
+        #if self.hetero: self.cmd.append( "-hetero" )
+        if self.hetero:
+            self.cmd.append( "-hetero" )
+            for ligand in ligands:
+                self.cmd.append(self.relpath( ligand+'.db' ))
         if self.noxtalwater: self.cmd.append( "-noxtalwater" )
         if self.onlyxtalwater: self.cmd.append( "-onlyxtalwater" )
         if self.atomtypes: self.cmd += [ "-atomtypes", self.atomtypes ]
         if self.atomparms: self.cmd += [ "-atomparms", self.atomparms ]
-    
+
 
 class DowserRepeat( DowserMixin, PyTool, ProviMixin ):
     """ A wrapper around the 'dowser-repeat' programm, which is
@@ -128,7 +160,7 @@ class DowserRepeat( DowserMixin, PyTool, ProviMixin ):
         while True:
             alt = "repeat" if rep_count else self.alt
             rep_out = os.path.join( self.repeat_dir, str(rep_count) )
-            dowser = Dowser( self.pdb_file, **copy_dict( 
+            dowser = Dowser( self.pdb_file, **copy_dict(
                 self.kwargs, run=False, output_dir=rep_out, alt=alt
             ))
             # write dowser waters found until now
@@ -173,5 +205,19 @@ class DowserRepeat( DowserMixin, PyTool, ProviMixin ):
             fp.writelines( dowserwat_all )
         # copy intsurf
         shutil.copy( dowser.intsurf_file, self.intsurf_file )
+
+
+class DowserPlus2( DowserMixin, CmdTool, ProviMixin ):
+    """ A wrapper around the 'dowser++' programm. """
+    args = DOWSERPLUS2_ARGS
+    out = DOWSERPLUS2_OUT
+    tmpl_dir = TMPL_DIR
+    provi_tmpl = "dowser++.provi"
+    def _init( self, *args, **kwargs ):
+        exe = DOWSERPLUS2_CMD
+        self.cmd = [
+            exe, self.relpath( self.input_file ), os.path.dirname(os.path.abspath( self.input_file ))
+        ]
+        if self.box: self.cmd.append( self.box )
 
 
