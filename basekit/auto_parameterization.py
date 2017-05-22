@@ -26,11 +26,11 @@ def read_ParameterFile(fname,out):
             elif line[0:5]=='BOND ':
                 if l[1] not in bonds:
                     bonds.update({l[1]:[l[2]]})
-                else:
+                elif l[2] not in bonds[l[1]]:
                     bonds[l[1]]+=[l[2]]
                 if l[2] not in bonds:
                     bonds.update({l[2]:[l[1]]})
-                else:
+                elif l[1] not in bonds[l[2]]:
                     bonds[l[2]]+=[l[1]]
             elif line[0:6] =='ANGLES':
                 angle=True
@@ -149,9 +149,9 @@ def residue(atom,atoms,bonds,ring):
     # aromatic C
     elif (atom[0]=='C') & (atom in ring) & (len([x for x in bonds[atom] if x[0]=='H'])==1):
         return 'CHR'
-    elif (atom[0]=='C') & (atom in ring) & (len([x for x in bonds[atom] if x[0]=='H'])==1):
+    elif (atom[0]=='C')  & (len([x for x in bonds[atom] if x[0]=='H'])==1):
         return 'CH1'
-    elif (atom[0]=='C') & (atom in ring) & (len([x for x in bonds[atom] if x[0]=='H'])==2):
+    elif (atom[0]=='C')  & (len([x for x in bonds[atom] if x[0]=='H'])==2):
         return 'CH2'
     elif (atom[0]=='C') & (len([x for x in bonds[atom] if x[0]=='H'])==3):
         return 'CH3'
@@ -199,6 +199,7 @@ def goBack(atom,atoms,bonds,names,n):
 # Creates the Paramterfile for Dowser
 def make_DowserParamFile(output,atoms, bonds, ring,ligand,angles,dihedrals):
     names=sort_names(atoms,bonds)
+    bond2=copy.copy(bonds)
     for atom in names:
         bonds=boundedAtoms(atom,bonds)
     with open(output, 'a') as f:
@@ -217,7 +218,7 @@ def make_DowserParamFile(output,atoms, bonds, ring,ligand,angles,dihedrals):
                 dihedral=dihedrals[b]
             if bonds[atom][0]!='NOT':
                 dist=distance(atoms[atom],atoms[bonds[atom][0]])
-            f.write('ATOM '+ligand+'  '+addspace(atom,3)+'  '+addspace(bonds[atom][0],5) + addspace(bonds[atom][1],6)+dist+'  '+addspace(angle,5,False)+'  '+addspace(dihedral,5,False)+'  '+partialCharge+' '+residue(atom,atoms,bonds,ring)+'\n')
+            f.write('ATOM '+ligand+'  '+addspace(atom,3)+'  '+addspace(bonds[atom][0],5) + addspace(bonds[atom][1],6)+dist+'  '+addspace(angle,5,False)+'  '+addspace(dihedral,5,False)+'  '+partialCharge+' '+residue(atom,atoms,bond2,ring)+'\n')
 
 # Execute command on command line
 def cmd(args):
