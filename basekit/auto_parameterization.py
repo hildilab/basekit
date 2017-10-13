@@ -15,7 +15,7 @@ def read_ParameterFile(fname,out):
         for line in f:
             l=line.split()
             if line[0:4]=='ATOM':
-                atoms.update({l[1]:l[2:4]})
+                atoms.update({l[1]:l[2:4]}))
                 if 'R' in l[2]:
                     ring.append(l[1])
                 p=l[5]
@@ -68,7 +68,7 @@ def whatPenalty(n):
     else:
         return 2
 
-# read Molfile to get the coordinates of each atom
+# reads Molfile to get the coordinates of each atom
 def read_Molfile(fname,atoms):
     count_H=0
     doubles={}
@@ -77,17 +77,7 @@ def read_Molfile(fname,atoms):
             l=line.split()
             if len(l)>1:
                 if l[1] in atoms:
-                    #if l[1] not in doubles:
-                        #doubles.update({l[1]:0})
                     atoms[l[1]].append(l[2:5])
-                    #if doubles[l[1]]>0:
-                    #    index=int(l[1][1:])
-                        #while l[1][0]+str(index) in doubles:
-                    #        index+=1
-                    #    atoms[l[1][0]+str(index)].append(l[2:5])
-                    #    doubles.update({l[1][0]+str(index):0})
-                    #doubles[l[1]]+=1
-
                 if l[1]=='H':
                     count_H+=1
                     if 'H'+str(count_H) in atoms:
@@ -106,6 +96,7 @@ def sort_names(atoms,bonds):
                 if bonds[atom][i][0]=='H':
                     names.append(bonds[atom][i])
     return names
+
 
 # Returns bounded atoms in Dowser format
 def boundedAtoms(atom,bonds):
@@ -184,7 +175,7 @@ def addspace(word,n,begin=True):
 
 # Calculates the euclidean distance of two molecules
 def distance(atom1,atom2):
-    return "{0:.3f}".format(((sum([x*x for x in [float(atom1[2][i])-float(atom2[2][i]) for i in range(3) ]]))**0.5))
+    return "{0:.3f}".format(((sum([(x*x) for x in [float(atom1[2][i])-float(atom2[2][i]) for i in range(3) ]]))**0.5))
 
 # Return Tuple of atoms of a backbone starting at given atom of the length n
 def goBack(atom,atoms,bonds,names,n):
@@ -196,7 +187,7 @@ def goBack(atom,atoms,bonds,names,n):
         atom=bonds[atom][0]
     return state
 
-# Creates the Paramterfile for Dowser
+# Creates the Paramterfile for Dowser++
 def make_DowserParamFile(output,atoms, bonds, ring,ligand,angles,dihedrals):
     names=sort_names(atoms,bonds)
     bond2=copy.copy(bonds)
