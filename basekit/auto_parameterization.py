@@ -15,7 +15,7 @@ def read_ParameterFile(fname,out):
         for line in f:
             l=line.split()
             if line[0:4]=='ATOM':
-                atoms.update({l[1]:l[2:4]}))
+                atoms.update({l[1]:l[2:4]})
                 if 'R' in l[2]:
                     ring.append(l[1])
                 p=l[5]
