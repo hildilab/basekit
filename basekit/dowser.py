@@ -31,12 +31,6 @@ class DowserMixin( object ):
     def _pre_exec( self ):
         shutil.copy( self.pdb_file, self.input_file )
     def _post_exec( self ):
-        print('TEST 1')
-        print(self.relpath( self.dowser_file ))
-        if '++' in self.relpath( self.dowser_file ):
-            print('TEST !!!')
-            print('Dowser++ not looked at!')
-            return None
         self._make_provi_file(
             input_file=self.relpath( self.input_file ),
             wat_file=self.relpath( self.wat_file ),
@@ -44,7 +38,6 @@ class DowserMixin( object ):
             intsurf_file=self.relpath( self.intsurf_file )
         )
         # make sure all file exist
-
         for f in [ self.wat_file, self.watall_file, self.intsurf_file ]:
             with open( f, "a" ):
                 pass

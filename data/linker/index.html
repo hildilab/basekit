@@ -1,35 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>NGL - SSFE</title>
-    <meta charset="utf-8">
-    <meta 
-    name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>GPCR-SSFE2.0</title>
+        <link rel="stylesheet" href="http://www.ssfa-7tmr.de/ssfe2/css/reset.css" type="text/css" media="screen" />
+        <link rel="stylesheet" href="http://www.ssfa-7tmr.de/ssfe2/css/style.css" type="text/css" media="screen" />
+        <link href="http://www.ssfa-7tmr.de/ssfe2/lightbox/css/lightbox.css" rel="stylesheet" />
+        <link href='http://fonts.googleapis.com/css?family=Open+Sans|Baumans' rel='stylesheet' type='text/css'>
+		<link rel="stylesheet" href="../font-awesome/css/font-awesome.min.css">
+       
+        <script src="http://www.ssfa-7tmr.de/ssfe2/js/vendor/modernizr.min.js"></script>
+        <script src="http://www.ssfa-7tmr.de/ssfe2/js/vendor/respond.min.js"></script>
+        <!-- include extern jQuery file but fall back to local file if extern one fails to load 
+        <script src="http://code.jquery.com/jquery-1.7.2.min.js"></script>!-->
+        <script src="http://code.jquery.com/jquery-1.12.4.min.js"></script>
+        <script src="http://www.ssfa-7tmr.de/ssfe2/lightbox/js/lightbox.js"></script>
+        <script src="http://www.ssfa-7tmr.de/ssfe2/js/vendor/prefixfree.min.js"></script>
+        <script src="http://www.ssfa-7tmr.de/ssfe2/js/vendor/jquery.slides.min.js"></script>
+        <script src="http://www.ssfa-7tmr.de/ssfe2/js/script.js"></script>
+		
+        
+        <!--[if lt IE 9]>
+            <style>
+                header
+                {{
+                    margin: 0 auto 20px auto;
+                }}
+                #four_columns .img-item figure span.thumb-screen
+                {{
+                    display:none;
+                }}  
+            </style>
+        <![endif]-->
+        
 
         <style>
             table {{
                 border-collapse: collapse;
+                scrollCollapse: true;
                 border: 2px black solid;
                 font: 12px sans-serif;
 				display: block;
-        		overflow-x: auto;
-				overflow-y: auto;
+        		overflow: auto;
+                width: 62%;
             }}
+			td:first-child {{
+			background-color: #C0CFFF;
+			}}
+			
+			tr:first-child td {{
+			background-color: #C0CFFF;
+			}}
 
             td {{
                 border: 1px black solid;
-                padding: 5px;
+                white-space: nowrap;
+                padding: 2px;
             }}
 
 			#menu {{
 			 	float: left;
-			 	width: 510px;
+			 	width: 30%;
+                height: 100%;
+                padding: 0px 2%;
 			}}
 			.clear {{
 			clear:both;
 			}}
         </style>
 
+<style>
+.button {{
+  font-family: 'Open Sans', sans-serif;
+        font-size:16px;
+        padding: 5px 18px;
+        outline: 0;
+        border:1;
+        border-radius:5px;
+  width:auto;
+        line-height:25px;
+        text-shadow:none;
+        cursor:pointer;
+        box-shadow: none;
+        background: #224967;
+        color: #fff;
+}}
+.button:hover {{
+    background: none #224967;
+    border-color: #EBE8DE;
+    text-shadow: none;
+    color: #fff;
+}}
+#text_columns article.column7 
+{{
+        margin: 10px 20px;
+        font-size:14px;
+        float:left;
+        width:auto;
+}}
+#text_columns1
+{{
+        line-height:25px;
+        font-family: 'Open Sans', sans-serif;
+        clear:both;
+        width:auto;
+		max-width:96%;
+        margin:0 auto;
+}}
+#text_columns1 h3
+{{
+        font-size:16px;
+        border-bottom: 1px solid #D6D0C1;
+        padding: 10px;
+        margin-bottom: 20px;
+}}
 
 </head>
 
@@ -465,10 +550,57 @@
             
 	}} );
     </script>
+        <header>
+            <div class="toggleMobile">
+		<span class="menu1"></span>
+		<span class="menu2"></span>
+		<span class="menu3"></span>
+		</div>
+            <div id="mobileMenu">
+                <ul>
+                    <li><a href="http://www.ssfa-7tmr.de/ssfe2/index.php">Home</a></li>
+                    <li><a href="http://www.ssfa-7tmr.de/ssfe2/precompiled_results_new.php">Browse</a></li>
+                    <li><a href="http://www.ssfa-7tmr.de/ssfe2/search_result_neu.php">Search</a></li>
+		    <li><a href="http://www.ssfa-7tmr.de/ssfe2/uploader_neu.php">Run</a></li>
+		    <li><a href="http://www.ssfa-7tmr.de/ssfe2/snakes/snakes_designer_new.php">Snake-Plot-Designer</a></li>
+		    <li><a href="http://www.ssfa-7tmr.de/ssfe2/FAQ.php">FAQs</a></li>
+		    <li><a href="https://www.youtube.com/channel/UCvmGniZ6KRmBn3jTnt-pbXQ" target="_blank">Tutorials</a></li>
+                </ul>
+            </div>           
+            
+			<figure>  
+            <a href="http://www.ssfa-7tmr.de/ssfe2/index.php"><h1>GPCR - <img src="http://www.ssfa-7tmr.de/ssfe2017/img/logo.png"  height="50" alt="GPCR-SSFE"/> 2.0</h1></a>
+            </figure>
+                 
+            <p><br></p>
+            <nav>
+            	<h2 class="hidden">GPCR-SSFE navigation</h2>
+                <ul>
+                    <li><a href="http://www.ssfa-7tmr.de/ssfe2/index.php">Home</a></li>
+                    <li><a href="http://www.ssfa-7tmr.de/ssfe2/precompiled_results_new.php">Browse</a></li>
+                    <li><a href="http://www.ssfa-7tmr.de/ssfe2/search_result_neu.php">Search</a></li>
+		    <li><a href="http://www.ssfa-7tmr.de/ssfe2/uploader_neu.php">Run</a></li>
+		    <li><a href="http://www.ssfa-7tmr.de/ssfe2/snakes/snakes_designer_new.php">Snake-Plot-Designer</a></li>
+		    <li><a href="http://www.ssfa-7tmr.de/ssfe2/FAQ.php">FAQs</a></li>
+		    <li><a href="https://www.youtube.com/channel/UCvmGniZ6KRmBn3jTnt-pbXQ" target="_blank">Tutorials</a></li>
+                </ul>
+            </nav>
+        </header>
+	<section id="spacer">  
+        	<h2 class="hidden">title</h2>          
+            <p>A Homology Modeling Resource for G-Protein Coupled Receptors</p>         
+        </section>
+	
+        <section  id="text_columns1">
+            
+        <article class="column7">
+		<h3 style="font-weight: bold;">{template_nr} of {txt_name}</h3>
+		</article>
+		</section>
 
 <div id="menu">
-    <div id="viewport" style="width:500px; height:450px;"></div>
-	    <div style="width:500px;">
+    <div id="viewport" style="width:100%; height:450px;"></div>
+	    <div style="width:100%;">
         <select id="selectModelECL1"></select>
         <select id="selectModelECL2"></select>
         <select id="selectModelECL3"></select>
@@ -480,7 +612,19 @@
         <button id="toggleLabel">label on/off</button>
         <button id="toggleSpin">spin on/off</button>
         <button id="toggleTheme">light/dark background</button>
-        <button id="toggleDownload">download model</button>
+        <br>
+        <br>
+        <button class="button" id="toggleDownload">download model</button>
+        <br>
+        <br>
+		<p>
+Reasons why loops may not have been calculated (indicated by empty dropdown boxes): the loop sequence is too long (>35 amino acids) or no suitable candidate was found (e.g. only loops with > 10 backbone clashes or that have bad geometry were identified).
+</p>
+<br>
+<p>
+Minimization: The sidechains of the loops are not minimized and therefore may clash with the transmembrane helix model. This can be fixed by carrying out minimization on the structure using e.g. <a target="_blank" href="http://zhanglab.ccmb.med.umich.edu/ModRefiner/">ModRefiner</a>. Please be aware that disulphide bridge may not have been built e.g. the conserved TMH3-ECL2 disulphide bridge. In some cases, minimization may also help with this.
+</p>
+
     </div>
 
 </div>
@@ -488,7 +632,34 @@
 <table id="toggleTable"></table>
 </div>
 <div class="clear"></div>
+        <br>
 
-</body>
-</html>
+<footer>
+        	<h2 class="hidden">Our footer</h2>
+            <section id="copyright">
+            	<h3 class="hidden">Copyright notice</h3>
+                <div class="wrapper">
+                    <div class="social">
+                        <a href="http://www.ssfa-7tmr.de/ssfe2/collaboration.php"><i class="fa fa-users fa-2x fa-inverse"></i></a>
+			<a href="http://www.ssfa-7tmr.de/ssfe2/disclaimer.php"><i class="fa fa-exclamation-triangle fa-2x fa-inverse"></i></a>
+			<a href="http://www.ssfa-7tmr.de/ssfe2/FAQ.php"><i class="fa fa-question-circle fa-2x fa-inverse"></i></a>
+			<a href="http://www.ssfa-7tmr.de/ssfe2/contact.php"><i class="fa fa-phone-square fa-2x fa-inverse"></i></a>
+                    </div>
+                    2017. All Rights Reserved.
+                </div>
+            </section>
+            
+        </footer>
+	</body>
+	<script>
+	  (function(i,s,o,g,r,a,m){{i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){{
+	  (i[r].q=i[r].q||[]).push(arguments)}},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  }})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-92579567-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+</html> 
 

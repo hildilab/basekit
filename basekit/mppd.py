@@ -423,8 +423,7 @@ class MppdPipeline( PyTool, RecordsMixin, ParallelMixin, ProviMixin ):
                     msms_components="" '''self.msms_vdw_fin.components_provi(
                         color="lightgreen", translucent=0.5,
                         relpath=self.relpath, max_atomno=len( npdb )
-                    ),'''
-
+                    ),
                 )
 
             for suffix, pdb_file in self.water_variants:

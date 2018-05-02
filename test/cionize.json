@@ -1,0 +1,10 @@
+[
+    [
+        "/mnt/bigdisk/development/repos/basekit/data/test/3SN6.pdb"
+    ], 
+    {
+        "configfile": "/mnt/bigdisk/development/repos/basekit/data/cionize/cionize/test.cfg", 
+        "run": false, 
+        "verbose": false
+    }
+]

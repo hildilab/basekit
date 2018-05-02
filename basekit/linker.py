@@ -15,6 +15,9 @@ import gzip
 import zipfile
 import time
 
+import tarfile
+import errno
+
 from utils import copy_dict, iter_stride, dir_walker
 import utils.path
 from utils.tool import _, _dir_init, CmdTool, PyTool, ProviMixin
@@ -2197,6 +2200,9 @@ class SSFELinkIt( PyTool, ProviMixin ):
         templateDict["namepdbfiles2"] = templateHtmlString
         templateDict["result"] = '"' + result + '"'
         templateDict["resultTabel"] = "'" + resultTabel + "'"
+        templateDict["txt_name"] = self.txt_name
+        templateDict["template_nr"] = self.template_nr
+
         #print templateDict
 
         # print self.loopPosList
@@ -2408,6 +2414,7 @@ class MultiLinkIt( PyTool, ProviMixin ):
         #     linker_list=linker_list
         # )
 
+import zipfile, tarfile, gzip, sys
 class LinkItDensity( PyTool ):
     """Please denote the resolution of your map. Then define the stem-residues (e.g.: 10:A, 16:A) and provide the missing sequence in 1-letter code (ACDEF). """
     args = [
@@ -2436,6 +2443,59 @@ class LinkItDensity( PyTool ):
     tmpl_dir = TMPL_DIR
     #start=timeit.timeit()
     def _init( self, *args, **kwargs ):
+        try:
+            os.makedirs('./Extraction')
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+    	if zipfile.is_zipfile(self.mrc_file):
+    	    os.rename(self.mrc_file, self.mrc_file[:-4]+".zip")
+    	    self.mrc_file=self.mrc_file[:-4]+".zip"
+    	    self.mrc_file=self.translate(pdbB=False)
+        if tarfile.is_tarfile(self.mrc_file):
+    	    os.rename(self.mrc_file, self.mrc_file[:-7]+".tar.gz")
+    	    self.mrc_file=self.mrc_file[:-7]+".tar.gz"
+    	    self.mrc_file=self.translate(pdbB=False)
+        if zipfile.is_zipfile(self.pdb_file):
+            os.rename(self.pdb_file, self.pdb_file[:-4]+".zip")
+            self.pdb_file=self.pdb_file[:-4]+".zip"
+            self.pdb_file=self.translate(pdbB=True)
+        try:
+            inF = gzip.GzipFile(self.pdb_file, 'r')
+            s =inF.read()
+            if s:
+                os.rename(self.pdb_file, self.pdb_file[:-4]+".gz")
+                self.pdb_file=self.pdb_file[:-4]+".gz"
+                self.pdb_file=self.translate(pdbB=True)
+        except:
+            pass
+        if tarfile.is_tarfile(self.pdb_file):
+            os.rename(self.pdb_file, self.pdb_file[:-7]+".tar.gz")
+            self.pdb_file=self.pdb_file[:-7]+".tar.gz"
+            self.pdb_file=self.translate(pdbB=True)
+            try:
+                inF = gzip.GzipFile(self.pdb_file, 'r')
+                s =inF.read()
+                if s:
+                    os.rename(self.pdb_file, self.pdb_file[:-4]+".gz")
+                    self.pdb_file=self.pdb_file[:-4]+".gz"
+                    self.pdb_file=self.translate(pdbB=True)
+            except:
+                pass
+    #	elif tarfile.is_tarfile(self.pdb_file):
+    #            namei = os.path.splitext(self.pdb_file)[0]
+    #            self.pdb_file = os.rename(namei+".pdb", namei+".tar.gz")
+    #            self.pdb_file=self.translate(True)
+    	try:
+    	    inF = gzip.GzipFile(self.mrc_file, 'r')
+    	    s =inF.read()
+    	    if s:
+    	        os.rename(self.mrc_file, self.mrc_file[:-4]+".gz")
+            	self.mrc_file=self.mrc_file[:-4]+".gz"
+            	self.mrc_file=self.translate(pdbB=False)
+    	except:
+    	    pass
+    #        self.mrc_file=self.translate(False)
         self.res1['chain'] = self.res1['chain'].upper()
         self.res2['chain'] = self.res2['chain'].upper()
         if self.res1['resno'] > self.res2['resno']:
@@ -2463,6 +2523,56 @@ class LinkItDensity( PyTool ):
         self.sub_tool_list.extend( [
             self.link_it, self.loop_correl
         ] )
+    def translate(self,pdbB=False):
+        if pdbB:
+            fname=self.pdb_file
+            end='.pdb'
+        else:
+            fname=self.mrc_file
+            end='.mrc'
+        directory=self.subdir('Extraction')
+        name=(fname.split('.')[0]).split('/')[-1]
+        out=directory+'/'+name
+        if (fname.endswith("tar.gz")):
+            tar = tarfile.open(fname, "r:gz")
+            tar.extractall(directory)
+            tar.close()
+            '''if pdbB:
+                return directory+'/'+fname.split('/')[-1][:-7]
+            else:
+                for root, dirs, files in os.walk(directory):
+                    for f in files:
+                        fullpath = os.path.join (root, f)
+                        os.rename(fullpath, self.mrc_file[:-7]+'.mrc')
+                        return self.mrc_file[:-7]+'.mrc' '''
+            for root, dirs, files in os.walk(directory):
+                for f in files:
+                    if ['.map', '.pdb', '.mrc'] in f:
+                        fullpath = os.path.join (root, f)
+                        os.rename(fullpath, fname[:-7]+end)
+                        return fname[:-7]+end
+        elif (fname.endswith("gz")):
+            with gzip.open(fname, 'rb') as f_in:
+                with open(fname[:-3]+end, 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+#            for root, dirs, files in os.walk(directory):
+#                for f in files:
+#                    fullpath = os.path.join(root, f)
+#                    os.rename(fullpath, fname[:-3]+end)
+            return fname[:-3]+end
+        elif (fname.endswith("zip")):
+            zip_ref = zipfile.ZipFile(fname, 'r')
+            zip_ref.extractall(directory)
+            zip_ref.close()
+            for root, dirs, files in os.walk(directory):
+                for f in files:
+                    if ['.map', '.mrc', '.pdb'] in f:
+                        fullpath = os.path.join (root, f)
+                        os.rename(fullpath, fname[:-4]+end)
+                        return fname[:-4]+end
+	else:
+            return fname
+
 
 
     def func( self ):
